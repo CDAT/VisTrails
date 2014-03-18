@@ -182,8 +182,6 @@ class vtkPointCloud(QtCore.QObject):
         self.polydata = None
         self.vardata = None
         self.vrange = None
-        self.trange = None
-        self.crange = None
         self.np_index_seq = None
         self.points = None
         self.pcIndex = pcIndex
@@ -194,7 +192,7 @@ class vtkPointCloud(QtCore.QObject):
         self.np_points_data = None
         self.topo = PlotType.Planar
         self.grid = None
-        self.threshold_target = "vardata"
+#        self.threshold_target = "vardata"
         self.current_scalar_range = None
         self.nlevels  = None
         self.current_subset_specs = None
@@ -233,8 +231,9 @@ class vtkPointCloud(QtCore.QObject):
     def hasResultWaiting(self):
         return False
     
-    def getThresholdingRange(self):       
-        return self.trange if ( self.threshold_target == "vardata" ) else self.crange
+    def getThresholdingRanges(self): 
+        return self.current_subset_specs      
+#        return self.trange if ( self.threshold_target == "vardata" ) else self.crange
     
     def getValueRange( self, var_name=None, range_type = ScalarRangeType.Full ):
         return self.vrange if ( range_type == ScalarRangeType.Full ) else self.trange
@@ -527,7 +526,8 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         process = args.get( 'process', True )
         if process:
             self.clearQueues()
-            self.threshold_target = self.current_subset_specs[0]
+#            first_spec = self.current_subset_specs.values()[0]
+#            self.threshold_target = first_spec[0]
             self.np_index_seq = None
 #             if self.pcIndex == 1: 
 #                 self.printLogMessage( " vtkSubProcPointCloud --->> Generate subset: %s " % str(self.current_subset_specs) )
@@ -563,8 +563,8 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         elif result.type == ExecutionDataPacket.INDICES:
 #            print "Got INDICES"
             self.np_index_seq = result.data 
-            self.trange = result['trange']
-            self.threshold_target = result['target']
+#            self.trange = result['trange']
+#            self.threshold_target = result['target']
 #             if self.pcIndex == 1: 
 #                 self.printLogMessage(  " vtkSubProcPointCloud --->> Get Results, Args: %s " % str(result['args']) )
         elif result.type == ExecutionDataPacket.POINTS:
@@ -588,11 +588,11 @@ class vtkSubProcPointCloud( vtkPointCloud ):
 #            print " processResults[ %d ] : VARDATA" % self.pcIndex; sys.stdout.flush()
         elif result.type == ExecutionDataPacket.INDICES:
             self.np_index_seq = result.data 
-            self.threshold_target = result['target']
-            if self.threshold_target == "vardata":
-                self.trange = result['trange']
-            else:
-                self.crange = result['crange']                
+#            self.threshold_target = result['target']
+#            if self.threshold_target == "vardata":
+#                self.trange = result['trange']
+#            else:
+#                self.crange = result['crange']                
 #             if self.pcIndex == 1:
 #                 self.printLogMessage(  " vtkSubProcPointCloud --->> Process Results, Args: %s " % str(result['args']) )
             self.updateVertices()  
@@ -657,13 +657,14 @@ class vtkLocalPointCloud( vtkPointCloud ):
         self.current_subset_specs = args.get('spec', self.current_subset_specs)
 #         if self.current_subset_specs[0] == 'Z3':
 #             print " vtkLocalPointCloud[%d]: current_subset_specs: %s (%s) " % ( self.pcIndex, self.current_subset_specs, str(args) )
-        self.threshold_target = self.current_subset_specs[0]
-        op_specs = [ 'indices', list(self.current_subset_specs) ]
+#        self.threshold_target = self.current_subset_specs[0]
+        op_specs = [ spec for spec in  self.current_subset_specs.values() ]
+        op_specs.insert( 0, 'indices' )
         vmin, vmax = self.point_collection.execute( op_specs )       
         self.np_index_seq = self.point_collection.selected_index_array
-        if self.threshold_target == "vardata": self.trange = ( vmin, vmax )
-        else: 
-            self.crange = ( vmin, vmax )
+#        if self.threshold_target == "vardata": self.trange = ( vmin, vmax )
+#        else: 
+#            self.crange = ( vmin, vmax )
 #            print "Set crange: ", str( self.crange )
         self.grid = self.point_collection.getGridType()
         self.current_scalar_range = self.vrange
@@ -804,8 +805,10 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     
     def runProcess(self, procType, **args):
         process_spec = args.get( 'spec', None )
-        if process_spec: self.current_spec[ procType ] = process_spec
-        else:            process_spec = self.current_spec.get( procType, None )
+        if process_spec: 
+            self.current_spec[ procType ] = process_spec
+        else:            
+            process_spec = self.current_spec.get( procType, None )
         pc_base_index = args.get( 'pc_base_index', 0 )
         allow_processing =  args.get( 'allow_processing', True )
         if self.nActiveCollections > pc_base_index:

@@ -80,6 +80,7 @@ class MultiVarPointCollection():
         self.var_data_cache = {}
         self.vars = {} 
         self.thresholdTargetType = None
+        self.selected_index_array = None
         
     def configure(self, **args ):
         self.maxStageHeight = args.get('maxStageHeight', self.maxStageHeight )
@@ -467,51 +468,58 @@ class MultiVarPointCollection():
             return None, None, None
         vmin = None
         var_data_id = self.var.id if ( threshold_target == 'vardata' ) else threshold_target
-        var_data = self.point_data_arrays.get( var_data_id, None).flatten()
-        if not isNone(var_data):
+        var_data = self.point_data_arrays.get( var_data_id, None) 
+        if not isNone(var_data):           
             arange = self.axis_bounds.get( threshold_target )
-            if arange:
-                dv = arange[1] - arange[0]
-                vmin = arange[0] + rmin * dv
-                vmax = arange[0] + rmax * dv  
-            elif threshold_target == 'vardata':
-                vrng = self.vrange[ var_data_id ]
-                dv = vrng[1] - vrng[0]
-                try:
-                    vmin = vrng[0] + rmin * dv
-                    vmax = vrng[0] + rmax * dv
-                except TypeError, err:
-                    pass
-            if vmin <> None:
-                if ( threshold_target == 'z' ):
-                    nLev = len( self.lev )
-                    rave = (rmin + rmax)/2
-                    iLev = int(  nLev * rave  )  if self.levelsAreAscending() else int(  nLev * (1.0-rave)  ) 
-                    lev_val = self.lev[ iLev ]
-                    self.thresholded_range[var_data_id] = [ lev_val, lev_val ]
-#                    print "Z threshold Range: %d %f " % ( iLev, lev_val )
-                else:
-                    self.thresholded_range[var_data_id] = [ vmin, vmax ]
-                return var_data, vmin, vmax
+            try:
+                if arange:
+                    dv = arange[1] - arange[0]
+                    vmin = arange[0] + rmin * dv
+                    vmax = arange[0] + rmax * dv  
+                elif ( threshold_target == 'vardata' ) or ( threshold_target in self.vars.keys() ):
+                    vrng = self.vrange[ var_data_id ]
+                    dv = vrng[1] - vrng[0]
+                    try:
+                        vmin = vrng[0] + rmin * dv
+                        vmax = vrng[0] + rmax * dv
+                    except TypeError, err:
+                        pass
+                if vmin <> None:
+                    if ( threshold_target == 'z' ):
+                        nLev = len( self.lev )
+                        rave = (rmin + rmax)/2
+                        iLev = int(  nLev * rave  )  if self.levelsAreAscending() else int(  nLev * (1.0-rave)  ) 
+                        lev_val = self.lev[ iLev ]
+                        self.thresholded_range[var_data_id] = [ lev_val, lev_val ]
+    #                    print "Z threshold Range: %d %f " % ( iLev, lev_val )
+                    else:
+                        self.thresholded_range[var_data_id] = [ vmin, vmax ]
+                    return var_data.flatten(), vmin, vmax
+            except TypeError:
+                print>>sys.stderr, "Range Error Computing Threshold: ", str(arange )
         return None, None, None
                     
     def execute( self, args, **kwargs ): 
         op = args[0] 
         if op == 'indices': 
             threshold_mask = None
+            print "Processing computeThresholdRange: %s " % str( args )
             for var_op in args[1:]:  
-#                print "Processing computeThresholdRange: %s " % str( var_op )
                 var_data, vmin, vmax = self.computeThresholdRange( var_op )               
                 if not isNone(var_data):
                     var_mask = numpy.logical_and( numpy.greater_equal( var_data, vmin ), numpy.less_equal( var_data, vmax ) )  
-                    if threshold_mask == None:                       
+                    if isNone(threshold_mask):                       
                         self.thresholdTargetType = 'coords' if var_op[0] in [ 'lat', 'lon', 'lev', 'x', 'y', 'z' ] else 'vardata' 
                         threshold_mask = var_mask
                     else:
                         threshold_mask = numpy.logical_and( threshold_mask, var_mask )
-            index_array = numpy.arange( 0, len(var_data) )
-            self.selected_index_array = index_array[ threshold_mask ]  
-            return vmin, vmax   
+            if isNone( threshold_mask ):
+                print>>sys.stderr, "Thresholding failed for spec: ", str( args )
+                return None, None
+            else:
+                index_array = numpy.arange( 0, len(threshold_mask) )
+                self.selected_index_array = index_array[ threshold_mask ]  
+                return vmin, vmax   
         elif op == 'points': 
 #            print " subproc: Process points request, args = %s " % str( args ); sys.stdout.flush()
             self.setPointHeights( height_var=args[1], z_scale=args[2] )  
