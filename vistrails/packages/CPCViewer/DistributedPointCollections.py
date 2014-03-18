@@ -522,7 +522,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
 
     def generateSubset(self, **args ):
         self.current_subset_specs = args.get( 'spec', self.current_subset_specs )
-#        print " vtkSubProcPointCloud: current_subset_specs: %s (%s) " % ( self.current_subset_specs, str(args) )
+        print " vtkSubProcPointCloud: current_subset_specs: %s (%s) " % ( self.current_subset_specs, str(args) )
         process = args.get( 'process', True )
         if process:
             self.clearQueues()
@@ -531,7 +531,8 @@ class vtkSubProcPointCloud( vtkPointCloud ):
             self.np_index_seq = None
 #             if self.pcIndex == 1: 
 #                 self.printLogMessage( " vtkSubProcPointCloud --->> Generate subset: %s " % str(self.current_subset_specs) )
-            op_specs = [ 'indices', list(self.current_subset_specs) ]
+            op_specs = self.current_subset_specs.values()
+            op_specs.insert( 0, 'indices' )
             self.arg_queue.put( op_specs,  False ) 
 
     def generateZScaling(self, **args ):

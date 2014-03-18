@@ -211,6 +211,10 @@ class PointCollection():
         self.vertical_bounds =  ( 0.0, stage_height )  
         self.axis_bounds[ 'z' ] = self.vertical_bounds
 
+    @property
+    def defvar(self):
+        return self.var.id       
+
     def computePoints( self, **args ):
         nz = len( self.lev ) if self.lev else 1
         if self.point_layout == PlotType.List:
@@ -345,7 +349,7 @@ class PointCollection():
                 if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
                 else: var_data = np_var_data_block
                 self.var_data_cache[ self.iTimeStep ] = var_data
-            self.point_data_arrays['vardata'] = var_data
+            self.point_data_arrays[ self.defvar ] = var_data
             self.vrange = ( var_data.min(), var_data.max() ) 
         return process
     
@@ -384,27 +388,26 @@ class PointCollection():
         self.grid = self.var.getGrid()
         self.lev = self.getLevel(self.var)
 
-        lon, lat = self.getLatLon( varname, grid_coords )                              
-        self.time = self.var.getTime()
-        z_scale = 0.5
-        self.missing_value = self.var.attributes.get( 'missing_value', None )
-        if self.lev == None:
-            domain = self.var.getDomain()
-            for axis in domain:
-                if PlotType.isLevelAxis( axis[0].id.lower() ):
-                    self.lev = axis[0]
-                    break        
-        self.computePoints() 
-        self.setPointHeights( height_var=grid_coords[3], z_scale=z_scale )
-        np_var_data_block = self.getDataBlock(self.var).flatten()     
-        if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
-        else: var_data = np_var_data_block
-        self.point_data_arrays['vardata'] = var_data
-        self.vrange = ( var_data.min(), var_data.max() ) 
-        self.var_data_cache[ self.iTimeStep ] = var_data
-        self.metadata['vbounds'] = self.vrange
-#        print "Read %d points." % self.getNumberOfPoints(); sys.stdout.flush()
-
+        lon, lat = self.getLatLon( varname, grid_coords )  
+        if ( id(lon) <> id(None) ) and ( id(lat) <> id(None) ):                                 
+            self.time = self.var.getTime()
+            z_scale = 0.5
+            self.missing_value = self.var.attributes.get( 'missing_value', None )
+            if self.lev == None:
+                domain = self.var.getDomain()
+                for axis in domain:
+                    if PlotType.isLevelAxis( axis[0].id.lower() ):
+                        self.lev = axis[0]
+                        break        
+            self.computePoints() 
+            self.setPointHeights( height_var=grid_coords[3], z_scale=z_scale )
+            np_var_data_block = self.getDataBlock(self.var).flatten()     
+            if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
+            else: var_data = np_var_data_block
+            self.point_data_arrays[ self.defvar ] = var_data
+            self.vrange = ( var_data.min(), var_data.max() ) 
+            self.var_data_cache[ self.iTimeStep ] = var_data
+            self.metadata['vbounds'] = self.vrange
         
     def getPoints(self):
         point_comps = [ self.point_data_arrays[comp].flat for comp in [ 'x', 'y', 'z'] ]
@@ -417,7 +420,7 @@ class PointCollection():
         return self.point_data_arrays['z'] 
 
     def getVarData(self):
-        return  self.point_data_arrays.get( 'vardata', None )
+        return  self.point_data_arrays.get( self.defvar, None )
 
     def getVarDataRange( self ):
         return self.vrange
@@ -445,7 +448,7 @@ class PointCollection():
                 dv = arange[1] - arange[0]
                 vmin = arange[0] + rmin * dv
                 vmax = arange[0] + rmax * dv  
-            elif self.threshold_target == 'vardata':
+            elif self.threshold_target == self.defvar:
                 dv = self.vrange[1] - self.vrange[0]
                 try:
                     vmin = self.vrange[0] + rmin * dv

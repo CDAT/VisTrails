@@ -59,6 +59,14 @@ POS_VECTOR_COMP = [ 'xpos', 'ypos', 'zpos' ]
 SLICE_WIDTH_LR_COMP = [ 'xlrwidth', 'ylrwidth', 'zlrwidth' ]
 SLICE_WIDTH_HR_COMP = [ 'xhrwidth', 'yhrwidth', 'zhrwidth' ]
 
+def extract_arg( args, argname, **kwargs ):
+    target = kwargs.get( 'defval', None )
+    offset = kwargs.get( 'offset', 0 )
+    for iArg in range( offset, len(args) ):
+        if args[iArg] == argname:
+            target = args[iArg+1]
+    return target
+
 def deserialize_value( sval ):
     if isinstance( sval, float ): 
         return sval
@@ -144,6 +152,9 @@ class ConfigParameter( QtCore.QObject ):
     def getName(self):
         return self.name
 
+    def getVarName(self):
+        return self.varname
+
     def getParameterType(self):
         return self.ptype
     
@@ -157,9 +168,12 @@ class ConfigParameter( QtCore.QObject ):
     def getValue( self, key='value', default_value=None ):
         return self.values.get( key, default_value )
 
-    def setValue( self, key, val ):
+    def setValue( self, key, val, update=False  ):
         self.values[ key ] = val
         self.addValueKey( key )
+        if update: 
+            args1 = [  self.ptype, key, val, self.name]
+            self.emit( QtCore.SIGNAL("ValueChanged"), args1 )
 
     def incrementValue( self, index, inc ):
         self.values[ index ] = self.values[ index ] + inc
@@ -170,8 +184,15 @@ class LevelingConfigParameter( ConfigParameter ):
         super( LevelingConfigParameter, self ).__init__( name, **args ) 
         self.wposSensitivity = args.get( 'pos_s', 0.05 )
         self.wsizeSensitivity = args.get( 'width_s', 0.05 )
-        if 'rmin' in args:  self.computeWindow()
-        else:               self.computeRange()
+        self.normalized = True
+        self.range_bounds = [ 0.0, 1.0 ]     
+        if 'rmin' in args: 
+            if (self.rmin <> 0) or (self.rmax <> 1):
+                self.normalized = False 
+                self.range_bounds = [ self['rmin'], self['rmax'] ]              
+            self.computeWindow()
+        else:               
+            self.computeRange()
         self.scaling_bounds = None
         
     @property
@@ -261,6 +282,15 @@ class LevelingConfigParameter( ConfigParameter ):
     def getRange( self ):
         return ( self.rmin, self.rmax )
 
+    def getNormalizedRange( self ):
+        if self.normalized:
+            return ( self.rmin, self.rmax )
+        else:
+            rb = ( self.range_bounds[1] - self.range_bounds[0] )
+            return [ ( self.rmin - self.range_bounds[0] ) / rb, ( self.rmax - self.range_bounds[0] ) / rb ]
+            
+            
+            
 class RangeConfigParameter( ConfigParameter ):
     
     def __init__(self, name, **args ):
@@ -576,8 +606,8 @@ class TabbedControl( ConfigControl ):
         return list_index
     
     def sliderMoved(self, slider_index, raw_slider_value, scaled_slider_value):
-        self.cparm.setValue( "CurrentIndex", slider_index )
-        self.cparm[ slider_index ] = scaled_slider_value
+        self.cparm[slider_index] = scaled_slider_value 
+        self.cparm.setValue( "CurrentIndex", slider_index, True )
         
     def processSliderConfigCmd(self, cmd, slider_index, values=None ):
         if cmd == 'Moved': 
@@ -589,9 +619,9 @@ class TabbedControl( ConfigControl ):
 
     def processWidgetConfigCmd(self, widget_name, widget_value=None ):
         if widget_value == None:
-            self.cparm[ "selected" ] = widget_name
+            self.cparm.setValue( "selected", widget_name, True )
         else:
-            self.cparm[ widget_name ] = widget_value
+            self.cparm.setValue( widget_name, widget_value, True )
 #        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), cbox_name, cbox_value ) )
 
     def processConfigCmd(self, cmd ):
@@ -681,8 +711,8 @@ class SliderControl( TabbedControl ):
         super( SliderControl, self ).__init__( cparm, **args )  
 
     def sliderMoved(self, slider_index, raw_slider_value, scaled_slider_value):
-        self.cparm[ "value" ] = scaled_slider_value 
         self.cparm[ "CurrentIndex" ] = slider_index
+        self.cparm.setValue( "value", scaled_slider_value, True ) 
 
     def build(self):
         super( SliderControl, self ).build()
@@ -698,8 +728,8 @@ class IndexedSliderControl( TabbedControl ):
         super( IndexedSliderControl, self ).__init__( cparm, **args )  
 
     def sliderMoved(self, slider_index, raw_slider_value, scaled_slider_value):
-        self.cparm.setValue( slider_index, int( raw_slider_value ) )
         self.cparm[ "CurrentIndex" ] = slider_index
+        self.cparm.setValue( slider_index, int( raw_slider_value ), True )
 
     def build(self):
         super( IndexedSliderControl, self ).build()
@@ -808,14 +838,9 @@ class OpacityGraphWidget( ConfigWidget ):
         
     def processParameterChange( self, args ):
 #        print "OpacityGraphWidget.parameterValueChanged: ", str(args)
-        if ( args[0] == 'Threshold Range' ) and ( len(args) >= 5 ):
-            trange = [ None, None ]
-            for iArg in range(1,5):
-                if args[iArg] == 'rmin':
-                    trange[0] = args[iArg+1]
-                elif args[iArg] == 'rmax':
-                    trange[1] = args[iArg+1]
-            if trange[0] <> None:
+        if ( args[0] == 'Threshold Range' ):
+            trange = [ extract_arg( args, 'rmin', offset=1 ), extract_arg( args, 'rmax', offset=1 ) ]
+            if ( trange[0] <> None ) and ( trange[1] <> None ):
                 self.graph.updateThresholdRange( trange )
 
     def processExtConfigCmd( self, args ):
@@ -945,6 +970,10 @@ class InfoGridControl( ConfigControl ):
         self.cat_index = cat_index 
         self.cfgManager = configManager
         self.tagged_controls = []
+        self.ext_parameters = {}
+        
+    def setExternalParameter(self, pname, parm ):
+        self.ext_parameters[ pname ] = parm
                             
     def addControl( self, iCatIndex, config_ctrl, id = None ):
         config_list = self.configContainer.getCategoryConfigList( iCatIndex )
@@ -960,16 +989,9 @@ class InfoGridControl( ConfigControl ):
 
     def processParameterChange( self, args ):
         if ( len(args) >= 5 ):
-            name = args[0]
-            trange = [ None, None ]
-            for iArg in range( 1, len(args) ):
-                if args[iArg] == 'rmin':
-                    trange[0] = args[iArg+1]
-                elif args[iArg] == 'rmax':
-                    trange[1] = args[iArg+1]
-                elif args[iArg] == 'name':
-                    name = args[iArg+1]
-            if trange[0] <> None:
+            trange = [ extract_arg( args, 'rmin', offset=1 ), extract_arg( args, 'rmax', offset=1 ) ]
+            name = extract_arg( args, 'name', offset=1, defval=args[0] )
+            if (trange[0] <> None) and (trange[1] <> None):
                 self.pc_widget.setSelectionRange( name, trange[0], trange[1] )
                                     
     def addConfigControl(self, iCatIndex, config_ctrl, id = None ):
@@ -1016,7 +1038,9 @@ class InfoGridControl( ConfigControl ):
                 var_rec = self.metadata[ var_id ]
                 vrange = var_rec[2]
                 if vrange[1] > vrange[0]:
-                    thresh_cparm = self.cfgManager.addParameter( self.cat_index, var_id, ptype="Threshold Range", rmin=vrange[0], rmax=vrange[1], ctype = 'Leveling', varname=var_id )
+                    thresh_cparm = self.ext_parameters.get( var_id, None ) 
+                    if thresh_cparm == None:
+                        thresh_cparm = self.cfgManager.addParameter( self.cat_index, "Threshold Range", rmin=vrange[0], rmax=vrange[1], ctype = 'Leveling', varname=var_id )
                     self.addConfigControl( self.iVariablesCatIndex, VarRangeControl( thresh_cparm, title=var_rec[0], units=var_rec[1] ) )
                     included_varids.append( var_id )
 
@@ -1031,6 +1055,9 @@ class VarRangeControl( LevelingSliderControl ):
  
     def __init__(self, cparm, **args ):  
         super( VarRangeControl, self ).__init__( cparm, **args )
+        
+    def getName(self):
+        return self.cparm.getVarName()
               
 class SlicerControl( TabbedControl ):
     
@@ -1056,8 +1083,9 @@ class SlicerControl( TabbedControl ):
                         
     def sliderMoved( self, slider_index, raw_val, norm_val ):
 #        self.emit( QtCore.SIGNAL("ConfigCmd"),  ( self.getName(), self.getTitle( slider_index ),  slider_index, raw_val, norm_val ) )  
+        super( SlicerControl, self ).sliderMoved( slider_index, raw_val, norm_val )
         id = self.getId( slider_index )       
-        self.cparm[id] = norm_val
+        self.cparm.setValue( id, norm_val, True )
 
     def getId( self, slider_index ):
         if   slider_index == self.xhsw: return 'xhrwidth'
@@ -1562,6 +1590,7 @@ class ConfigurationWidget(QtGui.QWidget):
         self.emit( QtCore.SIGNAL("Close"), self.getParameterPersistenceList() )
 
     def build( self, **args ):
+        defvar = self.cfgManager.getMetadata( 'defvar' )
         self.iColorCatIndex = self.addCategory( 'Color' )
         cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
         self.addConfigControl( self.iColorCatIndex, ColorScaleControl( cparm ) )       
@@ -1571,7 +1600,7 @@ class ConfigurationWidget(QtGui.QWidget):
         self.iSubsetCatIndex = self.addCategory( 'Subsets' )
         cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5, xhrwidth=0.0025, xlrwidth=0.005, yhrwidth=0.0025, ylrwidth=0.005 )
         self.addConfigControl( self.iSubsetCatIndex, SlicerControl( cparm, wrange=[ 0.0001, 0.02 ] ) ) # , "SlicerControl" )
-        thresh_cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Threshold Range", rmin=0.6, rmax=1.0, ctype = 'Leveling', varname=self.cfgManager.getMetadata( 'defvar' ) )
+        thresh_cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Threshold Range", rmin=0.0, rmax=1.0, ctype = 'Leveling', varname=defvar )
         self.addConfigControl( self.iSubsetCatIndex, VolumeControl( thresh_cparm ) )
 
         op_cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Opacity Scale", rmin=0.0, rmax=1.0, ctype = 'Range'  )
@@ -1596,7 +1625,9 @@ class ConfigurationWidget(QtGui.QWidget):
         cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "Animation" )
         self.addConfigControl( self.AnalysisCatIndex, AnimationControl( cparm ) )
         cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "InfoGrid" )
-        self.addConfigControl( self.AnalysisCatIndex, InfoGridControl( self.cfgManager, self.point_collection, cparm, self.AnalysisCatIndex ) )
+        igc = InfoGridControl( self.cfgManager, self.point_collection, cparm, self.AnalysisCatIndex )
+        igc.setExternalParameter( defvar, thresh_cparm )
+        self.addConfigControl( self.AnalysisCatIndex, igc )
         
     def saveConfig(self):
         self.cfgManager.saveConfig()
@@ -1634,8 +1665,10 @@ class ConfigManager(QtCore.QObject):
     def addParameter( self, iCatIndex, config_name, **args ):
         categoryName = self.controller.getCategoryName( iCatIndex ) if self.controller else self.cats[ iCatIndex ]
         cparm = ConfigParameter.getParameter( config_name, **args )
-        key = ':'.join( [ categoryName, config_name ] )
-        self.addParam( key, cparm )
+        varname = args.get('varname', None )
+        key_tok = [ categoryName, config_name ]
+        if varname: key_tok.append( varname )
+        self.addParam( ':'.join( key_tok ), cparm )
         return cparm
 
     def readConfig( self ):

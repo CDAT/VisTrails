@@ -500,6 +500,7 @@ class MultiVarPointCollection():
         return None, None, None
                     
     def execute( self, args, **kwargs ): 
+        print "MultiVarPointCollection.execute: %s " % str( args ); sys.stdout.flush()
         op = args[0] 
         if op == 'indices': 
             threshold_mask = None

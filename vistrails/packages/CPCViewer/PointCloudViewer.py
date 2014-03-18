@@ -52,7 +52,7 @@ import os.path, traceback
 import vtk, time
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from packages.CPCViewer.DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, kill_all_zombies
-from packages.CPCViewer.ControlPanel import CPCConfigGui, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
+from packages.CPCViewer.ControlPanel import extract_arg, CPCConfigGui, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
 from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.MapManager import MapManager
 from packages.CPCViewer.MultiVarPointCollection import InterfaceType
@@ -329,7 +329,7 @@ class CPCPlot(QtCore.QObject):
 #        self.render_mode_point_sizes = [ 4, 10 ]
         self.colorRange = 0 
         self.thresholdCmdIndex = 0
-        self.thresholdingSkipFactor = 2
+        self.thresholdingSkipFactor = 3
         self.resolutionCounter = Counter()
         self.colormapManagers= {}
         self.stereoEnabled = 0
@@ -459,7 +459,10 @@ class CPCPlot(QtCore.QObject):
         
     def getPointCloud( self, ires = -1 ):
         if ires == -1: ires = self.render_mode
-        return self.partitioned_point_cloud if ( ( ires ==  ProcessMode.HighRes ) and ( self.partitioned_point_cloud <> None ) ) else self.point_cloud_overview 
+        if ( ( ires ==  ProcessMode.HighRes ) and ( self.partitioned_point_cloud <> None ) ):
+            return self.partitioned_point_cloud  
+        else:
+            return  self.point_cloud_overview 
 
     def getPointClouds(self):
         return [ self.point_cloud_overview, self.partitioned_point_cloud ]
@@ -496,9 +499,6 @@ class CPCPlot(QtCore.QObject):
 #        self.threshold_filter.Modified()
 #        self.geometry_filter.Modified()
                 
-
-    def executeCurrentThresholdRange( self ):
-        self.updateThresholding( 'vardata', self.volumeThresholdRange.getRange() )    
              
     def getLabelActor(self):
         return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .90), size = VTK_NOTATION_SIZE, bold = True  )
@@ -837,7 +837,11 @@ class CPCPlot(QtCore.QObject):
             
     def processVariableCommand( self, args = None ):
         print " -------------------->>> Process Variable Command: ", str( args ) 
-        self.processThresholdRangeCommand( args )        
+        self.processThresholdRangeCommand( args ) 
+
+    @property
+    def defvar(self):
+        return self.point_cloud_overview.point_collection.var.id       
     
     def processThresholdRangeCommand( self, args = None ):
         if args and args[0] == "StartConfig":
@@ -853,36 +857,34 @@ class CPCPlot(QtCore.QObject):
         elif args and args[0] == "EndConfig":
             self.setRenderMode( ProcessMode.HighRes )                
 #            self.partitioned_point_cloud.setScalarRange( self.scalarRange.getScaledRange() )  
-            self.updateThresholding( 'vardata', self.volumeThresholdRange['vardata'].getRange() ) 
+            self.updateThresholding() 
         
         elif args and args[0] == "Open":
             self.enableThresholding()
         elif args and args[0] == "Close":
             isOK = args[1]
             self.setRenderMode( ProcessMode.HighRes )
-            if isOK: self.updateThresholding( 'vardata', self.volumeThresholdRange['vardata'].getRange() )                
+            if isOK: self.updateThresholding( self.defvar, self.volumeThresholdRange[self.defvar].getRange() )                
             self.render()
         elif args and args[0] == "Threshold Range":
-            norm_range = self.volumeThresholdRange['vardata'].getRange()
             if ( self.thresholdCmdIndex % self.thresholdingSkipFactor ) == 0:
-                target =  None
-                for iArg in range( 1, len(args) ):
-                    if args[iArg] == 'name':
-                        target = args[iArg+1]
-                if target <> None:
-                    self.updateThresholding( target, norm_range )
+                target = extract_arg( args, 'name', offset=1, defval=self.defvar )
+                norm_range = self.volumeThresholdRange[ target ].getNormalizedRange()
+                self.updateThresholding( target, norm_range )
+            self.thresholdCmdIndex = self.thresholdCmdIndex + 1
                     
     def enableThresholding( self, args = None ):
         self.updateTextDisplay( "Mode: Thresholding", True )
         self.thresholdCmdIndex = 0
+        self.clearSubsetting()
         self.process_mode = ProcessMode.Thresholding 
         self.planeWidgetOff()
         if self.render_mode ==  ProcessMode.LowRes:
             self.setRenderMode( ProcessMode.HighRes, True )
         if self.scalarRange <> None:
             self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )
-        if 'vardata' in self.volumeThresholdRange:
-            self.updateThresholding( 'vardata', self.volumeThresholdRange['vardata'].getRange() )
+        if self.defvar in self.volumeThresholdRange:
+            self.updateThresholding( self.defvar, self.volumeThresholdRange[self.defvar].getRange() )
                    
     def processColorScaleCommand( self, args = None ):
         if args and args[0] == "ButtonClick":
@@ -892,7 +894,7 @@ class CPCPlot(QtCore.QObject):
                 pc.setScalarRange( self.scalarRange.getScaledRange() ) 
 #                self.partitioned_point_cloud.refresh(True)     
             elif args[1] == "Match Threshold Range":
-                self.scalarRange.setRange( self.volumeThresholdRange['vardata'].getRange()  )  
+                self.scalarRange.setRange( self.volumeThresholdRange[self.defvar].getRange()  )  
                 pc.setScalarRange( self.scalarRange.getScaledRange() ) 
 #                self.partitioned_point_cloud.refresh(True)     
         elif args and args[0] == "StartConfig":
@@ -918,8 +920,8 @@ class CPCPlot(QtCore.QObject):
 
                      
     def shiftThresholding( self, position_inc, width_inc ):
-        self.volumeThresholdRange['vardata'].shiftWindow(position_inc, width_inc) 
-        self.updateThresholding( 'vardata', self.volumeThresholdRange['vardata'].getRange() )
+        self.volumeThresholdRange[self.defvar].shiftWindow(position_inc, width_inc) 
+        self.updateThresholding( self.defvar, self.volumeThresholdRange[ self.defvar ].getRange() )
 
     def getSliceWidth(self, res, slice_index = -1  ):
         if slice_index == -1: slice_index = self.sliceAxisIndex
@@ -984,15 +986,20 @@ class CPCPlot(QtCore.QObject):
             self.partitioned_point_cloud.updateNumActiveCollections( ncollections_inc )
         if ptsize_inc <> 0:
             self.updatePointSize( ptsize_inc )
-        
-    def updateThresholding( self, target, trange ):
+            
+    def clearSubsetting(self):
         self.current_subset_specs = {}
-        self.current_subset_specs[target] = ( target, trange[0], trange[1] )
+        
+    def updateThresholding( self, target=None, trange=None ):
+        if target <> None:
+            subset_spec = ( target, trange[0], trange[1] )
+            self.current_subset_specs[target] = subset_spec
+            print " Update Thresholding: Generated spec = %s, render mode = %d " % ( str( subset_spec ), self.render_mode )
+        else: print " Update Thresholding: render mode = %d " % ( self.render_mode )
         self.invalidate()
         pc = self.getPointCloud()
         pc.generateSubset( spec=self.current_subset_specs )
         self.render( self.render_mode )
-#        print " Update Thresholding: spec = %s, render mode = %d " % ( str( subset_spec ), self.render_mode )
         sys.stdout.flush()
 
     def processConfigCmd( self, args ):
@@ -1086,12 +1093,13 @@ class CPCPlot(QtCore.QObject):
                 self.connect( self.sliceProperties, QtCore.SIGNAL('ValueChanged'), self.processSlicePropertiesCommand )  
 #                self.enableSlicing()
             elif paramKeys[1] == 'Threshold Range':
-                self.volumeThresholdRange['vardata'] = config_param                 
+                self.volumeThresholdRange[self.defvar] = config_param                 
                 config_param.setScalingBounds( self.point_cloud_overview.getValueRange()  ) 
                 self.connect( config_param, QtCore.SIGNAL('ValueChanged'), self.processThresholdRangeCommand )      
         elif paramKeys[0] == 'Analysis':
+            if paramKeys[1] == 'Threshold Range':
                 try:
-                    vname = paramKeys[1]
+                    vname = paramKeys[2]
                     config_param.setScalingBounds( self.point_cloud_overview.getValueRange( vname )  ) 
                     self.volumeThresholdRange[vname] = config_param                 
                     self.connect( config_param, QtCore.SIGNAL('ValueChanged'), self.processThresholdRangeCommand )  
@@ -1185,10 +1193,16 @@ class CPCPlot(QtCore.QObject):
 
     def processColorMapCommand( self, args=None ):
         colorCfg = [ self.colorMapCfg.getValue('Colormap'), self.colorMapCfg.getValue('Invert'), self.colorMapCfg.getValue('Stereo'), self.colorMapCfg.getValue('Colorbar') ]
-        self.setColormap( colorCfg )  
+        self.setColormap( colorCfg ) 
+        
+    def clearSliceSpecs(self): 
+        for s_axis in self.sliceAxes: 
+            if s_axis in self.current_subset_specs: 
+                del self.current_subset_specs[ s_axis ]
 
     def updateSlicing( self, sliceIndex, slice_bounds, **args ):
         self.invalidate()
+        self.clearSliceSpecs()
         ( rmin, rmax ) = slice_bounds[ self.render_mode ]
         self.current_subset_specs[ self.sliceAxes[sliceIndex] ] = ( self.sliceAxes[sliceIndex], rmin, rmax )
         if self.render_mode ==  ProcessMode.HighRes:
