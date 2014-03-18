@@ -89,7 +89,8 @@ class ConfigParameter( QtCore.QObject ):
 
     def __init__(self, name, **args ):
         super( ConfigParameter, self ).__init__() 
-        self.name = name
+        self.name = name 
+        self.varname = args.get( 'varname', name ) 
         self.ptype = args.get( 'ptype', name ) 
         self.values = args
         self.valueKeyList = list( args.keys() )
@@ -129,7 +130,6 @@ class ConfigParameter( QtCore.QObject ):
 
     def __setitem__(self, key, value ):
         self.values[key] = value 
-        self.emit( QtCore.SIGNAL("ValueChanged"), ( self.ptype, key, value ) )
         self.addValueKey( key )
 
     def __call__(self, **args ):
@@ -138,6 +138,7 @@ class ConfigParameter( QtCore.QObject ):
         for item in args.items():
             args1.extend( list(item) )
             self.addValueKey( item[0] )
+        args1.append( self.name )
         self.emit( QtCore.SIGNAL("ValueChanged"), args1 )
          
     def getName(self):
@@ -226,12 +227,12 @@ class LevelingConfigParameter( ConfigParameter ):
         window_radius = self.wsize/2.0    
         rmin = self.wpos - window_radius # max( self.wpos - window_radius, 0.0 )
         rmax = self.wpos + window_radius # min( self.wpos + window_radius, 1.0 )
-        self( rmin = rmin, rmax = rmax, name=self.name ) # min( rmin, 1.0 - self.wsize ), rmax =  max( rmax, self.wsize ) )
+        self( rmin = rmin, rmax = rmax, name=self.varname ) # min( rmin, 1.0 - self.wsize ), rmax =  max( rmax, self.wsize ) )
 
     def computeWindow(self):
         wpos = ( self.rmax + self.rmin ) / 2.0
         wwidth = ( self.rmax - self.rmin ) 
-        self( wpos = wpos, wsize = wwidth, name=self.name ) # min( max( wpos, 0.0 ), 1.0 ), wsize = max( min( wwidth, 1.0 ), 0.0 ) )
+        self( wpos = wpos, wsize = wwidth, name=self.varname ) # min( max( wpos, 0.0 ), 1.0 ), wsize = max( min( wwidth, 1.0 ), 0.0 ) )
         
     def getScaledRange(self):
         if self.scaling_bounds:
@@ -252,6 +253,7 @@ class LevelingConfigParameter( ConfigParameter ):
     def setWindow( self, wpos, wwidth ):
         self.wpos =   wpos # min( max( wpos, 0.0 ), 1.0 )
         self.wsize =  wwidth #     max( min( wwidth, 1.0 ), 0.0 )      
+        self.emit( QtCore.SIGNAL("ValueChanged"), ( self.ptype, 'rmin', self.rmin, 'rmax', self.rmax, 'name', self.varname ) )
 
     def getWindow(self):
         return ( self.wpos, self.wsize )
@@ -306,7 +308,11 @@ class ConfigControl(QtGui.QWidget):
         self.title = args.get('title',None)
         self.units = args.get('units',None)
         self.tabWidget = None 
+        self.metadata = None
         self.connect( cparm, QtCore.SIGNAL('ValueChanged'), self.configValueChanged )
+    
+    def setMetadata( self, md ):
+        self.metadata = md
         
     def configValueChanged( self, args ): 
         pass
@@ -930,15 +936,91 @@ class AnimationControl( TabbedControl ):
         self.x_tab_index, tab_layout = self.addTab('Run Controls')
         self.addButtonBox( [ "Run", "Step", "Stop" ], tab_layout )
  
-class InfoGridControl( TabbedControl ): 
+class InfoGridControl( ConfigControl ): 
     
-    def __init__(self, cparm, **args ):  
-        super( InfoGridControl, self ).__init__( cparm, **args )
+    def __init__(self, configManager, point_collection, cparm, cat_index, **args ):  
+        super( InfoGridControl, self ).__init__( cparm )
+        self.point_collection = point_collection
+        self.metadata = point_collection.getMetadata()
+        self.cat_index = cat_index 
+        self.cfgManager = configManager
+        self.tagged_controls = []
+                            
+    def addControl( self, iCatIndex, config_ctrl, id = None ):
+        config_list = self.configContainer.getCategoryConfigList( iCatIndex )
+        config_list.addControl( iCatIndex, config_ctrl )
+        self.tagged_controls.append( config_ctrl )
+    
+    def parameterValueChanged( self, args ):
+        self.processParameterChange( args )
+#        print "parameterValueChanged: ", str(args)
+        for config_ctrl in self.tagged_controls:
+            if config_ctrl:
+                config_ctrl.processParameterChange( args )
 
+    def processParameterChange( self, args ):
+        if ( len(args) >= 5 ):
+            name = args[0]
+            trange = [ None, None ]
+            for iArg in range( 1, len(args) ):
+                if args[iArg] == 'rmin':
+                    trange[0] = args[iArg+1]
+                elif args[iArg] == 'rmax':
+                    trange[1] = args[iArg+1]
+                elif args[iArg] == 'name':
+                    name = args[iArg+1]
+            if trange[0] <> None:
+                self.pc_widget.setSelectionRange( name, trange[0], trange[1] )
+                                    
+    def addConfigControl(self, iCatIndex, config_ctrl, id = None ):
+        config_ctrl.build()
+        self.addControl( iCatIndex, config_ctrl, id )
+        self.connect( config_ctrl, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
+        self.connect( config_ctrl.getParameter(), QtCore.SIGNAL("ValueChanged"), self.parameterValueChanged )
+                
+    def configTriggered( self, args ):
+        print "configTriggered: ", str(args)
+        self.emit( QtCore.SIGNAL("ConfigCmd"), args )
+        for config_ctrl in self.tagged_controls:
+            if config_ctrl:
+                config_ctrl.processExtConfigCmd( args )
+        if args[1] == 'EndConfig':
+            self.pc_widget.render()
+
+    def addCategory(self, categoryName ):
+        return self.configContainer.addCategory( categoryName )
+
+    def addControlRow( self, tab_index ):
+        cfgList = self.configContainer.getCategoryConfigList( tab_index )
+        cfgList.addControlRow()
+                                   
+    def getCategoryName( self, iCatIndex ):
+        return self.configContainer.getCategoryName( iCatIndex )
+    
     def build(self):
         super( InfoGridControl, self ).build()
-        self.x_tab_index, tab_layout = self.addTab('Run Controls')
-        self.addButtonBox( [ "Run", "Step", "Stop" ], tab_layout )
+        var_tab_index, layout = self.addTab( 'Parallel Coordinates' )
+        self.pc_widget = ParallelCoordinatesWidget()
+        layout.addWidget( self.pc_widget )
+        
+        self.configContainer = ConfigControlContainer( self )
+        layout.addWidget( self.configContainer )       
+        self.connect( self.configContainer, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
+
+        self.iVariablesCatIndex = self.addCategory( 'Variables' )
+        
+        included_varids = []
+        for var_id in self.metadata:
+            raw_data = self.point_collection.getVarData( var_id )
+            if id(raw_data) <> id(None):
+                var_rec = self.metadata[ var_id ]
+                vrange = var_rec[2]
+                if vrange[1] > vrange[0]:
+                    thresh_cparm = self.cfgManager.addParameter( self.cat_index, var_id, ptype="Threshold Range", rmin=vrange[0], rmax=vrange[1], ctype = 'Leveling', varname=var_id )
+                    self.addConfigControl( self.iVariablesCatIndex, VarRangeControl( thresh_cparm, title=var_rec[0], units=var_rec[1] ) )
+                    included_varids.append( var_id )
+
+        self.pc_widget.createTable( self.metadata, included_varids, self.point_collection )
               
 class VolumeControl( LevelingSliderControl ):
  
@@ -1088,17 +1170,17 @@ class ConfigControlContainer(QtGui.QWidget):
 
 class CPCConfigGui(QtGui.QDialog):
 
-    def __init__(self, metadata={} ):    
+    def __init__(self, point_collection=None ):    
         QtGui.QDialog.__init__( self )     
         self.setWindowFlags(QtCore.Qt.Window)
         self.setModal(False)
         self.setWindowTitle('CPC Plot Config')
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
-        self.config_widget = ConfigurationWidget( self, metadata )
+        self.config_widget = ConfigurationWidget( self, point_collection )
         self.layout().addWidget( self.config_widget ) 
         self.config_widget.build()
-        self.resize(700, 700)
+        self.resize(1000, 1000)
 
     def closeDialog( self ):
         self.config_widget.saveConfig()
@@ -1110,125 +1192,125 @@ class CPCConfigGui(QtGui.QDialog):
     def getConfigWidget(self):
         return self.config_widget
 
-class CPCInfoVisGui(QtGui.QDialog):
+#class CPCInfoVisGui(QtGui.QDialog):
+#
+#    def __init__(self, point_collection ):    
+#        QtGui.QDialog.__init__( self )     
+#                
+#        self.setWindowFlags(QtCore.Qt.Window)
+#        self.setModal(False)
+#        self.setWindowTitle('CPC InfoVis Config')
+#        layout = QtGui.QVBoxLayout()
+#        self.setLayout(layout)
+#        self.config_widget = InfoVisWidget( point_collection, self )
+#        self.layout().addWidget( self.config_widget ) 
+#        self.config_widget.build()
+#        self.resize(800, 600)
+#
+#    def closeDialog( self ):
+#        self.config_widget.saveConfig()
+#        self.close()
+#
+#    def activate(self):
+#        self.config_widget.activate()
+#        
+#    def getConfigWidget(self):
+#        return self.config_widget
 
-    def __init__(self, point_collection ):    
-        QtGui.QDialog.__init__( self )     
-                
-        self.setWindowFlags(QtCore.Qt.Window)
-        self.setModal(False)
-        self.setWindowTitle('CPC InfoVis Config')
-        layout = QtGui.QVBoxLayout()
-        self.setLayout(layout)
-        self.config_widget = InfoVisWidget( point_collection, self )
-        self.layout().addWidget( self.config_widget ) 
-        self.config_widget.build()
-        self.resize(800, 600)
-
-    def closeDialog( self ):
-        self.config_widget.saveConfig()
-        self.close()
-
-    def activate(self):
-        self.config_widget.activate()
-        
-    def getConfigWidget(self):
-        return self.config_widget
-
-class InfoVisWidget(QtGui.QWidget):
-
-    def __init__(self, point_collection, parent=None ):    
-        QtGui.QWidget.__init__(self, parent)
-        self.point_collection = point_collection
-        self.metadata = point_collection.getMetadata()
-        layout = QtGui.QVBoxLayout()
-        self.setLayout(layout)
-        self.cfgManager = ConfigManager( self )
-        self.tagged_controls = []
-                            
-    def addControl( self, iCatIndex, config_ctrl, id = None ):
-        config_list = self.configContainer.getCategoryConfigList( iCatIndex )
-        config_list.addControl( iCatIndex, config_ctrl )
-        self.tagged_controls.append( config_ctrl )
-    
-    def parameterValueChanged( self, args ):
-        self.processParameterChange( args )
-#        print "parameterValueChanged: ", str(args)
-        for config_ctrl in self.tagged_controls:
-            if config_ctrl:
-                config_ctrl.processParameterChange( args )
-
-    def processParameterChange( self, args ):
-        if ( len(args) >= 5 ):
-            name = args[0]
-            trange = [ None, None ]
-            for iArg in range( 1, len(args) ):
-                if args[iArg] == 'rmin':
-                    trange[0] = args[iArg+1]
-                elif args[iArg] == 'rmax':
-                    trange[1] = args[iArg+1]
-                elif args[iArg] == 'name':
-                    name = args[iArg+1]
-            if trange[0] <> None:
-                self.pc_widget.setSelectionRange( name, trange[0], trange[1] )
-                                    
-    def addConfigControl(self, iCatIndex, config_ctrl, id = None ):
-        config_ctrl.build()
-        self.addControl( iCatIndex, config_ctrl, id )
-        self.connect( config_ctrl, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
-        self.connect( config_ctrl.getParameter(), QtCore.SIGNAL("ValueChanged"), self.parameterValueChanged )
-                
-    def configTriggered( self, args ):
-        print "configTriggered: ", str(args)
-        self.emit( QtCore.SIGNAL("ConfigCmd"), args )
-        for config_ctrl in self.tagged_controls:
-            if config_ctrl:
-                config_ctrl.processExtConfigCmd( args )
-        if args[1] == 'EndConfig':
-            self.pc_widget.render()
-
-    def addCategory(self, categoryName ):
-        return self.configContainer.addCategory( categoryName )
-
-    def addControlRow( self, tab_index ):
-        cfgList = self.configContainer.getCategoryConfigList( tab_index )
-        cfgList.addControlRow()
-        
-    def activate(self):
-        self.cfgManager.initParameters()
-        self.configContainer.selectCategory( self.iVariablesCatIndex )
-                           
-    def getCategoryName( self, iCatIndex ):
-        return self.configContainer.getCategoryName( iCatIndex )
-    
-    def askToSaveChanges(self):
-        self.emit( QtCore.SIGNAL("Close"), self.getParameterPersistenceList() )
-
-    def build( self, **args ):
-        self.pc_widget = ParallelCoordinatesWidget()
-        self.layout().addWidget( self.pc_widget )
-        
-        self.configContainer = ConfigControlContainer( self )
-        self.layout().addWidget( self.configContainer )       
-        self.connect( self.configContainer, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
-
-        self.iVariablesCatIndex = self.addCategory( 'Variables' )
-        
-        included_varids = []
-        for var_id in self.metadata:
-            raw_data = self.point_collection.getVarData( var_id )
-            if id(raw_data) <> id(None):
-                var_rec = self.metadata[ var_id ]
-                vrange = var_rec[2]
-                if vrange[1] > vrange[0]:
-                    thresh_cparm = self.cfgManager.addParameter( self.iVariablesCatIndex, var_id, ptype="Threshold Range", rmin=vrange[0], rmax=vrange[1], ctype = 'Leveling' )
-                    self.addConfigControl( self.iVariablesCatIndex, VarRangeControl( thresh_cparm, title=var_rec[0], units=var_rec[1] ) )
-                    included_varids.append( var_id )
-
-        self.pc_widget.createTable( self.metadata, included_varids, self.point_collection )
-
-    def saveConfig(self):
-        self.cfgManager.saveConfig()
+#class InfoVisWidget(QtGui.QWidget):
+#
+#    def __init__(self, point_collection, parent=None ):    
+#        QtGui.QWidget.__init__(self, parent)
+#        self.point_collection = point_collection
+#        self.metadata = point_collection.getMetadata()
+#        layout = QtGui.QVBoxLayout()
+#        self.setLayout(layout)
+#        self.cfgManager = ConfigManager( self )
+#        self.tagged_controls = []
+#                            
+#    def addControl( self, iCatIndex, config_ctrl, id = None ):
+#        config_list = self.configContainer.getCategoryConfigList( iCatIndex )
+#        config_list.addControl( iCatIndex, config_ctrl )
+#        self.tagged_controls.append( config_ctrl )
+#    
+#    def parameterValueChanged( self, args ):
+#        self.processParameterChange( args )
+##        print "parameterValueChanged: ", str(args)
+#        for config_ctrl in self.tagged_controls:
+#            if config_ctrl:
+#                config_ctrl.processParameterChange( args )
+#
+#    def processParameterChange( self, args ):
+#        if ( len(args) >= 5 ):
+#            name = args[0]
+#            trange = [ None, None ]
+#            for iArg in range( 1, len(args) ):
+#                if args[iArg] == 'rmin':
+#                    trange[0] = args[iArg+1]
+#                elif args[iArg] == 'rmax':
+#                    trange[1] = args[iArg+1]
+#                elif args[iArg] == 'name':
+#                    name = args[iArg+1]
+#            if trange[0] <> None:
+#                self.pc_widget.setSelectionRange( name, trange[0], trange[1] )
+#                                    
+#    def addConfigControl(self, iCatIndex, config_ctrl, id = None ):
+#        config_ctrl.build()
+#        self.addControl( iCatIndex, config_ctrl, id )
+#        self.connect( config_ctrl, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
+#        self.connect( config_ctrl.getParameter(), QtCore.SIGNAL("ValueChanged"), self.parameterValueChanged )
+#                
+#    def configTriggered( self, args ):
+#        print "configTriggered: ", str(args)
+#        self.emit( QtCore.SIGNAL("ConfigCmd"), args )
+#        for config_ctrl in self.tagged_controls:
+#            if config_ctrl:
+#                config_ctrl.processExtConfigCmd( args )
+#        if args[1] == 'EndConfig':
+#            self.pc_widget.render()
+#
+#    def addCategory(self, categoryName ):
+#        return self.configContainer.addCategory( categoryName )
+#
+#    def addControlRow( self, tab_index ):
+#        cfgList = self.configContainer.getCategoryConfigList( tab_index )
+#        cfgList.addControlRow()
+#        
+#    def activate(self):
+#        self.cfgManager.initParameters()
+#        self.configContainer.selectCategory( self.iVariablesCatIndex )
+#                           
+#    def getCategoryName( self, iCatIndex ):
+#        return self.configContainer.getCategoryName( iCatIndex )
+#    
+#    def askToSaveChanges(self):
+#        self.emit( QtCore.SIGNAL("Close"), self.getParameterPersistenceList() )
+#
+#    def build( self, **args ):
+#        self.pc_widget = ParallelCoordinatesWidget()
+#        self.layout().addWidget( self.pc_widget )
+#        
+#        self.configContainer = ConfigControlContainer( self )
+#        self.layout().addWidget( self.configContainer )       
+#        self.connect( self.configContainer, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
+#
+#        self.iVariablesCatIndex = self.addCategory( 'Variables' )
+#        
+#        included_varids = []
+#        for var_id in self.metadata:
+#            raw_data = self.point_collection.getVarData( var_id )
+#            if id(raw_data) <> id(None):
+#                var_rec = self.metadata[ var_id ]
+#                vrange = var_rec[2]
+#                if vrange[1] > vrange[0]:
+#                    thresh_cparm = self.cfgManager.addParameter( self.iVariablesCatIndex, var_id, ptype="Threshold Range", rmin=vrange[0], rmax=vrange[1], ctype = 'Leveling' )
+#                    self.addConfigControl( self.iVariablesCatIndex, VarRangeControl( thresh_cparm, title=var_rec[0], units=var_rec[1] ) )
+#                    included_varids.append( var_id )
+#
+#        self.pc_widget.createTable( self.metadata, included_varids, self.point_collection )
+#
+#    def saveConfig(self):
+#        self.cfgManager.saveConfig()
 
 #     def generateParallelCoordinatesChart( self ):
 #         from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
@@ -1356,10 +1438,13 @@ class ParallelCoordinatesWidget(QtGui.QWidget):
         self.widget.Render()
         
     def setSelectionRange(self, colName, min, max ):
-        iAxis, vrange = self.axisMap[colName]
-        ext = vrange[1] - vrange[0]
-        normalized_range = ( (min-vrange[0])/ext, (max-vrange[0])/ext  )
-        self.selectionRanges[ colName ] = iAxis, normalized_range, (min, max), vrange
+        try:
+            iAxis, vrange = self.axisMap[colName]
+            ext = vrange[1] - vrange[0]
+            normalized_range = ( (min-vrange[0])/ext, (max-vrange[0])/ext  )
+            self.selectionRanges[ colName ] = iAxis, normalized_range, (min, max), vrange
+        except:
+            print "Error in setSelectionRange for colName ", str( colName )
 #        self.updateCount = self.updateCount  + 1
 #        if self.updateCount % self.renderPeriod == 0:
 #            self.render()    
@@ -1415,12 +1500,13 @@ class ParallelCoordinatesWidget(QtGui.QWidget):
                      
 class ConfigurationWidget(QtGui.QWidget):
 
-    def __init__(self, parent=None, metadata={} ):    
+    def __init__(self, parent=None, point_collection=None ):    
         QtGui.QWidget.__init__(self, parent)
-        self.metadata = metadata 
+        self.point_collection = point_collection
+        self.metadata = point_collection.getMetadata() if  point_collection else {}
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout)
-        self.cfgManager = ConfigManager( self )
+        self.cfgManager = ConfigManager( self, defvar=point_collection.var.id )        
 
         self.tagged_controls = []
                         
@@ -1446,7 +1532,8 @@ class ConfigurationWidget(QtGui.QWidget):
                 config_ctrl.processParameterChange( args )
                     
     def addConfigControl(self, iCatIndex, config_ctrl, id = None ):
-        config_ctrl.build()
+#        config_ctrl.setMetadata( self.cfgManager.getMetadata()  )
+        config_ctrl.build(  )
         self.addControl( iCatIndex, config_ctrl, id )
         self.connect( config_ctrl, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
         self.connect( config_ctrl.getParameter(), QtCore.SIGNAL("ValueChanged"), self.parameterValueChanged )
@@ -1484,7 +1571,7 @@ class ConfigurationWidget(QtGui.QWidget):
         self.iSubsetCatIndex = self.addCategory( 'Subsets' )
         cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5, xhrwidth=0.0025, xlrwidth=0.005, yhrwidth=0.0025, ylrwidth=0.005 )
         self.addConfigControl( self.iSubsetCatIndex, SlicerControl( cparm, wrange=[ 0.0001, 0.02 ] ) ) # , "SlicerControl" )
-        thresh_cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Threshold Range", rmin=0.6, rmax=1.0, ctype = 'Leveling' )
+        thresh_cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Threshold Range", rmin=0.6, rmax=1.0, ctype = 'Leveling', varname=self.cfgManager.getMetadata( 'defvar' ) )
         self.addConfigControl( self.iSubsetCatIndex, VolumeControl( thresh_cparm ) )
 
         op_cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Opacity Scale", rmin=0.0, rmax=1.0, ctype = 'Range'  )
@@ -1509,7 +1596,7 @@ class ConfigurationWidget(QtGui.QWidget):
         cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "Animation" )
         self.addConfigControl( self.AnalysisCatIndex, AnimationControl( cparm ) )
         cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "InfoGrid" )
-        self.addConfigControl( self.AnalysisCatIndex, InfoGridControl( cparm ) )
+        self.addConfigControl( self.AnalysisCatIndex, InfoGridControl( self.cfgManager, self.point_collection, cparm, self.AnalysisCatIndex ) )
         
     def saveConfig(self):
         self.cfgManager.saveConfig()
@@ -1517,7 +1604,7 @@ class ConfigurationWidget(QtGui.QWidget):
               
 class ConfigManager(QtCore.QObject):
     
-    def __init__( self, controller=None ): 
+    def __init__( self, controller=None, **args ): 
         QtCore.QObject.__init__( self )
         self.cfgFile = None
         self.cfgDir = None
@@ -1525,6 +1612,10 @@ class ConfigManager(QtCore.QObject):
         self.config_params = {}
         self.iCatIndex = 0
         self.cats = {}
+        self.metadata = args
+        
+    def getMetadata(self, key=None ):
+        return self.metadata.get( key, None ) if key else self.metadata
 
     def addParam(self, key ,cparm ):
         self.config_params[ key ] = cparm
