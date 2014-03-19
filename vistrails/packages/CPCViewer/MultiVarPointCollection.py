@@ -50,7 +50,7 @@ class PlotType:
     @classmethod
     def getPointsLayout( cls, grid ):
         if grid <> None:
-            if (grid.__class__.__name__ in ( "RectGrid", "FileRectGrid") ): 
+            if (grid.__class__.__name__ in ( "RectGrid", "TransientRectGrid", "FileRectGrid") ): 
                 return cls.Grid
         return cls.List  
 
@@ -69,6 +69,7 @@ class MultiVarPointCollection():
         self.metadata = {}
         self.istart = 0
         self.istep = 1
+        self.roi =None
         self.point_data_arrays = {}
         self.vrange = {}
         self.thresholded_range = {}
@@ -81,9 +82,14 @@ class MultiVarPointCollection():
         self.vars = {} 
         self.thresholdTargetType = None
         self.selected_index_array = None
-        
+
+    def setROI( self, ROI ):
+        self.roi = ROI
+        self.initPoints()
+               
     def configure(self, **args ):
         self.maxStageHeight = args.get('maxStageHeight', self.maxStageHeight )
+        self.roi = args.get('roi', None )
         
     def getGridType(self):
         return self.point_layout
@@ -195,7 +201,7 @@ class MultiVarPointCollection():
             
             nz = len( self.lev ) if self.lev else 1
             if height_varname and (height_varname <> self.hgt_var) and (height_varname <> 'Levels' ):
-                hgt_var = self.df[ height_varname ]
+                hgt_var = self.getProcessedVariable( height_varname )
                 if hgt_var:
                     self.hgt_var = height_varname
                     np_hgt_var_data_block = self.getDataBlock(hgt_var).flatten() 
@@ -366,13 +372,21 @@ class MultiVarPointCollection():
             self.vrange[grid_var_name] = ( var_data.min(), var_data.max() ) 
         return process
     
-    def getProcessedVariable( self, varname, var_proc_op ):
+    def getProcessedVariable( self, varname, var_proc_op = None ):
         var = self.df[ varname ]
         if isNone( var ):
             print>>sys.stderr, "Error, can't find variable '%s' in data file." % ( varname )
             return None
+        if self.roi <> None:
+            if ( self.point_layout == PlotType.Grid ):
+                var = var.subRegion( longitude=(self.roi[0],self.roi[2]), latitude=(self.roi[1],self.roi[3]) )
+            else:
+                var = self.subsetUnstructuredVar( var, self.roi )
         if var_proc_op == "anomaly_t":
-            var_ave = cdutil.averager( var, axis='time' )
+            var = cdutil.averager( var, axis='time' )
+        return var
+    
+    def subsetUnstructuredVar(self, var, roi ):
         return var
 
     def getMetadata( self ):
@@ -380,15 +394,21 @@ class MultiVarPointCollection():
 
     def initialize( self, args, **cfg_args ): 
         self.configure( **cfg_args )
-        ( grid_file, data_file, interface, grid_varname, grid_coords, var_proc_op ) = args
+        ( grid_file, data_file, interface, grd_varname, grd_coords, var_proc_op, ROI ) = args
         self.interface = interface
+        self.roi = ROI
         self.gf = cdms2.open( grid_file ) if grid_file else None
         self.df = cdms2.open( data_file )       
-        if not grid_varname: grid_varname = self.df.variables[0]
-        self.var = self.getProcessedVariable( grid_varname, var_proc_op )
+        if not grd_varname: grd_varname = self.df.variables[0]
+        self.grid_varname = grd_varname
+        self.grid_coords = grd_coords
+        self.initPoints( var_proc_op )
+        
+    def initPoints( self, var_proc_op=None ):
+        self.var = self.getProcessedVariable( self.grid_varname, var_proc_op )
         self.grid = self.var.getGrid()
         self.lev = self.getLevel(self.var)
-        lon, lat = self.getLatLon( grid_varname, grid_coords )  
+        lon, lat = self.getLatLon( self.grid_varname, self.grid_coords )  
         if not ( isNone(lat) or isNone(lon) ): 
             self.vars[ 'lat' ] = lat
             self.metadata[ 'lat' ] = ( getattr( lat, 'long_name', 'Latitude' ), getattr( lat, 'units', None ), self.axis_bounds.get( 'y', None ) )  
@@ -410,10 +430,10 @@ class MultiVarPointCollection():
                 self.metadata[ 'lev' ] = ( self.lev.long_name, self.lev.units, self.axis_bounds.get( 'z', None ) ) 
                 self.point_data_arrays[ 'lev' ] = self.getCoordDataBlock( self.lev )                 
             self.computePoints() 
-            self.setPointHeights( height_var=grid_coords[3], z_scale=z_scale )
+            self.setPointHeights( height_var=self.grid_coords[3], z_scale=z_scale )
             for varname in self.df.variables:
-                if ( interface == InterfaceType.InfoVis ) or ( varname == grid_varname ):
-                    var = self.df[ varname ]
+                if ( self.interface == InterfaceType.InfoVis ) or ( varname == self.grid_varname ):
+                    var = self.getProcessedVariable( varname )
                     self.vars[ varname ] = var
                     np_var_data = self.getDataBlock( var )
                     if not isNone( np_var_data ):
@@ -524,7 +544,9 @@ class MultiVarPointCollection():
         elif op == 'points': 
 #            print " subproc: Process points request, args = %s " % str( args ); sys.stdout.flush()
             self.setPointHeights( height_var=args[1], z_scale=args[2] )  
-            
+        elif op == 'ROI': 
+            ROI = args[1]
+            self.setROI(ROI)            
         elif op == 'timestep': 
             self.stepTime( **kwargs )  
 

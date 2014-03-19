@@ -1025,6 +1025,15 @@ class CPCPlot(QtCore.QObject):
             self.processOpacityGraphCommand( args[1:] )
         elif args[0] =='Vertical Scaling':
             self.processVerticalScalingCommand( args[1:] )
+        elif args[0] =='ROI':
+            self.processROICommand( args[1:] )
+            
+    def processROICommand( self, args ):
+        print " process ROI Command: ", str( args )
+        if args[0] == 'Submit':
+            roi = args[1]
+            self.partitioned_point_cloud.setROI( roi )  
+            self.point_cloud_overview.setROI( roi )   
 
     def processPointSizeCommand( self, arg = None ):
         if arg == None:
