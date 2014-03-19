@@ -95,8 +95,9 @@ class PM_WorldFrame(PersistentVisualizationModule):
         self.baseMapActor.SetOpacity( opacity )
 #        self.baseMapActor.SetDisplayExtent( -1,  0,  0,  0,  0,  0 )
 #Positioning map at location %s, size = %s, roi = %s" % ( str( ( self.x0, self.y0) ), str( map_cut_size ), str( ( NormalizeLon( self.roi[0] ), NormalizeLon( self.roi[1] ), self.roi[2], self.roi[3] ) ) )
-        self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )
-        self.baseMapActor.SetInputData( baseImage )
+        self.baseMapActor.SetPosition( self.x0, self.y0, 0.1 )        
+        if vtk.VTK_MAJOR_VERSION <= 5:  self.baseMapActor.SetInput(baseImage)
+        else:                           self.baseMapActor.SetInputData(baseImage)        
         
         self.renderer.AddActor( self.baseMapActor )
             
@@ -105,7 +106,8 @@ class PM_WorldFrame(PersistentVisualizationModule):
         extent= self.input().GetExtent()
         input_spacing = self.input().GetSpacing()            
 #        printArgs( "World Map input: ", extent= extent, spacing= self.input().GetSpacing(), origin= self.input().GetOrigin() )
-        self.imageInfo.SetInputData( self.input() ) 
+        if vtk.VTK_MAJOR_VERSION <= 5:  self.imageInfo.SetInput( self.input() )
+        else:                           self.imageInfo.SetInputData( self.input() )        
         self.imageInfo.SetOutputExtentStart( extent[0], extent[2], extent[4] )
         self.imageInfo.SetOutputSpacing( input_spacing[0], input_spacing[1], input_spacing[2]*zscale )       
         self.imageInfo.Modified()
@@ -155,12 +157,14 @@ class PM_WorldFrame(PersistentVisualizationModule):
         
         extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
         clip0 = vtk.vtkImageClip()
-        clip0.SetInputData( baseImage )
+        if vtk.VTK_MAJOR_VERSION <= 5:  clip0.SetInput(baseImage)
+        else:                           clip0.SetInputData(baseImage)        
         clip0.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
         
         extent[0:2] = [ x0 + sliceCoord, x1 ]
         clip1 = vtk.vtkImageClip()
-        clip1.SetInputData( baseImage )
+        if vtk.VTK_MAJOR_VERSION <= 5:  clip1.SetInput(baseImage)
+        else:                           clip1.SetInputData(baseImage)        
         clip1.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
         
         append = vtk.vtkImageAppend()
@@ -215,7 +219,8 @@ class PM_WorldFrame(PersistentVisualizationModule):
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[1] = x0 + sliceCoord
             clip = vtk.vtkImageClip()
-            clip.SetInputData( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  clip.SetInput(baseImage)
+            else:                           clip.SetInputData(baseImage)        
             clip.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             self.x0 = cut0
             bounded_dims = ( extent[1] - extent[0] + 1, vertExtent[1] - vertExtent[0] + 1 )
@@ -229,7 +234,8 @@ class PM_WorldFrame(PersistentVisualizationModule):
             extent = list( baseExtent )         
             extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
             clip0 = vtk.vtkImageClip()
-            clip0.SetInputData( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  clip0.SetInput(baseImage)
+            else:                           clip0.SetInputData(baseImage)        
             clip0.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size0 = extent[1] - extent[0] + 1
         
@@ -238,7 +244,8 @@ class PM_WorldFrame(PersistentVisualizationModule):
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[0:2] = [ x0 + sliceCoord, x1 ]
             clip1 = vtk.vtkImageClip()
-            clip1.SetInputData( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  clip1.SetInput(baseImage)
+            else:                           clip1.SetInputData(baseImage)        
             clip1.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size1 = extent[1] - extent[0] + 1
             self.x0 = cut1

@@ -8,6 +8,7 @@ import vtk, sys, time, threading, inspect, gui, traceback
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from core.modules.vistrails_module import Module, ModuleError
+from core.modules.module_registry import get_module_registry, MissingPort
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
@@ -109,7 +110,8 @@ class AlgorithmOutputModule( Module ):
             if iPort < 0:   algorithm.SetInputConnection( self.algoOutputPort )
             else:           algorithm.SetInputConnection( iPort, self.algoOutputPort )
         else: 
-            algorithm.SetInputConnection( output.GetOutputPort() )   
+            if vtk.VTK_MAJOR_VERSION <= 5:  algorithm.SetInput(self.algoOutput)
+            else:                           algorithm.SetInputData(self.algoOutput)        
             algorithm.Modified()
 
 class AlgorithmOutputModule3D( AlgorithmOutputModule ):
@@ -182,7 +184,8 @@ class InputSpecs:
             raw_input = self.inputModule.getOutput() 
             plotIndex = DV3DPipelineHelper.getPlotIndex( moduleID, inputIndex ) 
 #            print "InitializeInput for module %d, inputIndex=%d, plotIndex=%d" % ( moduleID, inputIndex, plotIndex)     
-            self._input =  self.selectInputArray( raw_input, plotIndex )                             
+            if raw_input:
+                self._input =  self.selectInputArray( raw_input, plotIndex )                             
             self.updateMetadata( plotIndex )
 #            print "Computed metadata for input %d to module %d (plotIndex = %d): %s " % ( inputIndex, moduleID, plotIndex, str(self.metadata) )
             return True
@@ -276,11 +279,11 @@ class InputSpecs:
         if self.dtype == "Float":
             return self.scalarRange
         if self.rangeBounds:
-            range = self.getDataValues( self.rangeBounds[0:2] ) 
-            if ( len( self.rangeBounds ) > 2 ): range.append( self.rangeBounds[2] ) 
-            else:                               range.append( 0 )
-        else: range = [ 0, 0, 0 ]
-        return range
+            srange = self.getDataValues( self.rangeBounds[0:2] ) 
+            if ( len( self.rangeBounds ) > 2 ): srange.append( self.rangeBounds[2] ) 
+            else:                               srange.append( 0 )
+        else: srange = [ 0, 0, 0 ]
+        return srange
     
     def getScalarRange(self): 
         return self.scalarRange
@@ -361,7 +364,13 @@ class InputSpecs:
                 self.fieldData = self.input().GetFieldData()         
             elif self.inputModule:
                 self.fieldData = self.inputModule.getFieldData() 
-
+             
+#            arr_names = [] 
+#            na = self.fieldData.GetNumberOfArrays()
+#            for iF in range( na ):
+#                arr_names.append( self.fieldData.GetArrayName(iF) )
+#            print " updateMetadata: getFieldData, arrays = ", str( arr_names ) ; sys.stdout.flush()
+            
             if self.fieldData == None:
                 diagnosticWriter.log( self, ' NULL field data in updateMetadata: ispec[%x]  ' % id(self)  ) 
                 self.initializeMetadata() 
@@ -388,18 +397,18 @@ class InputSpecs:
                 attributes = self.metadata.get( 'attributes' , None )
                 if attributes:
                     self.units = attributes.get( 'units' , '' )
-                    range = attributes.get( 'range', None )
-                    if range: 
+                    srange = attributes.get( 'range', None )
+                    if srange: 
         #                print "\n ***************** ScalarRange = %s, md[%d], var_md[%d] *****************  \n" % ( str(range), id(metadata), id(var_md) )
-                        self.scalarRange = list( range )
+                        self.scalarRange = list( srange )
                         self.scalarRange.append( 1 )
                         if not self.seriesScalarRange:
-                            self.seriesScalarRange = list(range)
+                            self.seriesScalarRange = list(srange)
                         else:
-                            if self.seriesScalarRange[0] > range[0]:
-                                self.seriesScalarRange[0] = range[0] 
-                            if self.seriesScalarRange[1] < range[1]:
-                                self.seriesScalarRange[1] = range[1] 
+                            if self.seriesScalarRange[0] > srange[0]:
+                                self.seriesScalarRange[0] = srange[0] 
+                            if self.seriesScalarRange[1] < srange[1]:
+                                self.seriesScalarRange[1] = srange[1] 
 
     def getUnits(self):
         return self.units
@@ -756,7 +765,7 @@ class PersistentModule( QObject ):
 #        print "  ***** Updating %s Module, id = %d ***** " % ( self.__class__.__name__, self.moduleID )
         self.initializeInputs( **args )     
         self.updateHyperwall()
-        if self.input() or self.inputModuleList() or not self.requiresPrimaryInput:
+        if self.input() or self.inputModuleList() or self.inputModule() or not self.requiresPrimaryInput:
             self.execute( **args )
             self.initializeConfiguration()
         elif self.requiresPrimaryInput:
@@ -908,7 +917,7 @@ class PersistentModule( QObject ):
         for inputIndex, inputPort in enumerate( inputPorts ):
             ispec = InputSpecs()
             self.inputSpecs[ inputIndex ] = ispec
-            inputList = self.getPrimaryInputList( port=inputPort, **args )
+#            inputList = self.getPrimaryInputList( port=inputPort, **args )
             if self.allowMultipleInputs.get( inputIndex, False ):
                 try:
                     ispec.setInputModule(  self.getPrimaryInputList( port=inputPort, **args ) )
@@ -1326,12 +1335,16 @@ class PersistentModule( QObject ):
             op_list = []
 #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
             for parmRec in parmRecList: 
-                op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
-                config_fn = self.getConfigFunction( parmRec[0] )
-                if config_fn: 
-                    config_list.append( config_fn )
-                else: 
-                    pass
+                try:
+                    op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+                    config_fn = self.getConfigFunction( parmRec[0] )
+                    if config_fn: 
+                        config_list.append( config_fn )
+                    else: 
+                        pass
+                except MissingPort:
+                    print>>sys.stderr, "Missing input port %s in controller, parmRecList = %s " % ( parmRec[0], str( parmRecList ) )
+                    
 #                    print>>sys.stderr, "Unrecognized config function %s in module %d (%s)" % ( parmRec[0], self.moduleID, self.__class__.__name__ )
             action = create_action( op_list ) 
             controller.add_new_action(action)
@@ -1530,6 +1543,9 @@ class PersistentVisualizationModule( PersistentModule ):
  
     def disableVisualizationInteraction(self): 
         pass
+    
+    def clearWidget(self, sheetName, row, col ): 
+        pass
                       
     def setInputZScale( self, zscale_data, input_index=0, **args  ):
         ispec = self.inputSpecs[ input_index ] 
@@ -1571,7 +1587,9 @@ class PersistentVisualizationModule( PersistentModule ):
     def set3DOutput( self, input_index=0, **args ):  
         portName = args.get( 'name', 'volume' )
         ispec = self.inputSpecs[ input_index ] 
+        if ispec.fieldData == None: ispec.updateMetadata(0)
         fieldData = ispec.getFieldData()
+        na = fieldData.GetNumberOfArrays()
         if not ( ('output' in args) or ('port' in args) ):
             if ispec.input() <> None: 
                 args[ 'output' ] = ispec.input()
@@ -1579,8 +1597,6 @@ class PersistentVisualizationModule( PersistentModule ):
                 port = ispec.inputModule.getOutputPort()
                 if port: args[ 'port' ] = port
                 else:    args[ 'output' ] = ispec.inputModule.getOutput()
-        if self.renderer == None: 
-            self.renderer = vtk.vtkRenderer()
         outputModule = AlgorithmOutputModule3D( self.renderer, fieldData=fieldData, **args )
         output =  outputModule.getOutput() 
 #        print "Setting 3D output for port %s" % ( portName ) 
@@ -1590,7 +1606,8 @@ class PersistentVisualizationModule( PersistentModule ):
                 fd = output.GetFieldData()
                 fd.PassData( fieldData )                
             else:                     
-                diagnosticWriter.log( self, ' set3DOutput, NULL field data ' )    
+                diagnosticWriter.log( self, ' set3DOutput, NULL field data ' ) 
+                   
         if self.wmod == None:
             print>>sys.stderr, "Missing wmod in set3DOutput for class %s" % ( getClassName( self ) )
         else:
@@ -1777,9 +1794,16 @@ class PersistentVisualizationModule( PersistentModule ):
         else:                                   self._max_scalar_value = self.getRangeBounds()[1]  
                 
     def initializeRendering(self):
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper  
         inputModule = self.getPrimaryInput()
         renderer_import = inputModule.getRenderer() if  inputModule <> None else None 
-        self.renderer = vtk.vtkRenderer() if renderer_import == None else renderer_import
+        if renderer_import == None:             
+            self.renderer = DV3DPipelineHelper.getRenderer( mid=self.moduleID )
+            if self.renderer == None:
+                self.renderer = vtk.vtkRenderer()
+                DV3DPipelineHelper.setRenderer( self.renderer, mid=self.moduleID )            
+        else: 
+            self.renderer = renderer_import
         self.addObserver( self.renderer, 'ModifiedEvent', self.activateEvent )
         self.labelBuff = "NA                          "
 #        if self.createColormap: 
@@ -1929,7 +1953,7 @@ class PersistentVisualizationModule( PersistentModule ):
         linelen = len(text_lines[-1])
         if linelen < MIN_LINE_LEN: text += (' '*(MIN_LINE_LEN-linelen)) 
         text += '.'
-        textActor.SetInputData( text )
+        textActor.SetInput( text )
         textActor.Modified()
         return textActor
     
@@ -1982,7 +2006,7 @@ class PersistentVisualizationModule( PersistentModule ):
         if self.renderer == None:
             print>>sys.stderr, "Error, no renderer available for activation."
         else:
-            self.renwin = self.renderer.GetRenderWindow( )
+            self.renwin = self.renderer.GetRenderWindow()
             if self.renwin <> None:
                 iren = self.renwin.GetInteractor() 
                 if ( iren <> None ) and not self.isConfigStyle( iren ):
@@ -2078,7 +2102,7 @@ class PersistentVisualizationModule( PersistentModule ):
                 configFunct = self.configurableFunctions[pname]
                 param_value = configFunct.reset() 
                 if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                
-        elif ( md and ( md['plotType']=='xyz' ) and ( key == 't' )  ):
+        elif ( md and ( md.get('plotType','')=='xyz' ) and ( key == 't' )  ):
             self.showInteractiveLens = not self.showInteractiveLens 
             self.render() 
         else:
@@ -2264,7 +2288,14 @@ class PersistentVisualizationModule( PersistentModule ):
         return rens
        
     def onAnyEvent(self, caller, event ):
-        global ecount
+        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper 
+        global ecount       
+#        rw = DV3DPipelineHelper.getRenderWindow( 'A1' ) 
+#         shift = caller.GetShiftKey()
+#         alt = caller.GetAltKey()
+#         ctrl = caller.GetControlKey()
+
+#        print " onAnyEvent: %s %s " % ( str((shift,alt,ctrl)), str(event) )
 #        if self.cell_location:
 #            addr = self.cell_location[-1]
 #            if event == "ModifiedEvent" and addr == "A2":

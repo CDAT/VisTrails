@@ -104,7 +104,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         if ( (self.initialOrigin[0] + self.pos[0]) < 0.0): self.pos[0] = self.pos[0] + 360.0
 
         self.resample = vtk.vtkExtractVOI()
-        self.resample.SetInputData( self.input() ) 
+        versionAgnosticSetInput( self.resample, self.input() )
         self.resample.SetVOI( self.initialExtent )
         self.ApplyGlyphDecimationFactor()
         lut = self.getLut()
@@ -152,7 +152,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
         self.set3DOutput(wmod=self.wmod) 
 
     def updateModule(self, **args ):
-        self.resample.SetInputData( self.input() ) 
+        versionAgnosticSetInput( self.resample, self.input() )
         self.glyph.Modified()
         self.glyph.Update()
         self.set3DOutput(wmod=self.wmod)

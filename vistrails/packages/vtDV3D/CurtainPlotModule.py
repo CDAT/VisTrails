@@ -109,7 +109,8 @@ class PM_CurtainPlot(PersistentVisualizationModule):
         
     def refreshCurtain( self, **args ): 
         curtain = self.createCurtain( **args )                
-        self.probeFilter.SetInputData( curtain )
+        if vtk.VTK_MAJOR_VERSION <= 5:  self.probeFilter.SetInput(curtain)
+        else:                           self.probeFilter.SetInputData(curtain)        
      
     def setInputZScale( self, zscale_data, **args  ): 
         rv = PersistentVisualizationModule.setInputZScale( self,  zscale_data, **args ) 
