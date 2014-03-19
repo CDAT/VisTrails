@@ -139,6 +139,8 @@ class PointCollectionExecutionTarget:
             data_packet = self.packPointHeightsData()
         elif args[0] == 'timestep':
             data_packet = self.packVarData()
+        elif args[0] == 'ROI':
+            data_packet = self.packPointsData()
         data_packet[ 'args' ] = args
         self.results.put( data_packet )
 
@@ -413,7 +415,12 @@ class vtkPointCloud(QtCore.QObject):
                 self.initPoints( **args )
             return self.vtk_planar_points
         
-    def updatePoints(self):
+    def updatePoints( self, clear=False ):
+        if clear:
+            self.np_points_data = None #self.point_collection.getPoints()
+            self.vrange = None #self.point_collection.getVarDataRange()
+            self.vtk_spherical_points = None
+            self.vtk_planar_points = None
         self.polydata.SetPoints( self.getPoints() ) 
 
     @classmethod    
@@ -520,6 +527,11 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         elif procType == PCProc.ZScaling:  self.generateZScaling( **args )
         elif procType == PCProc.Timestep:  self.stepTime( **args )
 
+    def setROI( self, ROI ): 
+        self.clearQueues()
+        op_specs = [ 'ROI', ROI ]
+        self.arg_queue.put( op_specs,  False ) 
+        
     def generateSubset(self, **args ):
         self.current_subset_specs = args.get( 'spec', self.current_subset_specs )
         print " vtkSubProcPointCloud: current_subset_specs: %s (%s) " % ( self.current_subset_specs, str(args) )
@@ -638,6 +650,10 @@ class vtkLocalPointCloud( vtkPointCloud ):
 
     def getPointCollection( self ):
         return self.point_collection
+    
+    def setROI( self, roi ):
+        self.point_collection.setROI( roi )
+        self.updatePoints( True )
         
     def getMetadata( self ):
         return self.point_collection.getMetadata()
@@ -727,6 +743,10 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def refresh( self, force = False ): 
         for pc in self.point_clouds.values():
             pc.refresh( force )
+
+    def setROI( self, ROI ): 
+        for pc in self.point_clouds.values():
+            pc.setROI( ROI )
 
     def stopCheckingProcQueues(self):
         if self.timerId: self.killTimer( self.dataQueueTimer )
