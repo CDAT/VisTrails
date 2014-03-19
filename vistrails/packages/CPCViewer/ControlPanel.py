@@ -920,7 +920,7 @@ class CPCConfigGui(QtGui.QDialog):
         self.resize(600, 450)
 
     def closeDialog( self ):
-        self.config_widget.saveConfg()
+        self.config_widget.saveConfig()
         self.close()
 
     def activate(self):
