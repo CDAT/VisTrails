@@ -44,7 +44,6 @@ from core.modules.module_registry import get_module_registry
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-import vtkcell_rc
 import gc
 from gui.qt import qt_super
 import core.db.action
