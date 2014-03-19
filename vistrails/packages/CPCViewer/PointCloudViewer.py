@@ -52,7 +52,8 @@ import os.path, traceback
 import vtk, time
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from packages.CPCViewer.DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, kill_all_zombies
-from packages.CPCViewer.ControlPanel import extract_arg, CPCConfigGui, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
+from packages.CPCViewer.ControlPanel import extract_arg, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
+from packages.CPCViewer.ConfigurationControl import CPCConfigGui 
 from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.MapManager import MapManager
 from packages.CPCViewer.MultiVarPointCollection import InterfaceType
