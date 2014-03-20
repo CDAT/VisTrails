@@ -417,8 +417,8 @@ class vtkPointCloud(QtCore.QObject):
         
     def updatePoints( self, clear=False ):
         if clear:
-            self.np_points_data = None #self.point_collection.getPoints()
-            self.vrange = None #self.point_collection.getVarDataRange()
+            self.np_points_data = self.point_collection.getPoints()
+            self.vrange = self.point_collection.getVarDataRange()
             self.vtk_spherical_points = None
             self.vtk_planar_points = None
         self.polydata.SetPoints( self.getPoints() ) 
@@ -653,7 +653,7 @@ class vtkLocalPointCloud( vtkPointCloud ):
     
     def setROI( self, roi ):
         self.point_collection.setROI( roi )
-        self.updatePoints( True )
+        self.initialize()
         
     def getMetadata( self ):
         return self.point_collection.getMetadata()
@@ -694,8 +694,9 @@ class vtkLocalPointCloud( vtkPointCloud ):
     def getSkipIndex(self): 
         return self.point_collection.istep
         
-    def initialize(self, init_args, **args ):
-        self.point_collection.initialize( init_args, **args )
+    def initialize(self, init_args = None, **args ):
+        if init_args: self.point_collection.initialize( init_args, **args )
+        else: self.point_collection.initPoints() 
         self.np_points_data = self.point_collection.getPoints()
         self.vrange = self.point_collection.getVarDataRange()
         self.initPoints( **args ) 

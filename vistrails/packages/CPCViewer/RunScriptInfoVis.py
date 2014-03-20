@@ -61,7 +61,7 @@ from packages.CPCViewer.MultiVarPointCollection import InterfaceType
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
 parser.add_argument( 'PATH' )
 parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
+parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="GEOS5", help='input data type')
 ns = parser.parse_args( sys.argv )
 
 kill_all_zombies()
@@ -74,7 +74,7 @@ height_varnames = []
 var_proc_op = None
 showGui = True
 interface = InterfaceType.InfoVis
-roi = ( 0, -54, 100, 45 )
+roi = ( 0, 0, 50, 50 )
 
 
 if ns.data_type == "WRF":
@@ -116,7 +116,8 @@ elif ns.data_type == "CSU":
     varname = "pressure" 
 
 g = CPCPlot( ) 
-g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op, roi ), n_overview_points=n_overview_points, n_cores=multiprocessing.cpu_count(), show=showGui  )   # multiprocessing.cpu_count()       
+ncores=multiprocessing.cpu_count()
+g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op, roi ), n_overview_points=n_overview_points, n_cores = ncores, show=showGui  )   # n_cores = ncores      
 renderWindow = g.renderWindow
  
 app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 

@@ -753,8 +753,12 @@ class LevelingSliderControl( TabbedControl ):
         self.leveling_tab_index = None
         self.minmax_tab_index = None
         self.updatingTabPanel = False
-        self.args[ 'scaled_max_value' ] = cparm.rmax
-        self.args[ 'scaled_min_value' ] = cparm.rmin
+        if cparm.normalized:
+            self.args[ 'scaled_max_value' ] = cparm['smin']
+            self.args[ 'scaled_min_value' ] = cparm['smax']
+        else:
+            self.args[ 'scaled_max_value' ] = cparm.rmax
+            self.args[ 'scaled_min_value' ] = cparm.rmin
        
     def getMinMax(self, wpos, wsize):
         smin = max( wpos - wsize/2.0, 0.0 ) 
