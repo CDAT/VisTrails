@@ -249,6 +249,7 @@ class ROIControl( ConfigControl ):
         pass
         
     def submitSelection(self):
+        return # Currently disabled.  
         self.emit( QtCore.SIGNAL("ConfigCmd"), ( self.getName(), "Submit", self.getROI() ) )
 
     def updateTabPanel(self, current_tab_index=-1 ):

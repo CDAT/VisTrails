@@ -114,6 +114,8 @@ class MultiVarPointCollection():
             if self.lev == None:
                 if len( var.shape ) == 2:
                     np_var_data_block = var[ self.iTimeStep, self.istart::self.istep ].data
+                    if self.roi_mask <> None:
+                        np_var_data_block = numpy.compress( self.roi_mask, np_var_data_block )
                 elif len( var.shape ) == 3:
                     np_var_data_block = var[ self.iTimeStep, :, self.istart::self.istep ].data
                     np_var_data_block = np_var_data_block.reshape( [ np_var_data_block.shape[0] * np_var_data_block.shape[1], ] )
@@ -128,18 +130,25 @@ class MultiVarPointCollection():
                         np_var_data_block = numpy.swapaxes( np_var_data_block, 0, 1 )
                     else:
                         print>>sys.stderr, "Unimplemented axis order: %s " % var.getOrder()
+                    if not isNone( np_var_data_block ):
+                        if not isNone( self.roi_mask ): 
+                            np_var_data_block = numpy.compress( self.roi_mask, np_var_data_block, axis = 1 )
                 elif len( var.shape ) == 4:
                     lev_data_arrays = []
-                    for ilev in range( var.shape[1] ):
-                        lev_data_arrays.append( var[ self.iTimeStep, ilev ].flatten()[self.istart::self.istep] )
+                    for ilev in range( var.shape[1] ):                       
+                        data_z_slice = var[ self.iTimeStep, ilev ].flatten()
+                        lev_data_arrays.append( data_z_slice[self.istart::self.istep] )
                     np_var_data_block = numpy.concatenate( lev_data_arrays ).astype( numpy.float32 )     
 #            print " GetDataBlock, var.shape = %s, grid = %s, ts = %d, newshape = %s " % ( str(var.shape), str((self.istart,self.istep)), self.iTimeStep, str(np_var_data_block.shape) )
-
+                        
+            if not isNone( np_var_data_block ):                
+                if self.missing_value:  np_var_data_block = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False ).flatten()
+                else:                   np_var_data_block = np_var_data_block.flatten()
+                
         return np_var_data_block
     
     def processCoordinates( self, lat, lon ):
 #        print "Process Coordinates, lat = %s%s, lon = %s%s " % ( lat.id, str(lat.shape), lon.id, str(lon.shape)  )
-        self.point_layout = self.getPointsLayout()
         nz = len( self.lev ) if self.lev else 1
         self.n_input_points = lsize(lat) * nz if ( self.point_layout == PlotType.List ) else lsize(lat) * lsize(lon) * nz
         if self.istep <= 0: self.istep = max( self.n_input_points / self.max_points, 1 )
@@ -149,6 +158,22 @@ class MultiVarPointCollection():
         else:
             self.lat_data = lat[self.istart::self.istep] if ( self.point_layout == PlotType.List ) else lat[::]
             self.lon_data = lon[self.istart::self.istep] 
+        if ( self.point_layout == PlotType.List ) and ( self.roi <> None ):
+            if ( self.roi[2] <= 0.0 ) and ( self.lon_data.data.min() >= 0.0 ):
+                self.roi = [ self.roi[0]+360.0, self.roi[1], self.roi[2]+360.0, self.roi[3] ]
+            if ( self.roi[0] > 180.0 ) and ( self.lon_data.data.max() <= 180.0 ):
+                self.roi = [ self.roi[0]-360.0, self.roi[1], self.roi[2]-360.0, self.roi[3] ]
+            lat_roi_mask = numpy.logical_and( self.lat_data > self.roi[1], self.lat_data < self.roi[3] )
+            lon_roi_mask = numpy.logical_and( self.lon_data > self.roi[0], self.lon_data < self.roi[2] )
+            self.roi_mask = numpy.logical_and( lat_roi_mask, lon_roi_mask )
+            if self.roi_mask.any():
+                self.lat_data = numpy.compress( self.roi_mask, self.lat_data )
+                self.lon_data = numpy.compress( self.roi_mask, self.lon_data )
+            else:
+                print>>sys.stderr, "Ignoring empty ROI"
+                self.roi_mask = None
+        else: 
+            self.roi_mask = None
         if self.lat_data.__class__.__name__ == "TransientVariable":
             self.lat_data = self.lat_data.data
             self.lon_data = self.lon_data.data        
@@ -204,8 +229,7 @@ class MultiVarPointCollection():
                 hgt_var = self.getProcessedVariable( height_varname )
                 if hgt_var:
                     self.hgt_var = height_varname
-                    np_hgt_var_data_block = self.getDataBlock(hgt_var).flatten() 
-                    if self.missing_value: np_hgt_var_data_block = numpy.ma.masked_equal( np_hgt_var_data_block, self.missing_value, False )
+                    np_hgt_var_data_block = self.getDataBlock(hgt_var)
                     zdata = np_hgt_var_data_block.astype( numpy.float32 ) 
     #                print " setPointHeights: zdata shape = %s " % str( zdata.shape ); sys.stdout.flush()
                     self.vertical_bounds = ( zdata.min(), zdata.max() )  
@@ -214,7 +238,7 @@ class MultiVarPointCollection():
                 else:
                     print>>sys.stderr, "Can't find height var: %s " % height_varname
             else:
-                if ( z_scaling <> self.z_scaling ) or ( (height_varname <> self.hgt_var) and (height_varname == 'Levels' ) ):
+                if ( z_scaling <> self.z_scaling ) or ( self.roi <> None ) or ( (height_varname <> self.hgt_var) and (height_varname == 'Levels' ) ):
                     self.z_scaling = z_scaling
                     if height_varname: self.hgt_var = height_varname
                     np_points_data_list = []
@@ -247,8 +271,8 @@ class MultiVarPointCollection():
     def getBounds(self):
         return self.axis_bounds[ 'x' ] + self.axis_bounds[ 'y' ] + self.axis_bounds[ 'z' ] 
 
-    def getPointsLayout( self ):
-        return PlotType.getPointsLayout( self.grid )
+    def getPointsLayout( self, var ):
+        return PlotType.getPointsLayout( var.getGrid() )
     
     def getAxisIds( self, var ):
         if not hasattr( var, "coordinates" ):
@@ -364,9 +388,7 @@ class MultiVarPointCollection():
         if process:
             var_data = self.var_data_cache.get( self.iTimeStep, None ) 
             if id(var_data) == id(None):
-                np_var_data_block = self.getDataBlock(self.var).flatten()     
-                if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
-                else: var_data = np_var_data_block
+                var_data = self.getDataBlock(self.var)  
                 self.var_data_cache[ self.iTimeStep ] = var_data
             self.point_data_arrays[ grid_var_name ] = var_data
             self.vrange[grid_var_name] = ( var_data.min(), var_data.max() ) 
@@ -374,20 +396,21 @@ class MultiVarPointCollection():
     
     def getProcessedVariable( self, varname, var_proc_op = None ):
         var = self.df[ varname ]
+        self.point_layout = self.getPointsLayout( var )
         if isNone( var ):
             print>>sys.stderr, "Error, can't find variable '%s' in data file." % ( varname )
             return None
         if self.roi <> None:
             if ( self.point_layout == PlotType.Grid ):
                 var = var.subRegion( longitude=(self.roi[0],self.roi[2]), latitude=(self.roi[1],self.roi[3]) )
-            else:
-                var = self.subsetUnstructuredVar( var, self.roi )
-        if var_proc_op == "anomaly_t":
-            var = cdutil.averager( var, axis='time' )
+#             else:
+#                 var = self.subsetUnstructuredVar( var, self.roi )
+#         if var_proc_op == "anomaly_t":
+#             var = cdutil.averager( var, axis='time' )
         return var
     
-    def subsetUnstructuredVar(self, var, roi ):
-        return var
+#     def subsetUnstructuredVar(self, var, roi ):
+#         return var   # Subset later
 
     def getMetadata( self ):
         return self.metadata
@@ -435,11 +458,8 @@ class MultiVarPointCollection():
                 if ( self.interface == InterfaceType.InfoVis ) or ( varname == self.grid_varname ):
                     var = self.getProcessedVariable( varname )
                     self.vars[ varname ] = var
-                    np_var_data = self.getDataBlock( var )
-                    if not isNone( np_var_data ):
-                        np_var_data_block = np_var_data.flatten()     
-                        if self.missing_value: var_data = numpy.ma.masked_equal( np_var_data_block, self.missing_value, False )
-                        else: var_data = np_var_data_block
+                    var_data = self.getDataBlock( var )
+                    if not isNone( var_data ):  
                         self.point_data_arrays[ varname ] = var_data
                         vrng = ( var_data.min(), var_data.max() )
                         self.vrange[ varname ] = vrng 

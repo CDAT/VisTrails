@@ -62,7 +62,7 @@ from packages.CPCViewer.ControlPanel import extract_arg, LevelingConfigParameter
 from packages.CPCViewer.ConfigurationControl import CPCConfigGui 
 from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.MapManager import MapManager
-from packages.CPCViewer.MultiVarPointCollection import InterfaceType
+from packages.CPCViewer.MultiVarPointCollection import InterfaceType, PlotType
 
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
@@ -162,31 +162,6 @@ def dump_vtk_points( pts, label=None ):
         pt = pts.GetPoint( iPt )
         print "Pt[%d]: %.2f %.2f, %.2f " % ( iPt, pt[ 0 ], pt[ 1 ], pt[ 2 ] )
     print "-------------------------------------------------------------------------------------------------\n"
-
-class PlotType: 
-    Planar = 0
-    Spherical = 1
-    List = 0
-    Grid = 1
-    LevelAliases = [ 'isobaric' ]
-    
-    @classmethod
-    def validCoords( cls, lat, lon ):
-        return ( id(lat) <> id(None) ) and ( id(lon) <> id(None) )
-    
-    @classmethod
-    def isLevelAxis( cls, pid ):
-        if ( pid.find('level')  >= 0 ): return True
-        if ( pid.find('bottom') >= 0 ) and ( pid.find('top') >= 0 ): return True
-        if pid in cls.LevelAliases: return True
-        return False    
-
-    @classmethod
-    def getPointsLayout( cls, grid ):
-        if grid <> None:
-            if (grid.__class__.__name__ in ( "RectGrid", "FileRectGrid") ): 
-                return cls.Grid
-        return cls.List  
     
 class ProcessMode:
     Default = 0
@@ -1039,7 +1014,8 @@ class CPCPlot(QtCore.QObject):
         if args[0] == 'Submit':
             roi = args[1]
             self.partitioned_point_cloud.setROI( roi )  
-            self.point_cloud_overview.setROI( roi )   
+            self.point_cloud_overview.setROI( roi )
+            self.render()   
 
     def processPointSizeCommand( self, arg = None ):
         if arg == None:
