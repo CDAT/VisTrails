@@ -119,7 +119,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
 #        self.plane.SetNormal( 0.0, 0.0, 1.0 )
 
         self.resample = vtk.vtkExtractVOI()
-        self.resample.SetInputData( self.input() ) 
+        versionAgnosticSetInput( self.resample, self.input() )
         self.resample.SetVOI( self.initialExtent )
         lut = self.getLut()
        
@@ -406,7 +406,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
 #        self.plane.SetNormal( 0.0, 0.0, 1.0 )
 
         self.resample = vtk.vtkExtractVOI()
-        self.resample.SetInputData( self.input() ) 
+        versionAgnosticSetInput( self.resample, self.input() )
         self.resample.SetVOI( self.initialExtent )
         lut = self.getLut()
         
@@ -495,7 +495,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
 #        self.set2DOutput( port=sliceOutputPort, name='slice', wmod = self.wmod ) 
 
     def updateModule(self, **args ):
-        self.resample.SetInputData( self.input() ) 
+        versionAgnosticSetInput( self.resample, self.input() )
         self.planeWidget.SetInputConnection( self.resample.GetOutputPort()   )
         self.cutter.SetInputConnection( self.resample.GetOutputPort()   ) 
         self.cutter.Update()
@@ -785,7 +785,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
             lut.SetTableRange( valueRange ) 
          
         self.planeWidget = vtk.vtkImplicitPlaneWidget()
-        self.planeWidget.SetInputData( self.input()  )
+        versionAgnosticSetInput( self.planeWidget, self.input() )
         self.planeWidget.DrawPlaneOff()
         self.planeWidget.ScaleEnabledOff()
         self.planeWidgetBounds = ( self.dataBounds[0]-dataExtents[0], self.dataBounds[1]+dataExtents[0], self.dataBounds[2]-dataExtents[1], self.dataBounds[3]+dataExtents[1], self.dataBounds[4]-dataExtents[2], self.dataBounds[5]+dataExtents[2] ) 
@@ -799,7 +799,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         
         self.streamer = vtk.vtkStreamLine()
 #        self.streamer.SetInputConnection( sliceOutputPort )
-        self.streamer.SetInputData( self.input() )
+        versionAgnosticSetInput( self.streamer, self.input() )
         self.streamer.SetIntegrationDirectionToForward ()
         self.streamer.SetEpsilon(1.0e-10)   # Increase this value if integrations go unstable (app hangs)  
         self.streamer.SpeedScalarsOff()
@@ -823,8 +823,8 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
         self.set3DOutput( wmod=self.wmod, output=self.input() ) 
  
     def updateModule(self, **args ):
-        self.planeWidget.SetInputData( self.input()  )        
-        self.streamer.SetInputData( self.input() )
+        versionAgnosticSetInput( self.planeWidget, self.input() )
+        versionAgnosticSetInput( self.streamer, self.input() )
         self.streamer.Modified()
         self.streamer.Update()
         self.set3DOutput()

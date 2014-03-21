@@ -530,6 +530,7 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 return
             cell_address = "%s%s" % ( chr(ord('A') + self.location.col ), self.location.row + 1 )  
     #        print " --- Clearing Cell %s ---" % cell_address
+            self.renderer.RemoveAllViewProps()
             pipeline = DV3DPipelineHelper.getPipeline( cell_address, sheetName )
             if pipeline == None: pipeline = self.getCurrentPipeline()
             if pipeline: UVCDATGuiConfigFunction.clearModules( pipeline )
@@ -917,35 +918,38 @@ class PM_MapCell3D( PM_DV3DCell ):
     def buildRendering(self):
         PM_DV3DCell.buildRendering( self )
         md = self.getInputSpec().getMetadata()
-        latLonGrid = md.get( 'latLonGrid', True )
-        self.enableBasemap = self.getInputValue( "enable_basemap", True )
-        if latLonGrid and self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
-            if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
-            world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None 
-            map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
-#            cell_location = self.getInputValue( "cell_location", "00"  )
+        if md:
+            latLonGrid = md.get( 'latLonGrid', True )
+            self.enableBasemap = self.getInputValue( "enable_basemap", True )
+            if latLonGrid and self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
+                if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
+                world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None 
+                map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
+    #            cell_location = self.getInputValue( "cell_location", "00"  )
+                    
+                self.y0 = -90.0  
+                dataPosition = None
+                if world_map == None:
+                    self.map_file = defaultMapFile
+                    self.map_cut = defaultMapCut
+                else:
+                    self.map_file = world_map[0].name
+                    self.map_cut = world_map[1]
                 
-            self.y0 = -90.0  
-            dataPosition = None
-            if world_map == None:
-                self.map_file = defaultMapFile
-                self.map_cut = defaultMapCut
-            else:
-                self.map_file = world_map[0].name
-                self.map_cut = world_map[1]
-            
-            self.world_cut = self.getInputValue( "world_cut", -1 ) # wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
-            roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
-            map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
-            if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
-            if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
-#            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
-                      
-            if self.world_cut == -1: 
-                if  (self.roi <> None): 
-                    if roi_size[0] > 180:             
-                        self.ComputeCornerPosition()
-                        self.world_cut = self.NormalizeMapLon( self.x0 )
+                self.world_cut = self.getInputValue( "world_cut", -1 ) # wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
+                roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
+                map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
+                if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
+                if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
+    #            data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
+                          
+                if self.world_cut == -1: 
+                    if  (self.roi <> None): 
+                        if roi_size[0] > 180:             
+                            self.ComputeCornerPosition()
+                            self.world_cut = self.NormalizeMapLon( self.x0 )
+                        else:
+                            dataPosition = [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
                     else:
                         dataPosition = [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
                 else:
@@ -954,6 +958,7 @@ class PM_MapCell3D( PM_DV3DCell ):
             self.imageInfo = vtk.vtkImageChangeInformation()        
             image_reader = vtk.vtkJPEGReader()      
             image_reader.SetFileName(  self.map_file )
+            image_reader.Update()
             baseImage = image_reader.GetOutput() 
             new_dims, scale = None, None
             if dataPosition == None:    
@@ -977,9 +982,11 @@ class PM_MapCell3D( PM_DV3DCell ):
 #            print " DV3DCell, mapCorner = %s, dataPosition = %s, cell_location = %s " % ( str(mapCorner), str(dataPosition), cell_location )
                     
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
-            self.baseMapActor.SetInputData( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  self.baseMapActor.SetInput(baseImage)
+            else:                           self.baseMapActor.SetInputData(baseImage)        
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]        
             self.renderer.AddActor( self.baseMapActor )
+
 
     def ComputeCornerPosition( self ):
         if (self.roi[0] >= -180) and (self.roi[1] <= 180) and (self.roi[1] > self.roi[0]):
@@ -1014,18 +1021,26 @@ class PM_MapCell3D( PM_DV3DCell ):
         
         extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
         clip0 = vtk.vtkImageClip()
-        clip0.SetInputData( baseImage )
+        if vtk.VTK_MAJOR_VERSION <= 5:  clip0.SetInput(baseImage)
+        else:                           clip0.SetInputData(baseImage)        
         clip0.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
         
         extent[0:2] = [ x0 + sliceCoord, x1 ]
         clip1 = vtk.vtkImageClip()
-        clip1.SetInputData( baseImage )
+        if vtk.VTK_MAJOR_VERSION <= 5:  clip1.SetInput(baseImage)
+        else:                           clip1.SetInputData(baseImage)        
         clip1.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
+        clip0.Update(); clip1.Update()
         
         append = vtk.vtkImageAppend()
-        append.SetAppendAxis( 0 )
-        append.SetInputConnection( clip1.GetOutputPort() )          
-        append.SetInputConnection( clip0.GetOutputPort() )   
+        append.SetAppendAxis( 0 )        
+        if vtk.VTK_MAJOR_VERSION <= 5: 
+            append.SetInput( 0, clip1.GetOutput() )          
+            append.SetInput( 1, clip0.GetOutput() ) 
+        else:   
+            append.SetInputData( 0, clip1.GetOutput() )          
+            append.SetInputData( 1, clip0.GetOutput() )         
+        append.Update()
         
         imageInfo = vtk.vtkImageChangeInformation()
         imageInfo.SetInputConnection( append.GetOutputPort() ) 
@@ -1033,8 +1048,9 @@ class PM_MapCell3D( PM_DV3DCell ):
         imageInfo.SetOutputExtentStart( 0, 0, 0 )
         imageInfo.SetOutputSpacing( baseSpacing[0], baseSpacing[1], baseSpacing[2] )
         
-        result = imageInfo.GetOutput() 
         imageInfo.Update()
+        result = imageInfo.GetOutput() 
+        resultExtent = result.GetExtent()
         return result
 
     def NormalizeMapLon( self, lon ): 
@@ -1073,7 +1089,8 @@ class PM_MapCell3D( PM_DV3DCell ):
             extent = list( baseExtent )         
             extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
             clip0 = vtk.vtkImageClip()
-            clip0.SetInputData( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  clip0.SetInput(baseImage)
+            else:                           clip0.SetInputData(baseImage)        
             clip0.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size0 = extent[1] - extent[0] + 1
         
@@ -1083,7 +1100,8 @@ class PM_MapCell3D( PM_DV3DCell ):
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[0:2] = [ x0 + sliceCoord, x1 ]
             clip1 = vtk.vtkImageClip()
-            clip1.SetInputData( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  clip1.SetInput(baseImage)
+            else:                           clip1.SetInputData(baseImage)        
             clip1.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size1 = extent[1] - extent[0] + 1
 #            print "Set Corner pos: %s, cuts: %s " % ( str(self.x0), str( (cut0, cut1) ) )
@@ -1110,7 +1128,8 @@ class PM_MapCell3D( PM_DV3DCell ):
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[1] = x0 + sliceCoord
             clip = vtk.vtkImageClip()
-            clip.SetInputData( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  clip.SetInput(baseImage)
+            else:                           clip.SetInputData(baseImage)        
             clip.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             bounded_dims = ( extent[1] - extent[0] + 1, vertExtent[1] - vertExtent[0] + 1 )
 #            print "Set Corner pos: %s, dataXLoc: %s " % ( str(self.x0), str( (dataXLoc, selectionDim[0]) ) )

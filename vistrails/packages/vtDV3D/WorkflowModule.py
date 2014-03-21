@@ -22,7 +22,7 @@ class WorkflowModule( NotCacheable,  Module ):
         
 #     def __del__( self ):
 #         print " $$$$$$$$$$$$$$$$$$$$$$ deleting WorkflowModule, id = %d $$$$$$$$$$$$$$$$$$$$$$ " % ( self.moduleInfo['moduleId'] )
-#         self.getPersistentModule( invalidate=True )
+# #         self.getPersistentModule( invalidate=True )
 #         Module.__del__( self )
 
     def clear( self ):
