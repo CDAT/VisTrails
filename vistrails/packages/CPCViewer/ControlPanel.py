@@ -195,6 +195,13 @@ class LevelingConfigParameter( ConfigParameter ):
             self.computeRange()
         self.scaling_bounds = None
         
+#     def setScaledRange( self, srange ):
+#         self.normalized = False 
+#         self.range_bounds = [ srange[0], srange[1] ]  
+#         self['rmin'] =  srange[0]           
+#         self['rmax'] =  srange[1]
+#         self.computeWindow()           
+        
     @property
     def rmin(self):
         return self['rmin']
@@ -753,13 +760,9 @@ class LevelingSliderControl( TabbedControl ):
         self.leveling_tab_index = None
         self.minmax_tab_index = None
         self.updatingTabPanel = False
-        if cparm.normalized:
-            self.args[ 'scaled_max_value' ] = cparm['smin']
-            self.args[ 'scaled_min_value' ] = cparm['smax']
-        else:
-            self.args[ 'scaled_max_value' ] = cparm.rmax
-            self.args[ 'scaled_min_value' ] = cparm.rmin
-       
+        self.args[ 'scaled_max_value' ] = cparm.rmax
+        self.args[ 'scaled_min_value' ] = cparm.rmin
+                   
     def getMinMax(self, wpos, wsize):
         smin = max( wpos - wsize/2.0, 0.0 ) 
         smax = min( wpos + wsize/2.0, 1.0 ) 
