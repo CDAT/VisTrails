@@ -195,12 +195,12 @@ class LevelingConfigParameter( ConfigParameter ):
             self.computeRange()
         self.scaling_bounds = None
         
-#     def setScaledRange( self, srange ):
-#         self.normalized = False 
-#         self.range_bounds = [ srange[0], srange[1] ]  
-#         self['rmin'] =  srange[0]           
-#         self['rmax'] =  srange[1]
-#         self.computeWindow()           
+    def setScaledRange( self, srange ):
+        self.normalized = False 
+        self.range_bounds = [ srange[0], srange[1] ]  
+        self['rmin'] =  srange[0]           
+        self['rmax'] =  srange[1]
+        self.computeWindow()           
         
     @property
     def rmin(self):
