@@ -1125,6 +1125,11 @@ class QCDATWidget(QCellWidget):
     vcdat already creates 5 canvas objects
     
     """
+    save_formats = ["Images (*.png *.gif)",
+                    "PDF file (*.pdf)",
+                    "Postscript file (*.ps)",
+                    "SVG file (*.svg)"]
+
     startIndex = 2 #this should be the current number of canvas objects created 
     maxIndex = 6
     usedIndexes = []
@@ -1297,8 +1302,18 @@ Please delete unused CDAT Cells in the spreadsheet.")
     def dumpToFile(self, filename):
         """ dumpToFile(filename: str, dump_as_pdf: bool) -> None
         Dumps itself as an image to a file, calling grabWindowPixmap """
-        self.saveToPNG(filename)
-        
+        (_,ext) = os.path.splitext(filename)
+        if  ext.upper() == '.PDF':
+            self.canvas.pdf(filename)#, width=11.5)
+        elif ext.upper() == ".PNG":
+            self.canvas.png(filename)#, width=11.5)
+        elif ext.upper() == ".SVG":
+            self.canvas.svg(filename)#, width=11.5)
+        elif ext.upper() == ".GIF":
+            self.canvas.gif(filename)#, width=11.5)
+        elif ext.upper() == ".PS":
+            self.canvas.postscript(filename)#, width=11.5)
+
     def saveToPNG(self, filename):
         """ saveToPNG(filename: str) -> bool
         Save the current widget contents to an image file
@@ -1313,25 +1328,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
         
         """   
         self.canvas.pdf(filename)#, width=11.5)
-        
-    def exportToFile(self):
-        file = QtGui.QFileDialog.getSaveFileName(
-                self, "Select a File to Export the Plot",
-                ".", "Images (*.png *.gif);;PDF file (*.pdf);;Postscript file (*.ps);;SVG file (*.svg)")
-        if not file.isNull():
-            filename = str(file)
-            (_,ext) = os.path.splitext(filename)
-            if  ext.upper() == '.PDF':
-                self.canvas.pdf(filename)#, width=11.5)
-            elif ext.upper() == ".PNG":
-                self.canvas.png(filename)#, width=11.5)
-            elif ext.upper() == ".SVG":
-                self.canvas.svg(filename)#, width=11.5)
-            elif ext.upper() == ".GIF":
-                self.canvas.gif(filename)#, width=11.5)
-            elif ext.upper() == ".PS":
-                self.canvas.postscript(filename)#, width=11.5)
-        
+
 class QCDATWidgetToolBar(QCellToolBar):
     """
     QCDATWidgetToolBar derives from QCellToolBar to give CDMSCell
@@ -1356,7 +1353,6 @@ class QCDATWidgetToolBar(QCellToolBar):
             
 
         self.appendAction(QCDATWidgetPrint(self))
-        self.appendAction(QCDATWidgetExport(self))
         self.appendAction(QCDATWidgetColormap(self))
         #self.appendAction(QCDATWidgetAnimation(self))
         
@@ -1685,53 +1681,6 @@ class QCDATWidgetColormap(QtGui.QAction):
         canvas = cellWidget.canvas
         _app.uvcdatWindow.colormapEditor.activateFromCell(canvas)
         
-
-    def updateStatus(self, info):
-        """ updateStatus(info: tuple) -> None
-        Updates the status of the button based on the input info
-        
-        """
-        from gui.application import get_vistrails_application
-        _app = get_vistrails_application()
-        (sheet, row, col, cellWidget) = info
-        selectedCells = sorted(sheet.getSelectedLocations())
-
-        # Will not show up if there is no cell selected  
-        proj_controller = _app.uvcdatWindow.get_current_project_controller()
-        sheetName = sheet.getSheetName()        
-        if (len(selectedCells)==1 and 
-            proj_controller.is_cell_ready(sheetName,row,col)):
-                self.setVisible(True)
-        else:
-            self.setVisible(False)
-
-
-class QCDATWidgetExport(QtGui.QAction):
-    """
-    QCDATWidgetExport is the action to export the plot 
-    of the current cell to a file
-
-    """
-    def __init__(self, parent=None):
-        """ QCDATWidgetExport(icon: QIcon, parent: QWidget)
-                                   -> QCDATWidgetExport
-        Setup the image, status tip, etc. of the action
-        
-        """
-        QtGui.QAction.__init__(self,
-                               UVCDATTheme.PLOT_EXPORT_ICON,
-                               "Export the current plot as an image",
-                               parent)
-        self.setStatusTip("Export the current plot as an image")
-
-    def triggeredSlot(self, checked=False):
-        """ toggledSlot(checked: boolean) -> None
-        Execute the action when the button is clicked
-        
-        """
-        
-        cellWidget = self.toolBar.getSnappedWidget()
-        cellWidget.exportToFile()
 
     def updateStatus(self, info):
         """ updateStatus(info: tuple) -> None
