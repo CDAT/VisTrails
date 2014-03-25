@@ -351,6 +351,7 @@ class QCellToolBar(QtGui.QToolBar):
             self, "Select a File to Export the Sheet",
             ".", ';;'.join(cell.save_formats))
         if filename:
+            filename = str(filename)
             cell.dumpToFile(filename)
 
     def createToolBar(self):

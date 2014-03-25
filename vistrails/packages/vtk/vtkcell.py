@@ -950,7 +950,7 @@ class QVTKWidget(QCellWidget):
         w2i.Update()
         writer = vtk.vtkPNGWriter()
         writer.SetInputConnection(w2i.GetOutputPort())
-        if filename!=None:
+        if filename is not None:
             writer.SetFileName(filename)
         else:
             writer.WriteToMemoryOn()
