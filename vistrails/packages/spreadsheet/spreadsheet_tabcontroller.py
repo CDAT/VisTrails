@@ -257,9 +257,9 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         from core.configuration import get_vistrails_configuration
         if not hasattr(self, 'uvcdatPreferencesVar'):
             self.uvcdatPreferencesVar = QtGui.QAction(UVCDATTheme.PREFERENCES_ICON,
-                                                      'Preferences',
+                                                      'Sheet Options',
                                                       self)
-            self.uvcdatPreferencesVar.setStatusTip("Show Preferences")
+            self.uvcdatPreferencesVar.setStatusTip("Show Sheet Options")
             
             prefMenu = QtGui.QMenu(self)
             executeAction = prefMenu.addAction("Auto-Execute")
@@ -279,6 +279,16 @@ class StandardWidgetTabController(QtGui.QTabWidget):
             if conf.has('uvcdat'):
                 checked = conf.uvcdat.check('aspectRatio')
             aspectAction.setChecked(checked)
+
+            exportMenu = prefMenu.addMenu("Export Sheet")
+            singleAction = exportMenu.addAction('As a Single Image...')
+            multiAction = exportMenu.addAction('Separately...')
+            self.connect(singleAction,
+                         QtCore.SIGNAL('triggered()'),
+                         self.exportSheetToSingleImageActionTriggered)
+            self.connect(multiAction,
+                         QtCore.SIGNAL('triggered()'),
+                         self.exportSheetToSeparateImagesActionTriggered)
             
             themeMenu = prefMenu.addMenu("Icons Theme")
             defaultThemeAction = themeMenu.addAction("Default")

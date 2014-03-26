@@ -102,7 +102,6 @@ class StandardWidgetToolBar(QtGui.QToolBar):
         #self.addAction(self.sheetTab.tabWidget.saveAction())
         self.addWidget(self.rowCountSpinBox())
         self.addWidget(self.colCountSpinBox())
-        self.addAction(self.sheetTab.tabWidget.exportSheetToImageAction())
         self.addAction(self.sheetTab.tabWidget.uvcdatPreferencesAction())
         self.addSeparator()
         self.layout().setSpacing(2)
