@@ -347,12 +347,13 @@ class QCellToolBar(QtGui.QToolBar):
 
     def exportCell(self, checked=False):
         cell = self.sheet.getCell(self.row, self.col)
-        filename = QtGui.QFileDialog.getSaveFileName(
-            self, "Select a File to Export the Sheet",
-            ".", ';;'.join(cell.save_formats))
-        if filename:
-            filename = str(filename)
-            cell.dumpToFile(filename)
+        if isinstance(cell, QCellWidget):
+            filename = QtGui.QFileDialog.getSaveFileName(
+                self, "Select a File to Export the Sheet",
+                ".", ';;'.join(cell.save_formats))
+            if filename:
+                filename = str(filename)
+                cell.dumpToFile(filename)
 
     def createToolBar(self):
         """ createToolBar() -> None
