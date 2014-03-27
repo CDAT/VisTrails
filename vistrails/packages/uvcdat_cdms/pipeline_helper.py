@@ -1259,11 +1259,14 @@ class CDMSPlotWidget(QtGui.QWidget):
 
         ops = []
         for i, plot in enumerate(plot_modules):
-            if (i+1) != PlotPipelineHelper.get_value_from_function(plot,
-                                                                   "plotOrder"):
-                ops.extend(self.controller.update_function_ops(plot,
-                                                               'plotOrder',
-                                                               [str(i+1)]))
+            # DK: this is done in update_plot_pipeline_action as part
+            # of the rebuild_pipeline_action...
+
+            # if (i+1) != PlotPipelineHelper.get_value_from_function(plot,
+            #                                                        "plotOrder"):
+            #     ops.extend(self.controller.update_function_ops(plot,
+            #                                                    'plotOrder',
+            #                                                    [str(i+1)]))
             if plot.id in function_updates:
                 ops.extend(self.controller.update_functions_ops(plot,
                                                     function_updates[plot.id]))
