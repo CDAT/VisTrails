@@ -18,7 +18,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
     def __init__(self, module, controller, parent=None, show_buttons=True):
         QtGui.QWidget.__init__(self, parent)
         self.module = module
-        self.module_descriptor = self.module.module_descriptor.module
+        self.module_instance = self.module.module_descriptor.module()
         self.controller = controller
         self.show_buttons = show_buttons
         self.layout = QtGui.QVBoxLayout()
@@ -28,7 +28,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         self.populate_fun_map()
         self.gmName = self.getValueFromFunction("graphicsMethodName")
         if self.gmName is None:
-            self.gmName = self.module_descriptor().graphics_method_name
+            self.gmName = self.module_instance.graphics_method_name
         self.mapAttributesToFunctions()
         self.tabWidget = QtGui.QTabWidget(self)
         
@@ -66,7 +66,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         self.tabWidget.setCurrentIndex(0)
       
     def createEditor(self, parent, gmName):
-        plot_type = self.module.module_descriptor.module().plot_type
+        plot_type = self.module.module_instance.plot_type
         if plot_type == "Boxfill":
             return QBoxfillEditor(self.tabWidget, gmName)
         elif plot_type == "Isofill":
@@ -145,13 +145,13 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
                 
     def mapAttributesToFunctions(self):
         self.attributes = {}
-        default = self.module_descriptor()
+        default = self.module_instance
         default.set_default_values(self.gmName)
         for name in default.gm_attributes:
             self.attributes[name] = getattr(default, name)
             
         for fun in self.fun_map:
-            if fun in self.module_descriptor().gm_attributes:
+            if fun in self.module_instance.gm_attributes:
                 self.attributes[fun] = self.getValueFromFunction(fun)
 
     def getFunctionUpdates(self):
