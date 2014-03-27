@@ -906,7 +906,6 @@ class CDMSPlotWidget(QtGui.QWidget):
         b_layout.addWidget(self.btn_move_up)
         b_layout.addWidget(self.btn_move_down)
         b_layout.addStretch()
-        self.conf_widget = QtGui.QWidget()
         self.plot_table = PlotTableWidget(self.plots, self.proj_controller, 
                                           self.version, self)
         h_layout = QtGui.QHBoxLayout()
@@ -938,6 +937,8 @@ class CDMSPlotWidget(QtGui.QWidget):
         template_layout.addWidget(self.template_edt)
         self.template_widget.setLayout(template_layout)
         self.v_layout.addWidget(self.template_widget)
+        stacked_widget = self.create_conf_widgets()
+        self.v_layout.addWidget(stacked_widget)
         self.plot_widget.setLayout(self.v_layout)
          
         #signals
@@ -969,23 +970,56 @@ class CDMSPlotWidget(QtGui.QWidget):
         hlayout.addWidget(self.var2_label)
         hlayout.addWidget(self.var2_edt)
         self.plot_vars_widget.setLayout(hlayout)
-        
+
+    def create_conf_widgets(self):
+        # dump them all in a stacked widget
+        self.conf_widget_stack = QtGui.QStackedWidget()
+        # keep a null widget at index 0
+        self.conf_widget_stack.addWidget(QtGui.QWidget())
+        self.conf_widget_map = {}
+        for plot_module in self.plots:
+            self.add_conf_widget(plot_module)
+        return self.conf_widget_stack
+
+    def add_conf_widget(self, plot_module):
+        conf_widget = GraphicsMethodConfigurationWidget(plot_module,
+                                                        self.controller,
+                                                        self,
+                                                        show_buttons=False)
+        self.conf_widget_stack.addWidget(conf_widget)
+        self.conf_widget_map[plot_module.id] = \
+                                        self.conf_widget_stack.count() - 1
+
+    @pyqtSlot()
+    def update_conf_widget(self):
+        selected_items = self.plot_table.selectedItems()
+        if len(selected_items) != 1:
+            self.conf_widget_stack.setCurrentIndex(0)
+            self.btn_del_plot.setEnabled(False)
+            self.update_move_buttons(None)
+            self.update_plot_vars(None)
+            self.selected_label.setText("Configuration:")
+        else:
+            item = selected_items[0]
+            widget_idx = self.conf_widget_map[item.module.id]
+            self.conf_widget_stack.setCurrentIndex(widget_idx)
+            self.update_move_buttons(item)
+            self.update_plot_vars(item)
+            self.btn_del_plot.setEnabled(True)
+            self.selected_label.setText("%s Configuration:" % item.text(1))
+
     def askToSaveChanges(self):
         #FIXME: Check if there were changes and save them
         pass
     
-    def connect_signals(self):
-        if type(self.conf_widget) == GraphicsMethodConfigurationWidget:
-            self.connect(self.conf_widget, QtCore.SIGNAL("plotDoneConfigure"),
-                         self.configure_done)
-            self.connect(self.conf_widget, QtCore.SIGNAL("stateChanged"),
+    def connect_signals(self, conf_widget):
+        if type(conf_widget) == GraphicsMethodConfigurationWidget:
+            self.connect(conf_widget, QtCore.SIGNAL("stateChanged"),
                          self.state_changed)
-    def disconnect_signals(self):
-        if type(self.conf_widget) == GraphicsMethodConfigurationWidget:
-            self.disconnect(self.conf_widget, QtCore.SIGNAL("plotDoneConfigure"),
-                         self.configure_done)
-            self.disconnect(self.conf_widget, QtCore.SIGNAL("stateChanged"),
-                         self.state_changed)
+    def disconnect_signals(self, conf_widget):
+        if type(conf_widget) == GraphicsMethodConfigurationWidget:
+            self.disconnect(conf_widget, QtCore.SIGNAL("stateChanged"),
+                            self.state_changed)
             
     @pyqtSlot(Module, int)
     def variable_dropped(self, var, order):
@@ -1042,36 +1076,6 @@ class CDMSPlotWidget(QtGui.QWidget):
 #        else:
 #            self.btn_del_var.setEnabled(False)
             
-    @pyqtSlot()
-    def update_conf_widget(self):
-        if self.conf_widget:
-            if isinstance(self.conf_widget,GraphicsMethodConfigurationWidget):
-                if self.conf_widget.checkForChanges():
-                    self.conf_widget.saveTriggered()
-            #self.conf_widget.setVisible(False)
-            self.v_layout.removeWidget(self.conf_widget)
-            self.disconnect_signals()
-            self.conf_widget.deleteLater()
-        if len(self.plot_table.selectedItems()) == 1:
-            item = self.plot_table.selectedItems()[0]
-            self.controller.change_selected_version(self.version)
-            self.conf_widget = GraphicsMethodConfigurationWidget(item.module,
-                                                                 self.controller,
-                                                                 self,
-                                                                 show_buttons=False)
-            self.selected_label.setText("%s Configuration:"%item.text(1))
-            self.connect_signals()
-            self.update_move_buttons(item)
-            self.update_plot_vars(item)
-            self.btn_del_plot.setEnabled(True)
-        else:
-            self.conf_widget = QtGui.QWidget()
-            self.btn_del_plot.setEnabled(False)
-            self.update_move_buttons(None)
-            self.update_plot_vars(None)
-            self.selected_label.setText("Configuration:")
-        self.v_layout.addWidget(self.conf_widget)
-    
     def update_move_buttons(self, item):
         if item is None:
             self.btn_move_up.setEnabled(False)
@@ -1114,7 +1118,7 @@ class CDMSPlotWidget(QtGui.QWidget):
             self.var2_edt.setVisible(True)
         
             
-    def configure_done(self, action):
+    def configure_done(self):
         canceled = []
         
         for a in self.to_be_added:
@@ -1133,6 +1137,7 @@ class CDMSPlotWidget(QtGui.QWidget):
             self.var_to_be_removed.remove(m)
 
         #update variables on plot objects
+        # FIXME do we have to keep plots on the cell separately?
         sheetName = self.proj_controller.current_sheetName
         (row, col) = self.proj_controller.current_cell_coords
         cell = self.proj_controller.sheet_map[sheetName][(row,col)]
@@ -1147,26 +1152,33 @@ class CDMSPlotWidget(QtGui.QWidget):
                 new_plot.variables.append(varName)
             cell.add_plot(new_plot)
 
+        function_updates = {}
+        for plot_module in self.plot_table.get_plots():
+            if plot_module.id not in self.to_be_removed:
+                idx = self.conf_widget_map[plot_module.id]
+                conf_widget = self.conf_widget_stack.widget(idx)
+                functions = conf_widget.getFunctionUpdates()
+                if len(functions) > 0:
+                    function_updates[plot_module.id] = functions
+
         if (len(self.to_be_added) != 0 or len(self.to_be_removed) != 0 or
             len(self.var_to_be_added) != 0 or len(self.var_to_be_removed) != 0 
-            or self.plot_order_changed() or self.vars_were_changed):
+            or self.plot_order_changed() or self.vars_were_changed or
+            len(function_updates) > 0):
             sheetName = self.proj_controller.current_sheetName
             (row, col) = self.proj_controller.current_cell_coords
             cell = self.proj_controller.sheet_map[sheetName][(row,col)]
-#            action = self.update_pipeline(action)
-            update = cell.is_ready()
-            self.proj_controller.check_update_cell(sheetName,row,col,update)
-        
+            action = self.update_pipeline(None, function_updates)
+
         action = self.update_templates(action)
-                
+
         self.emit(QtCore.SIGNAL('plotDoneConfigure'), action)
         if action is not None:
             version = action.id
             pipeline = self.controller.vistrail.getPipeline(version)
             plots = CDMSPipelineHelper.find_plot_modules(pipeline)
             vars = CDMSPipelineHelper.find_modules_by_type(pipeline, 
-                                                           [CDMSVariable,
-                                                            CDMSVariableOperation])
+                                        [CDMSVariable, CDMSVariableOperation])
             self.controller.change_selected_version(version)
             self.update_version(version, plots, vars)
             
@@ -1189,6 +1201,7 @@ class CDMSPlotWidget(QtGui.QWidget):
             plot_module = CDMSPipelineHelper.create_plot_module(self.controller, 
                                                                 plot.parent, 
                                                                 plot.name)
+            self.add_conf_widget(plot_module)
             self.plot_table.add_plot_item(plot_module, copy_vars=True)
             self.to_be_added.append(plot_module.id)
         self.update_btn_del_state()
@@ -1217,7 +1230,7 @@ class CDMSPlotWidget(QtGui.QWidget):
 #            self.var_to_be_removed.append(module.id)
 #        self.update_btn_del_var_state()
         
-    def update_pipeline(self, action):
+    def update_pipeline(self, action=None, function_updates=[]):
 #        var_modules = self.var_table.get_vars()
 #        connections = self.plot_table.get_connections()
         
@@ -1251,6 +1264,10 @@ class CDMSPlotWidget(QtGui.QWidget):
                 ops.extend(self.controller.update_function_ops(plot,
                                                                'plotOrder',
                                                                [str(i+1)]))
+            if plot.id in function_updates:
+                ops.extend(self.controller.update_functions_ops(plot,
+                                                    function_updates[plot.id]))
+
         if len(ops) > 0:
             if action is not None:
                 version = action.id
@@ -1289,11 +1306,11 @@ class CDMSPlotWidget(QtGui.QWidget):
             
     @pyqtSlot(bool)
     def save_triggered(self, checked):
-        
-        self.conf_widget.saveTriggered(checked)
+        self.configure_done()
     
     @pyqtSlot(bool)
     def reset_triggered(self, checked):
+        # FIXME why is this not implemented?
         pass
 
 class PlotTableWidgetItem(QtGui.QTreeWidgetItem):
@@ -1380,7 +1397,8 @@ class PlotTableWidget(QtGui.QTreeWidget):
     def add_plot_item(self, plot_module, copy_vars=False):
         order = self.topLevelItemCount()
         self.plots.append(plot_module)
-        self.create_plot_item(order,plot_module, copy_vars, True)
+        item = self.create_plot_item(order,plot_module, copy_vars, True)
+        self.setCurrentItem(item)
     
     @pyqtSlot(bool)
     def move_item_up(self, checked):
