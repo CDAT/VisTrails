@@ -151,59 +151,41 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             self.attributes[name] = getattr(default, name)
             
         for fun in self.fun_map:
-            if fun in self.module_descriptor.gm_attributes:
+            if fun in self.module_descriptor().gm_attributes:
                 self.attributes[fun] = self.getValueFromFunction(fun)
-                
-    def updateVistrail(self):
+
+    def getFunctionUpdates(self):
         functions = []
         gm = InstanceObject(**self.attributes)
         self.gmEditor.applyChanges(gm)
-        pipeline = self.controller.vistrail.getPipeline(self.controller.current_version)
-        # maybe this module was just added by the user in the gui and it was not
-        # added to the pipeline yet. So we need to add it before updating the
-        # functions
-        action1 = None
-        if self.module.id not in pipeline.modules:
-            ops = [('add', self.module)]
-            action1 = core.db.action.create_action(ops)
-            self.controller.add_new_action(action1)
-            self.controller.perform_action(action1)
+
         for attr in self.attributes:
             newval = getattr(gm,attr)
             if newval != self.attributes[attr]:
                 functions.append((attr,[str(getattr(gm,attr))]))
                 self.attributes[attr] = newval
-        
+
+        # FIXME why can't these be rolled in with self.attributes?
         #continents
         if hasattr(self.gmEditor, 'continents') :
             gui_continent = self.gmEditor.continents.currentIndex() + 1
-            if self.continents is None:
-                func_obj = self.controller.create_function(self.module, 
-                                                           'continents', 
-                                                           [str(gui_continent)])
-                action1 = self.controller.add_function_action(self.module, func_obj)
-                self.continents = gui_continent
-            elif gui_continent != self.continents:
+            if self.continents is None or gui_continent != self.continents:
                 functions.append(('continents',[str(gui_continent)]))
                 self.continents = gui_continent
             
         # aspect ratio
         gui_ratio = self.gmEditor.getAspectRatio()
-        if self.ratio is None:
-            func_obj = self.controller.create_function(self.module,
-                                                       'ratio',
-                                                       [str(gui_ratio)])
-            action1 = self.controller.add_function_action(self.module, func_obj)
-            self.ratio = gui_ratio
-        elif gui_ratio != self.ratio:
+        if self.ratio is None or ratio != self.ratio:
             functions.append(('ratio', [str(gui_ratio)]))
             self.ratio = gui_ratio
+
+        return functions
                 
-        action = self.controller.update_functions(self.module, 
-                                                  functions)
+    def updateVistrail(self):
+        functions = self.getFunctionUpdates()
+        ops = self.controller.update_functions_ops(self.module, functions)
+        action = core.db.action.create_action(ops)
         
-        if action is None:
-            action = action1
         return (action, True)
     
     def checkForChanges(self):
