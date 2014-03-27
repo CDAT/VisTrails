@@ -1571,7 +1571,8 @@ class CDMSTreeWidget(QtGui.QTreeWidget):
                                          1)
             item.setFlags(item.flags() & ~QtCore.Qt.ItemIsSelectable)
             ## Special section here for VCS GMs they have one more layer
-            for plot in registry.plots["VCS"][plottype].itervalues():
+            for plot in sorted(registry.plots["VCS"][plottype].itervalues(),
+                               key=lambda x: x.name):
                 item2 = PlotTreeWidgetItem(plottype, plot.name, 
                                            QtCore.QStringList(plot.name),
                                            2, plot, item)
