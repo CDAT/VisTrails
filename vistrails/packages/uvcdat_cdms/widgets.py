@@ -66,7 +66,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         self.tabWidget.setCurrentIndex(0)
       
     def createEditor(self, parent, gmName):
-        plot_type = self.module.module_instance.plot_type
+        plot_type = self.module_instance.plot_type
         if plot_type == "Boxfill":
             return QBoxfillEditor(self.tabWidget, gmName)
         elif plot_type == "Isofill":
@@ -175,7 +175,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             
         # aspect ratio
         gui_ratio = self.gmEditor.getAspectRatio()
-        if self.ratio is None or ratio != self.ratio:
+        if self.ratio is None or gui_ratio != self.ratio:
             functions.append(('ratio', [str(gui_ratio)]))
             self.ratio = gui_ratio
 
