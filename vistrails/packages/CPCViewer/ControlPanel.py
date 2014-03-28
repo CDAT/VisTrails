@@ -348,6 +348,9 @@ class ConfigControl(QtGui.QWidget):
         self.metadata = None
         self.buttons = {}
         self.connect( cparm, QtCore.SIGNAL('ValueChanged'), self.configValueChanged )
+        
+    def newSubset( self, indices ):
+        pass
     
     def setMetadata( self, md ):
         self.metadata = md
@@ -512,12 +515,14 @@ class LabeledSliderWidget( ConfigWidget ):
         index_value = int( round( self.minValue + normalized_slider_value * ( self.maxValue - self.minValue ) ) )
         self.value_pane.setText( str( slider_value ) )
         self.slider.setValue( index_value )      
+        print "Set slider value [%s:%s]: %s %s  " % ( self.cparm.varname, self.cparm.name, str( slider_value ), str(index_value) )    
 
     def setSliderNormalizedValue( self, normailzed_slider_value ): 
         index_value = int( round( self.minValue + normailzed_slider_value * ( self.maxValue - self.minValue ) ) )
         scaled_slider_value = self.scaledMinValue + normailzed_slider_value * ( self.scaledMaxValue - self.scaledMinValue )
         self.value_pane.setText( str( scaled_slider_value ) )
-        self.slider.setValue( index_value )      
+        self.slider.setValue( index_value ) 
+        print "Set Normalized slider value [%s:%s]: %s %s  " % ( self.cparm.vname, self.cparm.name, str( scaled_slider_value ), str(index_value) )    
 
     def getSliderValue( self, svalue = None ):
         slider_value = self.slider.value() if ( svalue == None ) else svalue
@@ -770,9 +775,10 @@ class LevelingSliderControl( TabbedControl ):
         
     def build(self):
         super( LevelingSliderControl, self ).build()
+        smin = self.args[ 'scaled_min_value' ]
+        smax = self.args[ 'scaled_max_value' ]
         wpos = self.cparm[ 'wpos' ]
         wsize = self.cparm[ 'wsize' ]
-        smin, smax = self.getMinMax( wpos, wsize )
         self.leveling_tab_index, tab_layout = self.addTab( 'Leveling' )
         self.wsIndex = self.addSlider( "Window Size:", tab_layout, scaled_init_value=wsize, **self.args )
         self.wpIndex = self.addSlider( "Window Position:", tab_layout, scaled_init_value=wpos, **self.args )

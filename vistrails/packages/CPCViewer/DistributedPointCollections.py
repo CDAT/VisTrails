@@ -185,6 +185,7 @@ class vtkPointCloud(QtCore.QObject):
         self.vardata = None
         self.vrange = None
         self.np_index_seq = None
+        self.np_cell_data = None
         self.points = None
         self.pcIndex = pcIndex
         self.earth_radius = 100.0
@@ -257,6 +258,9 @@ class vtkPointCloud(QtCore.QObject):
             return self.np_points_data 
         elif dtype == ExecutionDataPacket.HEIGHTS:
             return self.np_points_data 
+        
+    def getCellData(self):
+        return self.np_cell_data
    
     def updateVertices( self, **args ): 
         self.vertices = vtk.vtkCellArray()  
@@ -317,7 +321,7 @@ class vtkPointCloud(QtCore.QObject):
             else: return
         vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data )    
         vtk_points_data.SetNumberOfComponents( 3 )
-        vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )     
+        vtk_points_data.SetNumberOfTuples( int( self.np_points_data.size / 3 ) )     
         self.vtk_planar_points = vtk.vtkPoints()
         self.vtk_planar_points.SetData( vtk_points_data )
         self.createPolydata( **args )
@@ -534,7 +538,7 @@ class vtkSubProcPointCloud( vtkPointCloud ):
         
     def generateSubset(self, **args ):
         self.current_subset_specs = args.get( 'spec', self.current_subset_specs )
-        print " vtkSubProcPointCloud: current_subset_specs: %s (%s) " % ( self.current_subset_specs, str(args) )
+#        print " vtkSubProcPointCloud: current_subset_specs: %s (%s) " % ( self.current_subset_specs, str(args) )
         process = args.get( 'process', True )
         if process:
             self.clearQueues()
