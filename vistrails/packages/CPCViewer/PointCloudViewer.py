@@ -783,6 +783,10 @@ class CPCPlot(QtCore.QObject):
 #        self.renderWindow.Render()
 
     def update_subset_specs(self, new_specs ):
+        print " $$$$$$ update_subset_specs: %s " % str( new_specs )
+        for value in new_specs.values():
+            if ( len(value) < 4 ) or not value[3]:
+                print "xx"
         self.current_subset_specs.update( new_specs )
             
     def processSlicePlaneCommand( self, args ):
@@ -795,7 +799,8 @@ class CPCPlot(QtCore.QObject):
 #            self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )               
             if self.partitioned_point_cloud:
                 self.update_subset_specs(  self.partitioned_point_cloud.getSubsetSpecs()  )            
-                self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )        
+                self.point_cloud_overview.generateSubset( spec=self.current_subset_specs ) 
+                self.configDialog.newSubset( self.point_cloud_overview.getCellData() )       
         elif args and args[0] == "EndConfig":
             self.setRenderMode( ProcessMode.HighRes )                 
             self.execCurrentSlice()
@@ -831,8 +836,9 @@ class CPCPlot(QtCore.QObject):
                 self.setRenderMode( ProcessMode.LowRes, True )
 #            self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )               
             if self.partitioned_point_cloud:
-                self.update_subset_specs(  self.partitioned_point_cloud.getSubsetSpecs()  )           
+#                self.update_subset_specs(  self.partitioned_point_cloud.getSubsetSpecs()  )           
                 self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
+                self.configDialog.newSubset( self.point_cloud_overview.getCellData() )
             if self.process_mode <> ProcessMode.Thresholding:
                 self.enableThresholding()
         
@@ -851,8 +857,8 @@ class CPCPlot(QtCore.QObject):
         elif args and args[0] == "Threshold Range":
             if ( self.thresholdCmdIndex % self.thresholdingSkipFactor ) == 0:
                 target = extract_arg( args, 'name', offset=1, defval=self.defvar )
-                norm_range = self.volumeThresholdRange[ target ].getNormalizedRange()
-                self.updateThresholding( target, norm_range )
+                scaled_range = self.volumeThresholdRange[ target ].getRange()
+                self.updateThresholding( target, scaled_range, False )
             self.thresholdCmdIndex = self.thresholdCmdIndex + 1
                     
     def enableThresholding( self, args = None ):
@@ -972,15 +978,17 @@ class CPCPlot(QtCore.QObject):
     def clearSubsetting(self):
         self.current_subset_specs = {}
         
-    def updateThresholding( self, target=None, trange=None ):
+    def updateThresholding( self, target=None, trange=None, normalized=True ):
         if target <> None:
-            subset_spec = ( target, trange[0], trange[1] )
+            subset_spec = ( target, trange[0], trange[1], normalized )
             self.current_subset_specs[target] = subset_spec
-            print " Update Thresholding: Generated spec = %s, render mode = %d " % ( str( subset_spec ), self.render_mode )
+            print " $$$$$$ Update Thresholding: Generated spec = %s, render mode = %d " % ( str( subset_spec ), self.render_mode )
         else: print " Update Thresholding: render mode = %d " % ( self.render_mode )
         self.invalidate()
         pc = self.getPointCloud()
         pc.generateSubset( spec=self.current_subset_specs )
+        if self.render_mode == ProcessMode.LowRes: 
+            self.configDialog.newSubset( self.point_cloud_overview.getCellData() )
         self.render( self.render_mode )
         sys.stdout.flush()
 
@@ -1196,13 +1204,14 @@ class CPCPlot(QtCore.QObject):
         self.invalidate()
         self.clearSliceSpecs()
         ( rmin, rmax ) = slice_bounds[ self.render_mode ]
-        self.current_subset_specs[ self.sliceAxes[sliceIndex] ] = ( self.sliceAxes[sliceIndex], rmin, rmax )
+        self.current_subset_specs[ self.sliceAxes[sliceIndex] ] = ( self.sliceAxes[sliceIndex], rmin, rmax, True )
         if self.render_mode ==  ProcessMode.HighRes:
             self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=True )
         else:
             self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
             if self.partitioned_point_cloud:
                 self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=False )
+        self.configDialog.newSubset( self.point_cloud_overview.getCellData() )
         self.render( self.render_mode )
 
 #    def updateSlicing1( self, sliceIndex, slice_bounds ):
@@ -1347,6 +1356,8 @@ class CPCPlot(QtCore.QObject):
         self.textDisplayMgr = TextDisplayMgr( self.renderer )             
         self.pointPicker = vtk.vtkPointPicker()
         self.pointPicker.PickFromListOn()   
+        try:        self.pointPicker.SetUseCells(True)  
+        except:     print>>sys.stderr,  "Warning, vtkPointPicker patch not installed, picking will not work properly."
         self.pointPicker.InitializePickList()             
         self.renderWindowInteractor.SetPicker(self.pointPicker) 
         if self.enableClip:

@@ -146,6 +146,23 @@ class MultiVarPointCollection():
                 else:                   np_var_data_block = np_var_data_block.flatten()
                 
         return np_var_data_block
+
+    def getTimeseries( self, var, pointIndex, iLevel = -1 ):
+        np_var_data_block = None
+        if self.lev == None:
+            np_var_data_block = var[ :, pointIndex ].data
+        else:
+            iLevIndex = self.getCoordIndex( var, 'z' )
+            if len( var.shape ) == 3: 
+                if iLevIndex == 1:              
+                    np_var_data_block = var[ :, iLevIndex, pointIndex ].data
+                elif iLevIndex == 2:     
+                    np_var_data_block = var[ :, pointIndex, iLevIndex ].data
+                    np_var_data_block = numpy.swapaxes( np_var_data_block, 0, 1 )
+                else:
+                    print>>sys.stderr, "Unimplemented axis order: %s " % var.getOrder()
+            
+        return np_var_data_block
     
     def processCoordinates( self, lat, lon ):
 #        print "Process Coordinates, lat = %s%s, lon = %s%s " % ( lat.id, str(lat.shape), lon.id, str(lon.shape)  )
@@ -256,6 +273,9 @@ class MultiVarPointCollection():
                     self.point_data_arrays['z'] = numpy.concatenate( np_points_data_list ).astype( numpy.float32 ) 
         self.vertical_bounds =  ( 0.0, stage_height )  
         self.axis_bounds[ 'z' ] = self.vertical_bounds
+        
+    def getAxisBounds( self, axis ): 
+        return self.axis_bounds[ axis ]                 
 
     def computePoints( self, **args ):
         nz = len( self.lev ) if self.lev else 1
@@ -390,7 +410,7 @@ class MultiVarPointCollection():
             if id(var_data) == id(None):
                 var_data = self.getDataBlock(self.var)  
                 self.var_data_cache[ self.iTimeStep ] = var_data
-            self.point_data_arrays[ grid_var_name ] = var_data
+            self.point_data_arrays[ grid_var_name ] = var_data.data
             self.vrange[grid_var_name] = ( var_data.min(), var_data.max() ) 
         return process
     
@@ -435,10 +455,8 @@ class MultiVarPointCollection():
         if not ( isNone(lat) or isNone(lon) ): 
             self.vars[ 'lat' ] = lat
             self.metadata[ 'lat' ] = ( getattr( lat, 'long_name', 'Latitude' ), getattr( lat, 'units', None ), self.axis_bounds.get( 'y', None ) )  
-            self.point_data_arrays[ 'lat' ] = self.getCoordDataBlock( lat )                            
             self.vars[ 'lon' ] = lon 
             self.metadata[ 'lon' ] = ( getattr( lon, 'long_name', 'Longitude' ), getattr( lon, 'units', None ), self.axis_bounds.get( 'x', None ) )  
-            self.point_data_arrays[ 'lon' ] = self.getCoordDataBlock( lon )                                
             self.time = self.var.getTime()
             z_scale = 0.5
             self.missing_value = self.var.attributes.get( 'missing_value', None )
@@ -449,18 +467,21 @@ class MultiVarPointCollection():
                         self.lev = axis[0]
                         break 
             if self.lev <> None: 
-                self.vars[ 'lev' ] = self.lev 
-                self.metadata[ 'lev' ] = ( self.lev.long_name, self.lev.units, self.axis_bounds.get( 'z', None ) ) 
-                self.point_data_arrays[ 'lev' ] = self.getCoordDataBlock( self.lev )                 
+                self.vars[ 'lev' ] = self.lev
             self.computePoints() 
+            self.point_data_arrays[ 'lon' ] = self.point_data_arrays['x']                                
+            self.point_data_arrays[ 'lat' ] = self.point_data_arrays['y']                            
             self.setPointHeights( height_var=self.grid_coords[3], z_scale=z_scale )
+            if self.lev <> None: 
+                self.metadata[ 'lev' ] = ( self.lev.long_name, self.lev.units, self.axis_bounds.get( 'z', None ) ) 
+                self.point_data_arrays[ 'lev' ] = self.point_data_arrays['z'] 
             for varname in self.df.variables:
                 if ( self.interface == InterfaceType.InfoVis ) or ( varname == self.grid_varname ):
                     var = self.getProcessedVariable( varname )
                     self.vars[ varname ] = var
                     var_data = self.getDataBlock( var )
                     if not isNone( var_data ):  
-                        self.point_data_arrays[ varname ] = var_data
+                        self.point_data_arrays[ varname ] = var_data.data
                         vrng = ( var_data.min(), var_data.max() )
                         self.vrange[ varname ] = vrng 
         #                self.var_data_cache[ self.iTimeStep ] = var_data
@@ -499,7 +520,7 @@ class MultiVarPointCollection():
     def computeThresholdRange( self, args ):
 #        print " computeThresholdRange: ", str( args )
         try:
-            ( threshold_target, rmin, rmax ) = args
+            ( threshold_target, rmin, rmax, normalized ) = args
         except ValueError:
             print>>sys.stderr, "Value Error Unpacking thresholding data: %s " % str( args )
             return None, None, None
@@ -518,12 +539,16 @@ class MultiVarPointCollection():
                     vmax = arange[0] + rmax * dv  
                 elif ( threshold_target == 'vardata' ) or ( threshold_target in self.vars.keys() ):
                     vrng = self.vrange[ var_data_id ]
-                    dv = vrng[1] - vrng[0]
-                    try:
-                        vmin = vrng[0] + rmin * dv
-                        vmax = vrng[0] + rmax * dv
-                    except TypeError, err:
-                        pass
+                    if normalized:
+                        dv = vrng[1] - vrng[0]
+                        try:
+                            vmin = vrng[0] + rmin * dv
+                            vmax = vrng[0] + rmax * dv
+                        except TypeError, err:
+                            pass
+                    else:
+                        vmin = vrng[0]
+                        vmax = vrng[1]                      
                 if vmin <> None:
                     if ( threshold_target == 'z' ):
                         nLev = len( self.lev )
@@ -544,7 +569,7 @@ class MultiVarPointCollection():
         op = args[0] 
         if op == 'indices': 
             threshold_mask = None
-            print "Processing computeThresholdRange: %s " % str( args )
+#            print "Processing computeThresholdRange: %s " % str( args )
             for var_op in args[1:]:  
                 var_data, vmin, vmax = self.computeThresholdRange( var_op )               
                 if not isNone(var_data):

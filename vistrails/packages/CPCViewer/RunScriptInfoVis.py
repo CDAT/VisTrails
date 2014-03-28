@@ -74,7 +74,7 @@ height_varnames = []
 var_proc_op = None
 showGui = True
 interface = InterfaceType.InfoVis
-roi = ( 0, 0, 50, 50 )
+roi = None # ( 0, 0, 50, 50 )
 
 
 if ns.data_type == "WRF":
