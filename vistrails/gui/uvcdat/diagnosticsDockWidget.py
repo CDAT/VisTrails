@@ -334,7 +334,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    def plotsetchanged(self,item,column):
       import metrics.frontend.uvcdat
       txt = item.text(item.columnCount()-1)
-      print 'need to call init for the thing that was just selected to get pre_compute done'
+#      print 'need to call init for the thing that was just selected to get pre_compute done'
       
       if self.useObs1 == True:
          if type(self.observations1) is list:
@@ -368,28 +368,28 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
       varlist = []
       vtmp = []
-      print 'varlist: ', varlist
-      print 'diagnostic group: ', self.DiagnosticGroup
+#      print 'varlist: ', varlist
+#      print 'diagnostic group: ', self.DiagnosticGroup
 
       if self.useDS1 == True:
-         print 'diag set name: ', self.diagnostic_set_name
+#         print 'diag set name: ', self.diagnostic_set_name
          vtmp = self.DiagnosticGroup.list_variables(self.ft1, diagnostic_set_name = self.diagnostic_set_name)
          varlist = vtmp
-      print 'new varlist1: ', varlist
-      print 'vtmp: ', vtmp
+#      print 'new varlist1: ', varlist
+#      print 'vtmp: ', vtmp
       if self.useDS2 == True:
          vtmp = self.DiagnosticGroup.list_variables(self.ft2, diagnostic_set_name = self.diagnostic_set_name)
          varlist = list(set(varlist) & (set(vtmp)))
       if self.useObs1 == True:
          vtmp = self.DiagnosticGroup.list_variables(self.obsft1, diagnostic_set_name = self.diagnostic_set_name)
          varlist = list(set(varlist) & (set(vtmp)))
-      print 'new varlist2: ', varlist
-      print 'vtmp: ', vtmp
+#      print 'new varlist2: ', varlist
+#      print 'vtmp: ', vtmp
       if self.useObs2 == True:
          vtmp = self.DiagnosticGroup.list_variables(self.obsft2, diagnostic_set_name = self.diagnostic_set_name)
          varlist = list(set(varlist) & (set(vtmp)))
-      print 'new varlist3: ', varlist
-      print 'vtmp: ', vtmp
+#      print 'new varlist3: ', varlist
+#      print 'vtmp: ', vtmp
 
 ###      var1 = []
 ###      var2 = []
@@ -429,35 +429,35 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 ###      varset = set(var1).union(set(var2)).union(set(var3)).union(set(var4))
 ###      vars = list(varset)
 
-      print 'SORTING varlist: ', varlist
+#      print 'SORTING varlist: ', varlist
       varlist.sort()
       self.variables = varlist
 
-      print self.variables
-      print 'DONE'
+#      print self.variables
+#      print 'DONE'
       for i in range(self.comboBoxVar.count()):
          self.comboBoxVar.removeItem(0)
 
       self.comboBoxVar.addItems(self.variables)
-      print 'ENABLING COMBOBOXVAR'
+#      print 'ENABLING COMBOBOXVAR'
       self.comboBoxVar.setEnabled(True)
       self.comboBoxSeason.setEnabled(True)
 
 #### variableChanged needs connected to comboBoxVar changes        
    def variableChanged(self, index):
       ## populate the aux menu, if appropriate
-      print 'CALLING ALLVARS *****'
+#      print 'CALLING ALLVARS *****'
       self.varmenu = self.DiagnosticGroup.all_variables(self.ft1, self.ft2, self.diagnostic_set_name)
-      print 'DONE'
+#      print 'DONE'
 #      print 'varmenu: ', self.varmenu
       varname = str(self.comboBoxVar.currentText())
 
       if varname in self.varmenu.keys():
-         print 'inside if, passed'
+#         print 'inside if, passed'
          variable = self.varmenu[varname]( varname, self.diagnostic_set_name, self.DiagnosticGroup )
          self.auxmenu = variable.varoptions()
       else:
-         print 'else so failed'
+#         print 'else so failed'
          self.auxmenu = None
       for i in range(self.comboBoxAux.count()):
          self.comboBoxAux.removeItem(0)
@@ -472,17 +472,17 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       diagnosticType = str(self.comboBoxType.itemText(index))
       self.treeWidget.clear()
 #      self.treeWidget.itemChanged.connect(self.plotsetchanged)
-      print 'SETTING DIAG GROUP'
+#      print 'SETTING DIAG GROUP'
       self.DiagnosticGroup = DiagnosticsDockWidget.dg_menu[diagnosticType]()
-      print 'DONE SETTING DIA GROUP', self.DiagnosticGroup
+#      print 'DONE SETTING DIA GROUP', self.DiagnosticGroup
       # ds_menu and seasons depend on self.DiagnosticGroup (only), so they are best
       # set right after self.DiagnosticGroup is set...
-      if self.ds_menu != None:
-         print '*************************** ds_menu before:', self.ds_menu
-      else:
-         print '*************************** ds_menu not initialized'
+#      if self.ds_menu != None:
+#         print '*************************** ds_menu before:', self.ds_menu
+#      else:
+#         print '*************************** ds_menu not initialized'
       self.ds_menu = self.DiagnosticGroup.list_diagnostic_sets()
-      print '*************************** ds_menu after:', self.ds_menu
+#      print '*************************** ds_menu after:', self.ds_menu
       self.seasons = self.DiagnosticGroup.list_seasons()
       # Note that the following loop calls plotsetchanged()
       for diagnostic_set in sorted(self.ds_menu.keys()):
@@ -598,12 +598,12 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         ft2 = None
         ft1 = None
         if(self.useDS1 == 1): #ds1
-            print 'setting ft1 to self.ds1'
+#            print 'setting ft1 to self.ds1'
             ft1 = self.ft1
             if(self.useDS2 == 1):
                ft2 = self.ft2
             if(self.useObs1 == 1):
-               print 'setting ft2 to self.obsft1'
+#               print 'setting ft2 to self.obsft1'
                ft2 = self.obsft1
             if(self.useObs2 == 1):
                ft2 = self.obsft2
@@ -614,7 +614,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             if(self.useObs2 == 1):
                ft2 = self.obsft2
         else: # just observation
-            print 'just obs'
+#            print 'just obs'
             if(self.useObs1 == 1):
                ft1 = self.obsft1
             if(self.useObs2 == 1):
@@ -632,8 +632,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          ### ADDED STR() HERE. NOT SURE IF IT WAS NEEDED YET ###
         self.diagnostic_set_name = str(diagnostic)
         self.plot_spec = self.ds_menu[diagnostic](ft1, ft2, variable, season, aux)
-        print 'options at apply clicked: ', self.opts
-        print 'options.opts at apply clicked: ', self.opts._opts
+#        print 'options at apply clicked: ', self.opts
+#        print 'options.opts at apply clicked: ', self.opts._opts
 
         ps = self.plot_spec
         if ps is None:
@@ -765,7 +765,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       print 'ITEM ACTIVATED. SET UP VAR LIST NOW'
 
    def itemClicked(self, item, column):
-      print 'THIS SHOULDNT BE CALLED'
+		print 'itemClicked called. This should not have occurred.'
+#      print 'THIS SHOULDNT BE CALLED'
       quit()
       if column == 0:
          if item.checkState(column) == Qt.Checked:
