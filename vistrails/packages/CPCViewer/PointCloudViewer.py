@@ -778,9 +778,6 @@ class CPCPlot(QtCore.QObject):
 
     def update_subset_specs(self, new_specs ):
         print " $$$$$$ update_subset_specs: %s " % str( new_specs )
-        for value in new_specs.values():
-            if ( len(value) < 4 ) or not value[3]:
-                print "xx"
         self.current_subset_specs.update( new_specs )
             
     def processSlicePlaneCommand( self, args ):
@@ -866,7 +863,7 @@ class CPCPlot(QtCore.QObject):
         if self.scalarRange <> None:
             self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )
         if self.defvar in self.volumeThresholdRange:
-            self.updateThresholding( self.defvar, self.volumeThresholdRange[self.defvar].getRange() )
+            self.updateThresholding( self.defvar, self.volumeThresholdRange[self.defvar].getRange(), False )
                    
     def processColorScaleCommand( self, args = None ):
         if args and args[0] == "ButtonClick":
