@@ -49,13 +49,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       import metrics.frontend.uvcdat
       import os
       # For speed of entry; these will be set to '/' for the real checkin.
-      self.DS1PathLabel.setText('/Users/bs1/data/tropics/co2')
+      self.DS1PathLabel.setText('/')
       self.opts._opts['path'].append(str(self.DS1PathLabel.text()))
-      self.DS2PathLabel.setText('/Users/bs1/data/tropics/no_co2')
+      self.DS2PathLabel.setText('/')
       self.opts._opts['path'].append(str(self.DS2PathLabel.text()))
-      self.obs1PathLabel.setText('/Users/bs1/data/jeff/obs')
+      self.obs1PathLabel.setText('/')
       self.opts._opts['obspath'].append(str(self.obs1PathLabel.text()))
-      self.obs2PathLabel.setText('/Users/bs1/data/jeff/obs')
+      self.obs2PathLabel.setText('/')
       self.opts._opts['obspath'].append(str(self.obs2PathLabel.text()))
         
       self.tmppth = os.path.join(os.environ['HOME'],"tmp")
