@@ -132,13 +132,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       # that's basically all we can/should do until someone selects some directories, etc
       # disable some widgets until the metrics code implements the feature. perhaps these should be hidden instead?
       self.DS1ShortnameEdit.setEnabled(False)
-      self.DS1TimeRangeCheck.setEanbled(False)
+      self.DS1TimeRangeCheck.setEnabled(False)
       self.DS1StartLabel.setEnabled(False)
       self.DS1StartEdit.setEnabled(False)
       self.DS1EndLabel.setEnabled(False)
       self.DS1EndEdit.setEnabled(False)
       self.DS2ShortnameEdit.setEnabled(False)
-      self.DS2TimeRangeCheck.setEanbled(False)
+      self.DS2TimeRangeCheck.setEnabled(False)
       self.DS2StartLabel.setEnabled(False)
       self.DS2StartEdit.setEnabled(False)
       self.DS2EndLabel.setEnabled(False)
