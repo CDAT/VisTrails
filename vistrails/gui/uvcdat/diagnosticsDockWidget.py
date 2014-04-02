@@ -765,7 +765,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       print 'ITEM ACTIVATED. SET UP VAR LIST NOW'
 
    def itemClicked(self, item, column):
-		print 'itemClicked called. This should not have occurred.'
+      print 'itemClicked called. This should not have occurred.'
 #      print 'THIS SHOULDNT BE CALLED'
       quit()
       if column == 0:
