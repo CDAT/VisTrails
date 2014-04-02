@@ -130,6 +130,21 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 #      self.comboBoxVar.addItems(['Variables'])
       self.comboBoxAux.addItems(['Var Options'])
       # that's basically all we can/should do until someone selects some directories, etc
+      # disable some widgets until the metrics code implements the feature. perhaps these should be hidden instead?
+      self.DS1ShortnameEdit.setEnabled(False)
+      self.DS1TimeRangeCheck.setEanbled(False)
+      self.DS1StartLabel.setEnabled(False)
+      self.DS1StartEdit.setEnabled(False)
+      self.DS1EndLabel.setEnabled(False)
+      self.DS1EndEdit.setEnabled(False)
+      self.DS2ShortnameEdit.setEnabled(False)
+      self.DS2TimeRangeCheck.setEanbled(False)
+      self.DS2StartLabel.setEnabled(False)
+      self.DS2StartEdit.setEnabled(False)
+      self.DS2EndLabel.setEnabled(False)
+      self.DS2EndEdit.setEnabled(False)
+      self.obs1TranslateCheck.setEnabled(False)
+      self.obs2TranslateCheck.setEnabled(False)
 
 
    # used for enabling/disabling controls en masse
@@ -140,11 +155,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          self.DS1ShortnameEdit.setEnabled(value)
          self.DS1FilterEdit.setEnabled(value)
          self.DS1FilterLabel.setEnabled(value)
-         self.DS1TimeRangeCheck.setEnabled(value)
-         self.DS1StartLabel.setEnabled(value)
-         self.DS1StartEdit.setEnabled(value)
-         self.DS1EndLabel.setEnabled(value)
-         self.DS1EndEdit.setEnabled(value)
+#         self.DS1TimeRangeCheck.setEnabled(value)
+#         self.DS1StartLabel.setEnabled(value)
+#         self.DS1StartEdit.setEnabled(value)
+#         self.DS1EndLabel.setEnabled(value)
+#         self.DS1EndEdit.setEnabled(value)
          self.useDS1 = value
       if field == 'ds2':
          self.pickDS2Path.setEnabled(value)
@@ -152,22 +167,22 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          self.DS2ShortnameEdit.setEnabled(value)
          self.DS2FilterEdit.setEnabled(value)
          self.DS2FilterLabel.setEnabled(value)
-         self.DS2TimeRangeCheck.setEnabled(value)
-         self.DS2StartLabel.setEnabled(value)
-         self.DS2StartEdit.setEnabled(value)
-         self.DS2EndLabel.setEnabled(value)
-         self.DS2EndEdit.setEnabled(value)
+#         self.DS2TimeRangeCheck.setEnabled(value)
+#         self.DS2StartLabel.setEnabled(value)
+#         self.DS2StartEdit.setEnabled(value)
+#         self.DS2EndLabel.setEnabled(value)
+#         self.DS2EndEdit.setEnabled(value)
          self.useDS2 = value
       if field == 'obs1':
          self.obs1PathLabel.setEnabled(value)
          self.pickObs1Path.setEnabled(value)
-         self.obs1TranslateCheck.setEnabled(value)
+#         self.obs1TranslateCheck.setEnabled(value)
          self.comboBoxObservation1.setEnabled(value)
          self.useObs1 = value
       if field == 'obs2':
          self.obs2PathLabel.setEnabled(value)
          self.pickObs2Path.setEnabled(value)
-         self.obs2TranslateCheck.setEnabled(value)
+#         self.obs2TranslateCheck.setEnabled(value)
          self.comboBoxObservation2.setEnabled(value)
          self.useObs2 = value
 
