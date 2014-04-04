@@ -349,7 +349,7 @@ class QCellToolBar(QtGui.QToolBar):
         cell = self.sheet.getCell(self.row, self.col)
         if isinstance(cell, QCellWidget):
             filename = QtGui.QFileDialog.getSaveFileName(
-                self, "Select a File to Export the Sheet",
+                self, "Save cell as...",
                 ".", ';;'.join(cell.save_formats))
             if filename:
                 filename = str(filename)
