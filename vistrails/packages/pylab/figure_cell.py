@@ -63,6 +63,13 @@ class MplFigureCellWidget(QCellWidget):
     as a child for displaying figures
     
     """
+
+    save_formats = ["Portable Document Format (*.pdf)",
+                    "Portable Network Graphic (*.png)",
+                    "PostScript (*.ps *.eps)",
+                    "Raw images (*.raw *.rgba)",
+                    "Scalable Vector Graphics (*.svg *.svgz)"]
+
     def __init__(self, parent=None):
         """ MplFigureCellWidget(parent: QWidget) -> MplFigureCellWidget
         Initialize the widget with its central layout

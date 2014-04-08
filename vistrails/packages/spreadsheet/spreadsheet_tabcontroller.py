@@ -257,9 +257,9 @@ class StandardWidgetTabController(QtGui.QTabWidget):
         from core.configuration import get_vistrails_configuration
         if not hasattr(self, 'uvcdatPreferencesVar'):
             self.uvcdatPreferencesVar = QtGui.QAction(UVCDATTheme.PREFERENCES_ICON,
-                                                      'Preferences',
+                                                      'Sheet Options',
                                                       self)
-            self.uvcdatPreferencesVar.setStatusTip("Show Preferences")
+            self.uvcdatPreferencesVar.setStatusTip("Show Sheet Options")
             
             prefMenu = QtGui.QMenu(self)
             executeAction = prefMenu.addAction("Auto-Execute")
@@ -279,6 +279,16 @@ class StandardWidgetTabController(QtGui.QTabWidget):
             if conf.has('uvcdat'):
                 checked = conf.uvcdat.check('aspectRatio')
             aspectAction.setChecked(checked)
+
+            exportMenu = prefMenu.addMenu("Export Sheet")
+            singleAction = exportMenu.addAction('As a Single Image...')
+            multiAction = exportMenu.addAction('Separately...')
+            self.connect(singleAction,
+                         QtCore.SIGNAL('triggered()'),
+                         self.exportSheetToSingleImageActionTriggered)
+            self.connect(multiAction,
+                         QtCore.SIGNAL('triggered()'),
+                         self.exportSheetToSeparateImagesActionTriggered)
             
             themeMenu = prefMenu.addMenu("Icons Theme")
             defaultThemeAction = themeMenu.addAction("Default")
@@ -387,39 +397,44 @@ class StandardWidgetTabController(QtGui.QTabWidget):
             singleAction = exportMenu.addAction('As a Single Image')
             multiAction = exportMenu.addAction('Separately')
             self.exportSheetToImageVar.setMenu(exportMenu)
-            
+
             self.connect(self.exportSheetToImageVar,
                          QtCore.SIGNAL('triggered(bool)'),
-                         self.exportSheetToImageActionTriggered)
-            
-            self.connect(exportMenu,
-                         QtCore.SIGNAL('triggered(QAction*)'),
-                         self.exportSheetToImageActionTriggered)
+                         self.exportSheetToSingleImageActionTriggered)
+
+            self.connect(singleAction,
+                         QtCore.SIGNAL('triggered()'),
+                         self.exportSheetToSingleImageActionTriggered)
+            self.connect(multiAction,
+                         QtCore.SIGNAL('triggered()'),
+                         self.exportSheetToSeparateImagesActionTriggered)
         return self.exportSheetToImageVar
 
-    def exportSheetToImageActionTriggered(self, action=None):
-        """ exportSheetToImageActionTriggered(checked: boolean) -> None
-        Actual code to create export an image
-        
+    def exportSheetToSingleImageActionTriggered(self, action=None):
+        """ exportSheetToSingleImageActionTriggered() -> None
+        Exports the sheet as a big image
         """
-        if type(action)!=bool and action.text()=='Separately':
-            dir = QtGui.QFileDialog.getExistingDirectory(
-                self, 'Select a Directory to Export Images', ".",
-                QtGui.QFileDialog.ShowDirsOnly)
-            if not dir.isNull():
-                self.currentWidget().exportSheetToImages(str(dir))
-        else:
-            file = QtGui.QFileDialog.getSaveFileName(
-                self, "Select a File to Export the Sheet",
-                ".", "Images (*.png *.xpm *.jpg);;PDF file (*.pdf)")
-            if not file.isNull():
-                filename = str(file)
-                (_,ext) = os.path.splitext(filename)
-                if  ext.upper() == '.PDF':
-                    self.currentWidget().exportSheetToPDF(filename)
-                else:
-                    self.currentWidget().exportSheetToImage(filename)
-        
+        filename = QtGui.QFileDialog.getSaveFileName(
+            self, "Select a File to Export the Sheet",
+            ".", "Images (*.png *.xpm *.jpg);;PDF file (*.pdf)")
+        if not filename.isNull():
+            filename = str(filename)
+            (_,ext) = os.path.splitext(filename)
+            if  ext.upper() == '.PDF':
+                self.currentWidget().exportSheetToPDF(filename)
+            else:
+                self.currentWidget().exportSheetToImage(filename)
+
+    def exportSheetToSeparateImagesActionTriggered(self, action=None):
+        """ exportSheetToSeparateImagesActionTriggered() -> None
+        Exports the cells as separate images
+        """
+        dirname = QtGui.QFileDialog.getExistingDirectory(
+            self, 'Select a Directory to Export Images', ".",
+            QtGui.QFileDialog.ShowDirsOnly)
+        if not dirname.isNull():
+            self.currentWidget().exportSheetToImages(str(dirname))
+
     def newSheetActionTriggered(self, checked=False):
         """ newSheetActionTriggered(checked: boolean) -> None
         Actual code to create a new sheet

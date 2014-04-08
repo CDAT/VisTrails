@@ -58,6 +58,7 @@ class QCellWidget(QtGui.QWidget):
     should inherit from this.
     
     """
+    save_formats = ["Images (*.png *.xpm *.jpg)", "PDF files (*.pdf)"]
 
     def __init__(self, parent=None, flags=QtCore.Qt.WindowFlags()):
         """ QCellWidget(parent: QWidget) -> QCellWidget
@@ -262,8 +263,14 @@ class QCellWidget(QtGui.QWidget):
         """ dumpToFile(filename: str, dump_as_pdf: bool) -> None
         Dumps itself as an image to a file, calling grabWindowPixmap """
         pixmap = self.grabWindowPixmap()
-        pixmap.save(filename,"PNG")
-            
+        ext = os.path.splitext(filename)[1].lower()
+        if not ext:
+            pixmap.save(filename, 'PNG')
+        elif ext == '.pdf':
+            self.saveToPDF(filename)
+        else:
+            pixmap.save(filename)
+
     def saveToPDF(self, filename):
         printer = QtGui.QPrinter()
 
@@ -307,6 +314,7 @@ class QCellToolBar(QtGui.QToolBar):
         self.setIconSize(QtCore.QSize(24,24))
         icon = UVCDATTheme.DELETE_CELL_ICON
         self.appendAction(QCellToolBarRemoveCell(icon, self))
+        self.addSaveCellAction()
         self.appendAction(QCellToolBarExecutePlot(self))
         self.appendAction(QCellToolBarViewSource(self))
         self.appendAction(QCellToolBarConfigurePlot(self))
@@ -325,8 +333,35 @@ class QCellToolBar(QtGui.QToolBar):
         self.appendAction(QCellToolBarPlayHistory(self))
         self.appendAction(QCellToolBarClearHistory(self))
 
+    def addSaveCellAction(self):
+        if not hasattr(self, 'saveActionVar'):
+            self.saveActionVar = QCellToolBarSelectedCell(
+                    QtGui.QIcon(":/images/camera.png"),
+                    "Save cell",
+                    self)
+            self.saveActionVar.setStatusTip("Export this cell only")
+
+            self.connect(self.saveActionVar, QtCore.SIGNAL('triggered(bool)'),
+                         self.exportCell)
+        self.appendAction(self.saveActionVar)
+
+    def exportCell(self, checked=False):
+        cell = self.sheet.getCell(self.row, self.col)
+        if isinstance(cell, QCellWidget):
+            if not cell.save_formats:
+                QtGui.QMessageBox.information(
+                        self, "Export cell",
+                        "This cell type doesn't provide any export option")
+                return
+            filename = QtGui.QFileDialog.getSaveFileName(
+                self, "Select a File to Export the Sheet",
+                ".", ';;'.join(cell.save_formats))
+            if filename:
+                filename = str(filename)
+                cell.dumpToFile(filename)
+
     def createToolBar(self):
-        """ createToolBar() -> None        
+        """ createToolBar() -> None
         A user-defined method for customizing the toolbar. This is
         going to be an empty method here for inherited classes to
         override.
@@ -401,7 +436,19 @@ class QCellToolBar(QtGui.QToolBar):
         else:
             return None
 
-class QCellToolBarRemoveCell(QtGui.QAction):
+class QCellToolBarSelectedCell(QtGui.QAction):
+    """
+    QCellToolBarSelectedCell is an action only visible if the cell isn't empty.
+    """
+    def updateStatus(self, info):
+        """ updateStatus(info: tuple) -> None
+        Updates the status of the button based on the input info
+
+        """
+        (sheet, row, col, cellWidget) = info
+        self.setVisible(cellWidget != None)
+
+class QCellToolBarRemoveCell(QCellToolBarSelectedCell):
     """
     QCellToolBarRemoveCell is the action to clear the current cell
 
@@ -410,12 +457,12 @@ class QCellToolBarRemoveCell(QtGui.QAction):
         """ QCellToolBarRemoveCell(icon: QIcon, parent: QWidget)
                                    -> QCellToolBarRemoveCell
         Setup the image, status tip, etc. of the action
-        
+
         """
-        QtGui.QAction.__init__(self,
-                               icon,
-                               "&Clear the current cell",
-                               parent)
+        QCellToolBarSelectedCell.__init__(self,
+                                          icon,
+                                          "&Clear the current cell",
+                                          parent)
         self.setStatusTip("Clear the current cell")
 
     def triggeredSlot(self, checked=False):
@@ -432,14 +479,6 @@ class QCellToolBarRemoveCell(QtGui.QAction):
         if (r==QtGui.QMessageBox.Yes):
             self.toolBar.sheet.deleteCell(self.toolBar.row, self.toolBar.col)
 
-    def updateStatus(self, info):
-        """ updateStatus(info: tuple) -> None
-        Updates the status of the button based on the input info
-        
-        """
-        (sheet, row, col, cellWidget) = info
-        self.setVisible(cellWidget!=None)
-        
 class QCellToolBarConfigurePlot(QtGui.QAction):
     """
     QCellToolBarConfigurePlot is the action to configure the plot of the
@@ -638,7 +677,7 @@ class QCellToolBarViewProvenance(QtGui.QAction):
             self.setVisible(True)
         else:
             self.setVisible(False)
-            
+
 class QCellToolBarMergeCells(QtGui.QAction):
     """
     QCellToolBarMergeCells is the action to merge selected cells to a

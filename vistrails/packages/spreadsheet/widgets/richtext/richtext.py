@@ -62,6 +62,8 @@ class RichTextCellWidget(QCellWidget):
     RichTextCellWidget has a QTextBrowser to display HTML files
     
     """
+    save_formats = QCellWidget.save_formats + ["HTML files (*.html)"]
+
     def __init__(self, parent=None):
         """ RichTextCellWidget(parent: QWidget) -> RichTextCellWidget
         Create a rich text cell without a toolbar
@@ -95,21 +97,18 @@ class RichTextCellWidget(QCellWidget):
             self.browser.setText("No HTML file is specified!")
             
     def dumpToFile(self, filename):
-        """ dumpToFile(filename) -> None 
-        It will generate a screenshot of the cell contents and dump to filename.
-        It will also create a copy of the original text file used with 
-        filename's basename and the original extension.
+        """ dumpToFile(filename) -> None
+        It will generate a screenshot of the cell contents, or a copy of the
+        original document, depending on the given filename.
         """
-        if self.fileSrc is not None:
-            (_, s_ext) = os.path.splitext(self.fileSrc)
-            (f_root, f_ext) = os.path.splitext(filename)
-            ori_filename = f_root + s_ext
-            shutil.copyfile(self.fileSrc, ori_filename)
-        QCellWidget.dumpToFile(self,filename)
-            
+        if self.html is not None:
+            if os.path.splitext(filename)[1].lower() in ('.html', '.html'):
+                shutil.copyfile(self.fileSrc, filename)
+            else:
+                super(RichTextCellWidget, self).dumpToFile(filename)
+
     def saveToPDF(self, filename):
         printer = QtGui.QPrinter()
         printer.setOutputFormat(QtGui.QPrinter.PdfFormat)
         printer.setOutputFileName(filename)
         self.browser.print_(printer)
-        
