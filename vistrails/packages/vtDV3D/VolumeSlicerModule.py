@@ -508,6 +508,7 @@ class PM_VolumeSlicer(PersistentVisualizationModule):
             if action == ImagePlaneWidget.Pushing: 
                 ispec = self.inputSpecs[ 0 ] 
                 md = ispec.getMetadata()
+                if (md == None): return
                 latLonGrid = md.get( 'latLonGrid', True )
                 if not self.isSlicing:
                     HyperwallManager.getInstance().setInteractionState( 'VolumeSlicer.Slicing' )
