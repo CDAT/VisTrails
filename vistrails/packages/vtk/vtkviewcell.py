@@ -37,6 +37,7 @@
 # VTK/GUISupport/QVTK. Combine altogether to a single class: QVTKViewWidget
 ################################################################################
 import vtk
+import os
 from PyQt4 import QtCore, QtGui
 import sip
 from core import system
@@ -886,7 +887,11 @@ class QVTKViewWidget(QCellWidget):
         """dumpToFile() -> None
         Dumps itself as an image to a file, calling saveToPNG
         """
-        self.saveToPNG(filename)
+        ext = os.path.splitext(filename)[1].lower()
+        if ext == '.pdf':
+            self.saveToPDF(filename)
+        else:
+            self.saveToPNG(filename)
 
 class QVTKViewWidgetSaveCamera(QtGui.QAction):
     """
