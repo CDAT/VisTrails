@@ -1125,7 +1125,8 @@ class QCDATWidget(QCellWidget):
     vcdat already creates 5 canvas objects
     
     """
-    save_formats = ["Images (*.png *.gif)",
+    save_formats = ["PNG file (*.png)",
+                    "GIF file (*.gif)",
                     "PDF file (*.pdf)",
                     "Postscript file (*.ps)",
                     "SVG file (*.svg)"]
