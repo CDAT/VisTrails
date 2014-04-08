@@ -9,10 +9,10 @@ import metrics.frontend.uvcdat
 from metrics.frontend.options import Options
 
 import metrics.fileio.findfiles
-import metrics.packages.common.diagnostic_groups
+import metrics.packages.diagnostic_groups
 
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
-   dg_menu = metrics.packages.common.diagnostic_groups.diagnostics_menu()  # typical item: 'AMWG':AMWG
+   dg_menu = metrics.packages.diagnostic_groups.diagnostics_menu()  # typical item: 'AMWG':AMWG
    diagnostic_set_name = "Not implemented"
    # for now. ugly though. needs fixed.
    opts = Options()
@@ -667,6 +667,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             Ncolumns = dim[1]
         if type(res) is not list:
             res = [res]
+        print "***jfp res=",res
 
         # I'm keeping this old message as a reminder of scrollable panes, a feature which would be
         # nice to have in the future (but it doesn't work now)...
@@ -702,10 +703,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       print "labels:",labels
       print "title:",title
       print "presentation:",presentation
+      print "x min,max:",presentation.datawc_x1, presentation.datawc_x2
+      print "y min,max:",presentation.datawc_y1, presentation.datawc_y2
       print "res",res30.type
       #define where to drag and drop
       import cdms2
       from packages.uvcdat_cdms.init import CDMSVariable
+      from core.utils import InstanceObject
       for V in pvars:
          # We really need to fix the 2-line plots.  Scale so that both variables use the
          # same axes!  The Diagnostics package can provide upper and lower bounds for the
@@ -749,7 +753,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          V=pm._plot_list["VCS"]
          print V.keys()
          gm = res30.presentation
-         from packages.uvcdat_cdms.init import get_canvas
+         from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
          from gui.uvcdat.uvcdatCommons import gmInfos
          Gtype = res30.type
          G = V[Gtype]
@@ -758,8 +762,19 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          if not gm.name in G.keys():
             G[gm.name] = pm._registry.add_plot(gm.name,"VCS",None,None,Gtype)
             G[gm.name].varnum = int(gmInfos[Gtype]["nSlabs"])
-         #plot = projectController.plot_manager.new_plot('VCS', Gtype, gm.name )
-         plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
+
+         #add initial attributes to global dict
+         canvas = get_canvas()
+         method_name = "get"+Gtype.lower()
+         attributes = get_gm_attributes(Gtype)
+
+         attrs = {}
+         for attr in attributes:
+            attrs[attr] = getattr(gm,attr)
+         original_gm_attributes[Gtype][gm.name] = InstanceObject(**attrs)
+
+         plot = projectController.plot_manager.new_plot('VCS', Gtype, gm.name )
+         #plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
          plotDropInfo = (plot, sheet, row, column)
          projectController.plot_was_dropped(plotDropInfo)
 
