@@ -372,7 +372,7 @@ class ProjectController(QtCore.QObject):
             if isinstance(varObj, cdms2.tvariable.TransientVariable):
                 _app.uvcdatWindow.dockVariable.widget().addVariable(varObj)
             
-    def load_variables_from_modules(self, var_modules, helper, cell):
+    def load_variables_from_modules(self, var_modules, helper, cell=None):
         for varm in var_modules:
             varname = helper.get_value_from_function(varm, 'name')
             if varname not in self.defined_variables:
@@ -386,13 +386,15 @@ class ProjectController(QtCore.QObject):
                     filename = QtGui.QFileDialog.getOpenFileName(_app.uvcdatWindow, 
                                                                  'Filename not found: '+oldFilename,
                                                                   oldFilename)
-                
-                    self.vt_controller.change_selected_version(cell.current_parent_version)
+                    if cell is not None:
+                        # else assume correct version
+                        self.vt_controller.change_selected_version(cell.current_parent_version)
                     self.vt_controller.update_function(varm, 'file', [str(filename)])
-                    cell.current_parent_version = self.vt_controller.current_version
+                    if cell is not None:
+                        cell.current_parent_version = self.vt_controller.current_version
                     
                     # get the new modified variable and emit
-                    pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
+                    pipeline = self.vt_controller.vistrail.getPipeline(self.vt_controller.current_version)
                     varm = PlotPipelineHelper.find_module_by_id(pipeline, varm.id)
                     var = varm.module_descriptor.module.from_module(varm)
                     self.defined_variables[varname] = var
@@ -402,9 +404,11 @@ class ProjectController(QtCore.QObject):
                 oldFilename = helper.get_value_from_function(varm, 'file').name
                 newFilename = self.defined_variables[varname].filename
                 if oldFilename != newFilename:
-                    self.vt_controller.change_selected_version(cell.current_parent_version)
+                    if cell is not None:
+                        self.vt_controller.change_selected_version(cell.current_parent_version)
                     self.vt_controller.update_function(varm, 'file', [str(newFilename)])
-                    cell.current_parent_version = self.vt_controller.current_version
+                    if cell is not None:
+                        cell.current_parent_version = self.vt_controller.current_version
                 
     def load_computed_variables_from_modules(self, op_modules, info, op_info, helper):
         for (opm,op) in op_modules:
@@ -621,16 +625,8 @@ class ProjectController(QtCore.QObject):
         var_modules = helper.find_modules_by_type(pipeline, 
                                                   [Variable])
         if len(var_modules) > 0:
-            if cell is None:
-                cell = lambda:None
-                cell.current_parent_version = 0L
             self.load_variables_from_modules(var_modules, helper, cell)
             
-        #pipeline = self.vt_controller.vistrail.getPipeline(cell.current_parent_version)
-        #this will give me the modules in topological order
-        #so when I try to reconstruct the operations they will be on the
-        #right order
-        
         op_modules = helper.find_topo_sort_modules_by_types(pipeline, 
                                                  [CDMSVariableOperation])
         op_tuples = []
