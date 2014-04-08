@@ -585,7 +585,9 @@ def getSigString( klass ):
 
 def isLevelAxis( axis ):
     if axis.isLevel(): return True
-    if ( axis.id == 'isobaric' ): 
+    lev_aliases = [ 'isobaric', 'height' ]
+    lev_name = axis.id.lower()
+    if lev_name in lev_aliases: 
         axis.designateLevel(1)
         return True
     return False

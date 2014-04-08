@@ -241,11 +241,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
         return var, dsetId
     
     def designateAxes(self,var):
-        lev_aliases = [ 'bottom', 'top', 'zdim', 'level' ]
+        lev_aliases = [ 'bottom', 'top', 'zdim', 'level', 'height', 'isobaric' ]
         lev_axis_attr = [ 'z' ]
-        lat_aliases = [ 'north', 'south', 'ydim' ]
+        lat_aliases = [ 'north', 'south' ]
+        alt_lat_names = [ 'ydim' ]
         lat_axis_attr = [ 'y' ]
-        lon_aliases = [ 'east', 'west', 'xdim' ]
+        lon_aliases = [ 'east', 'west' ]
+        alt_lon_names = [ 'xdim' ]
         lon_axis_attr = [ 'x' ]
         latLonGrid = True
         for axis in var.getAxisList():
@@ -255,12 +257,18 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                     print " --> Designating axis %s as a Level axis " % axis.id            
                 elif matchesAxisType( axis, lat_axis_attr, lat_aliases ):
                     axis.designateLatitude()
-                    print " --> Designating axis %s as a Latitude axis " % axis.id 
-                    latLonGrid = False                     
+                    print " --> Designating axis %s as a fake Latitude axis " % axis.id 
+                    latLonGrid = False 
+                elif axis.id.lower() in alt_lat_names:
+                    axis.designateLatitude()
+                    print " --> Designating axis %s as a true Latitude axis " % axis.id                                        
                 elif matchesAxisType( axis, lon_axis_attr, lon_aliases ):
                     axis.designateLongitude()
-                    print " --> Designating axis %s as a Longitude axis " % axis.id 
+                    print " --> Designating axis %s as a fake Longitude axis " % axis.id 
                     latLonGrid = False 
+                elif axis.id.lower() in alt_lon_names:
+                    axis.designateLongitude()
+                    print " --> Designating axis %s as a true Longitude axis " % axis.id                                        
             elif ( axis.isLatitude() or axis.isLongitude() ):
                 if ( axis.id.lower()[0] == 'x' ) or ( axis.id.lower()[0] == 'y' ):
                     latLonGrid = False 
