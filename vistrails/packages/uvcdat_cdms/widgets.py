@@ -18,7 +18,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
     def __init__(self, module, controller, parent=None, show_buttons=True):
         QtGui.QWidget.__init__(self, parent)
         self.module = module
-        self.module_descriptor = self.module.module_descriptor.module
+        self.module_instance = self.module.module_descriptor.module()
         self.controller = controller
         self.show_buttons = show_buttons
         self.layout = QtGui.QVBoxLayout()
@@ -28,7 +28,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         self.populate_fun_map()
         self.gmName = self.getValueFromFunction("graphicsMethodName")
         if self.gmName is None:
-            self.gmName = self.module_descriptor().graphics_method_name
+            self.gmName = self.module_instance.graphics_method_name
         self.mapAttributesToFunctions()
         self.tabWidget = QtGui.QTabWidget(self)
         
@@ -66,7 +66,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         self.tabWidget.setCurrentIndex(0)
       
     def createEditor(self, parent, gmName):
-        plot_type = self.module.module_descriptor.module().plot_type
+        plot_type = self.module_instance.plot_type
         if plot_type == "Boxfill":
             return QBoxfillEditor(self.tabWidget, gmName)
         elif plot_type == "Isofill":
@@ -145,65 +145,47 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
                 
     def mapAttributesToFunctions(self):
         self.attributes = {}
-        default = self.module_descriptor()
+        default = self.module_instance
         default.set_default_values(self.gmName)
         for name in default.gm_attributes:
             self.attributes[name] = getattr(default, name)
             
         for fun in self.fun_map:
-            if fun in self.module_descriptor.gm_attributes:
+            if fun in self.module_instance.gm_attributes:
                 self.attributes[fun] = self.getValueFromFunction(fun)
-                
-    def updateVistrail(self):
+
+    def getFunctionUpdates(self):
         functions = []
         gm = InstanceObject(**self.attributes)
         self.gmEditor.applyChanges(gm)
-        pipeline = self.controller.vistrail.getPipeline(self.controller.current_version)
-        # maybe this module was just added by the user in the gui and it was not
-        # added to the pipeline yet. So we need to add it before updating the
-        # functions
-        action1 = None
-        if self.module.id not in pipeline.modules:
-            ops = [('add', self.module)]
-            action1 = core.db.action.create_action(ops)
-            self.controller.add_new_action(action1)
-            self.controller.perform_action(action1)
+
         for attr in self.attributes:
             newval = getattr(gm,attr)
             if newval != self.attributes[attr]:
                 functions.append((attr,[str(getattr(gm,attr))]))
                 self.attributes[attr] = newval
-        
+
+        # FIXME why can't these be rolled in with self.attributes?
         #continents
         if hasattr(self.gmEditor, 'continents') :
             gui_continent = self.gmEditor.continents.currentIndex() + 1
-            if self.continents is None:
-                func_obj = self.controller.create_function(self.module, 
-                                                           'continents', 
-                                                           [str(gui_continent)])
-                action1 = self.controller.add_function_action(self.module, func_obj)
-                self.continents = gui_continent
-            elif gui_continent != self.continents:
+            if self.continents is None or gui_continent != self.continents:
                 functions.append(('continents',[str(gui_continent)]))
                 self.continents = gui_continent
             
         # aspect ratio
         gui_ratio = self.gmEditor.getAspectRatio()
-        if self.ratio is None:
-            func_obj = self.controller.create_function(self.module,
-                                                       'ratio',
-                                                       [str(gui_ratio)])
-            action1 = self.controller.add_function_action(self.module, func_obj)
-            self.ratio = gui_ratio
-        elif gui_ratio != self.ratio:
+        if self.ratio is None or gui_ratio != self.ratio:
             functions.append(('ratio', [str(gui_ratio)]))
             self.ratio = gui_ratio
+
+        return functions
                 
-        action = self.controller.update_functions(self.module, 
-                                                  functions)
+    def updateVistrail(self):
+        functions = self.getFunctionUpdates()
+        ops = self.controller.update_functions_ops(self.module, functions)
+        action = core.db.action.create_action(ops)
         
-        if action is None:
-            action = action1
         return (action, True)
     
     def checkForChanges(self):
