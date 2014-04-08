@@ -599,11 +599,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         #group = str(self.checkedItem.parent().text(0))
         #Never name something 'type', it's a reserved word! type = str(self.comboBoxType.currentText())
         variable = str(self.comboBoxVar.currentText())
+        auxname = str(self.comboBoxAux.currentText())
         season = str(self.comboBoxSeason.currentText())
         print "diagnostic: %s" % diagnostic
         print "observation1: %s" % self.observation1
         print "observation2: %s" % self.observation2
         print "variable: %s" % variable
+        print "auxiliary option: %s" % auxname
         print "season: %s" % season
         # initial test, first cut:
         # This stuff should go elsewhere...
