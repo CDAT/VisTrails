@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>450</width>
-    <height>473</height>
+    <width>428</width>
+    <height>476</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +20,7 @@
       <x>0</x>
       <y>0</y>
       <width>421</width>
-      <height>431</height>
+      <height>441</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="mainLayout">
@@ -38,10 +38,10 @@
        <widget class="QWidget" name="scrollAreaWidgetContents">
         <property name="geometry">
          <rect>
-          <x>0</x>
+          <x>-1</x>
           <y>0</y>
-          <width>392</width>
-          <height>781</height>
+          <width>393</width>
+          <height>853</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -98,6 +98,13 @@
             <string>Variable</string>
            </property>
            <layout class="QGridLayout" name="varGridLayout">
+            <item row="0" column="1">
+             <widget class="QLabel" name="VarOptionsLabel">
+              <property name="text">
+               <string>Variable Options:</string>
+              </property>
+             </widget>
+            </item>
             <item row="0" column="2">
              <widget class="QComboBox" name="comboBoxAux">
               <property name="enabled">
@@ -108,13 +115,6 @@
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
-             <widget class="QLabel" name="VarOptionsLabel">
-              <property name="text">
-               <string>Variable Options:</string>
               </property>
              </widget>
             </item>
@@ -153,15 +153,25 @@
           </widget>
          </item>
          <item>
-          <widget class="QGroupBox" name="DS1GroupBox">
-           <property name="title">
-            <string>Dataset 1</string>
+          <widget class="QCheckBox" name="DS1checkBox">
+           <property name="text">
+            <string>Use Dataset 1</string>
            </property>
-           <property name="checkable">
+           <property name="checked">
             <bool>true</bool>
            </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="DS1GroupBox">
+           <property name="title">
+            <string/>
+           </property>
+           <property name="checkable">
+            <bool>false</bool>
+           </property>
            <layout class="QGridLayout" name="DS1GridLayout">
-            <item row="0" column="0">
+            <item row="1" column="0">
              <widget class="QPushButton" name="pickDS1Path">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -174,7 +184,7 @@
               </property>
              </widget>
             </item>
-            <item row="1" column="0">
+            <item row="2" column="0">
              <widget class="QLineEdit" name="DS1ShortnameEdit">
               <property name="enabled">
                <bool>true</bool>
@@ -190,7 +200,7 @@
               </property>
              </widget>
             </item>
-            <item row="1" column="1">
+            <item row="2" column="1">
              <widget class="QLabel" name="DS1FilterLabel">
               <property name="minimumSize">
                <size>
@@ -203,17 +213,17 @@
               </property>
              </widget>
             </item>
-            <item row="1" column="2">
+            <item row="2" column="2">
              <widget class="QLineEdit" name="DS1FilterEdit"/>
             </item>
-            <item row="0" column="1" colspan="2">
+            <item row="1" column="1" colspan="2">
              <widget class="QLabel" name="DS1PathLabel">
               <property name="text">
                <string>DS1 Path</string>
               </property>
              </widget>
             </item>
-            <item row="2" column="0" colspan="3">
+            <item row="3" column="0" colspan="3">
              <layout class="QGridLayout" name="DS1TimeGrid">
               <item row="0" column="0">
                <widget class="QCheckBox" name="DS1TimeRangeCheck">
@@ -282,18 +292,28 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="DS2checkBox">
+           <property name="text">
+            <string>Use Dataset 2</string>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QGroupBox" name="DS2GroupBox">
            <property name="title">
-            <string>Dataset 2</string>
+            <string/>
            </property>
            <property name="checkable">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
            <property name="checked">
             <bool>false</bool>
            </property>
            <layout class="QGridLayout" name="DS2GridLayout">
-            <item row="0" column="0">
+            <item row="1" column="0">
              <widget class="QPushButton" name="pickDS2Path">
               <property name="enabled">
                <bool>true</bool>
@@ -309,14 +329,14 @@
               </property>
              </widget>
             </item>
-            <item row="0" column="1" colspan="2">
+            <item row="1" column="1" colspan="2">
              <widget class="QLabel" name="DS2PathLabel">
               <property name="text">
                <string>DS2 Path</string>
               </property>
              </widget>
             </item>
-            <item row="2" column="1">
+            <item row="3" column="1">
              <widget class="QLabel" name="DS2FilterLabel">
               <property name="minimumSize">
                <size>
@@ -329,7 +349,7 @@
               </property>
              </widget>
             </item>
-            <item row="4" column="0" colspan="3">
+            <item row="5" column="0" colspan="3">
              <layout class="QGridLayout" name="DS2TimeGrid">
               <item row="0" column="0">
                <widget class="QCheckBox" name="DS2TimeRangeCheck">
@@ -394,7 +414,7 @@
               </item>
              </layout>
             </item>
-            <item row="2" column="0">
+            <item row="3" column="0">
              <widget class="QLineEdit" name="DS2ShortnameEdit">
               <property name="enabled">
                <bool>false</bool>
@@ -410,7 +430,7 @@
               </property>
              </widget>
             </item>
-            <item row="2" column="2">
+            <item row="3" column="2">
              <widget class="QLineEdit" name="DS2FilterEdit">
               <property name="enabled">
                <bool>false</bool>
@@ -424,12 +444,22 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="Obs1checkBox">
+           <property name="text">
+            <string>Use Observations 1</string>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QGroupBox" name="obs1GroupBox">
            <property name="title">
-            <string>Observations 1</string>
+            <string/>
            </property>
            <property name="checkable">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
            <property name="checked">
             <bool>false</bool>
@@ -481,11 +511,21 @@
             <item row="1" column="1">
              <widget class="QLabel" name="Obs1Label">
               <property name="text">
-               <string>Obs set:</string>
+               <string>Obs set 1:</string>
               </property>
              </widget>
             </item>
            </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="Obs2checkBox">
+           <property name="text">
+            <string>Use Observations 2</string>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
           </widget>
          </item>
          <item>
@@ -494,10 +534,10 @@
             <bool>true</bool>
            </property>
            <property name="title">
-            <string>Observations 2</string>
+            <string/>
            </property>
            <property name="checkable">
-            <bool>true</bool>
+            <bool>false</bool>
            </property>
            <property name="checked">
             <bool>false</bool>
@@ -549,7 +589,7 @@
             <item row="1" column="1">
              <widget class="QLabel" name="label">
               <property name="text">
-               <string>Obs set:</string>
+               <string>Obs set 2:</string>
               </property>
              </widget>
             </item>

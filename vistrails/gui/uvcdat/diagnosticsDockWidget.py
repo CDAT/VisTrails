@@ -68,21 +68,27 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.seasons = None # will be set when DiagnosticGroup is made
 
       # some of this is set in the .ui file, but make sure we have a knonw, consistent state anyway
-      self.DS1GroupBox.setChecked(False)
-      self.DS2GroupBox.setChecked(False)
-      self.obs1GroupBox.setChecked(False)
-      self.obs2GroupBox.setChecked(False)
+      self.DS1checkBox.setEnabled(True)
+      self.DS2checkBox.setEnabled(True)
+      self.Obs1checkBox.setEnabled(True)
+      self.Obs2checkBox.setEnabled(True)
       self.obs1TranslateCheck.setChecked(False)
       self.obs2TranslateCheck.setChecked(False)
 
       # disable/hide stuff for now
-      self.changeState('ds1', False)
       self.changeState('ds2', False)
       self.changeState('obs1', False)
       self.changeState('obs2', False)
 
-      # only used by a few lmwg sets currently
+      # probably always need ds1, so keep it active
+      self.changeState('ds1', True)
+      self.DS1checkBox.setChecked(True)
+
+      self.DS2GroupBox.setVisible(False)
+      self.obs1GroupBox.setVisible(False)
       self.obs2GroupBox.setVisible(False)
+
+      # only used by a few lmwg sets currently
       self.RegionLabel.setEnabled(False)
       self.comboBoxRegion.setEnabled(False)
       
@@ -107,10 +113,10 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.treeWidget.itemActivated.connect(self.itemActivated)
       self.treeWidget.itemClicked.connect(self.plotsetchanged)
       
-      self.DS1GroupBox.clicked.connect(self.ds1Enabled)
-      self.DS2GroupBox.clicked.connect(self.ds2Enabled)
-      self.obs1GroupBox.clicked.connect(self.obs1Enabled)
-      self.obs2GroupBox.clicked.connect(self.obs2Enabled)
+      self.DS1checkBox.stateChanged.connect(self.DS1Changed)
+      self.DS2checkBox.stateChanged.connect(self.DS2Changed)
+      self.Obs1checkBox.stateChanged.connect(self.obs1Changed)
+      self.Obs2checkBox.stateChanged.connect(self.obs2Changed)
 
       self.pickDS1Path.clicked.connect(self.setDS1Path)
       self.pickDS2Path.clicked.connect(self.setDS2Path)
@@ -125,12 +131,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
       self.buttonBox.clicked.connect(self.buttonClicked)
 
-      self.comboBoxSeason.addItems(['Seasons'])
-      self.comboBoxRegion.addItems(['Regions'])
+#      self.comboBoxSeason.addItems(['Seasons'])
+#      self.comboBoxRegion.addItems(['Regions'])
 #      self.comboBoxVar.addItems(['Variables'])
-      self.comboBoxAux.addItems(['Var Options'])
+#      self.comboBoxAux.addItems(['Var Options'])
       # that's basically all we can/should do until someone selects some directories, etc
       # disable some widgets until the metrics code implements the feature. perhaps these should be hidden instead?
+
       self.DS1ShortnameEdit.setEnabled(False)
       self.DS1TimeRangeCheck.setEnabled(False)
       self.DS1StartLabel.setEnabled(False)
@@ -186,7 +193,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          self.comboBoxObservation2.setEnabled(value)
          self.useObs2 = value
 
-   def ds1Enabled(self, button):
+   def ds1Enabled(self, state):
       self.changeState('ds1', button)
 
    def ds2Enabled(self, button):
@@ -521,68 +528,50 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    def obs1Changed(self, state):
       if state == QtCore.Qt.Checked:
          self.useObs1 = 1
-         self.comboBoxObservation1.setEnabled(True)
-         self.obs1PathLabel.setEnabled(True)
-         self.obs2PathLabel.setVisible(True)
-         self.comboBoxObservation2.setVisible(True)
-         self.pickObs2Path.setVisible(True)
-         self.obs2PathLabel.setVisible(True)
-         self.comboBoxRegion.setVisible(True)
-         self.RegionLabel.setVisible(True)
-         self.comboBoxAux.setVisible(True)
-         self.checkBoxObs2.setVisible(True)
+         self.obs1GroupBox.setEnabled(True)
+         self.obs1GroupBox.setVisible(True)
+         self.changeState('obs1', True)
       else:
          self.useOBs1 = 0
-         self.comboBoxObservation1.setEnabled(False)
-         self.obs1PathLabel.setEnabled(False)
-      if len(self.opts._opts['obspath']) != 0:
-         self.prepareObs1()
+         self.obs1GroupBox.setEnabled(False)
+         self.obs1GroupBox.setVisible(False)
+         self.changeState('obs1', False)
 
    def obs2Changed(self, state):
       if state == QtCore.Qt.Checked:
          self.useObs2 = 1
-         self.comboBoxObservation2.setEnabled(True)
-         self.obs2PathLabel.setEnabled(True)
+         self.obs2GroupBox.setEnabled(True)
+         self.obs2GroupBox.setVisible(True)
+         self.changeState('obs2', True)
       else:
          self.useOBs2 = 0
-         self.comboBoxObservation2.setEnabled(False)
-         self.obs2PathLabel.setEnabled(False)
-      if len(self.opts._opts['obspath']) != 0:
-         self.prepareObs2()
+         self.obs2GroupBox.setEnabled(False)
+         self.obs2GroupBox.setVisible(False)
+         self.changeState('obs2', False)
 
-   def ds1Changed(self, state):
+   def DS1Changed(self, state):
       if state == QtCore.Qt.Checked:
          self.useDS1 = 1
-         self.DS1PathLabel.setEnabled(True)
-         self.DS1ShortnameEdit.setEnabled(True)
-         self.comboBoxVar.setEnabled(True)
-         self.comboBoxSeason.setEnabled(True)
+         self.DS1GroupBox.setEnabled(True)
+         self.DS1GroupBox.setVisible(True)
+         self.changeState('ds1', True)
       else:
          self.useDS1 = 0
-         self.DS1PathLabel.setEnabled(False)
-         self.DS1ShortnameEdit.setEnabled(False)
-         if self.useDS2 == 0:
-            self.comboBoxVar.setEnabled(False)
-            self.comboBoxSeason.setEnabled(False)
-      if len(self.opts._opts['path']) != 0:
-         self.prepareDS1()
+         # should we hide DS1 groupbox?
+         self.DS1GroupBox.setEnabled(False)
+         self.changeState('ds1', False)
 
-   def ds2Changed(self, state):
+   def DS2Changed(self, state):
       if state == QtCore.Qt.Checked:
          self.useDS2 = 1
-         self.DS2PathLabel.setEnabled(True)
-         self.DS2ShortnameEdit.setEnabled(True)
-         self.comboBoxVar.setEnabled(True)
-         self.comboBoxSeason.setEnabled(True)
+         self.DS2GroupBox.setEnabled(True)
+         self.DS2GroupBox.setVisible(True)
+         self.changeState('ds2', True)
       else:
          self.useDS2 = 0
-         self.DS2PathLabel.setEnabled(False)
-         self.DS2ShortnameEdit.setEnabled(False)
-         if self.useDS1 == 0:
-            self.comboBoxVar.setEnabled(False)
-            self.comboBoxSeason.setEnabled(False)
-      if len(self.opts._opts['path']) != 1:
-         self.prepareDS2()
+         self.DS2GroupBox.setEnabled(False)
+         self.DS2GroupBox.setVisible(False)
+         self.changeState('ds2', False)
 
    def buttonClicked(self, button):
         role = self.buttonBox.buttonRole(button) 
@@ -615,23 +604,26 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         ft2 = None
         ft1 = None
         if(self.useDS1 == 1): #ds1
-#            print 'setting ft1 to self.ds1'
+            print 'setting ft1 to self.ft1'
             ft1 = self.ft1
             if(self.useDS2 == 1):
+               print 'setting ft2 to self.ft2'
                ft2 = self.ft2
             if(self.useObs1 == 1):
-#               print 'setting ft2 to self.obsft1'
+               print 'setting ft2 to self.obsft1'
                ft2 = self.obsft1
             if(self.useObs2 == 1):
+               print 'setting ft2 to self.obsft2'
                ft2 = self.obsft2
         elif self.useDS2 == 1: #just ds2, or ds2+obs
+            print 'useDS2 was selected'
             ft1 = self.ft2
             if(self.useObs1 == 1):
                ft2 = self.obsft1
             if(self.useObs2 == 1):
                ft2 = self.obsft2
         else: # just observation
-#            print 'just obs'
+            print 'just obs'
             if(self.useObs1 == 1):
                ft1 = self.obsft1
             if(self.useObs2 == 1):
@@ -667,6 +659,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             dim = t.getDimension()
             Nrows = dim[0]
             Ncolumns = dim[1]
+        print 'res returned: \'', res,'\''
         if type(res) is not list:
             res = [res]
         print "***jfp res=",res
@@ -680,14 +673,19 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             msg = "This diagnostics generated a composite of %s simple plots, which is more than your spreadsheet can display."%len(res)
             mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning, msg, QString(msg))
             mbox.exec_()
+        print '**************************'
+        print 'res: ', res
+        print '**************************'
         ires = 0
         for row in range(Nrows):
             for col in range(Ncolumns):
                print 'displaying cell for row, col: ', row, col
                if ires<len(res):
                   res30 = res[ires]
+                  print 'res[', ires,']: \'', res30,'\''
                else:
-                  res30 = None
+#                  res30 = None
+                  res30 = metrics.frontend.uvcdat.uvc_zero_plotspec()
                self.displayCell(res30, row, col)
                ires += 1
 
