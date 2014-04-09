@@ -387,7 +387,16 @@ disallowed_classes = set(
     'vtkOverlappingAMR',
     'vtkGenericAttributeCollection',
     'vtkSMMultiServerSourceProxy',
-    'vtkPVSelectionSource'
+    'vtkPVSelectionSource',
+    'vtkKdTreeManager',
+    'vtkSMPythonTraceObserver',
+    'vtkPVServerInformation',
+    'vtkPVSessionBase',
+    'vtkSocketController',
+    'vtkSessionIterator',
+    'vtkProcessModule',
+    'vtkDataEncoder',
+    'vtkTCPNetworkAccessManager'
      ])
 
 def is_class_allowed(module):
