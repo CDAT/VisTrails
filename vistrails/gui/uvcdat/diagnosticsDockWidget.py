@@ -584,6 +584,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    def applyClicked(self):
         from metrics.frontend.uvcdat import setup_filetable, get_plot_data
 
+        if self.checkedItem is None:
+            msg = "Please choose a diagnostic to plot."
+            mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning, msg, QString(msg))
+            mbox.exec_()
+            return None
         diagnostic = str(self.checkedItem.text(0))
         #group = str(self.checkedItem.parent().text(0))
         #Never name something 'type', it's a reserved word! type = str(self.comboBoxType.currentText())
@@ -705,7 +710,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       print "presentation:",presentation
       print "x min,max:",presentation.datawc_x1, presentation.datawc_x2
       print "y min,max:",presentation.datawc_y1, presentation.datawc_y2
-      print "res",res30.type
+      #print "res",res30.type
       #define where to drag and drop
       import cdms2
       from packages.uvcdat_cdms.init import CDMSVariable
@@ -749,9 +754,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          #d = _app.uvcdatWindow.dockPlot
          # simulate drop plot
          pm = projectController.plot_manager
-         print pm._plot_list.keys()
+         print "pm._plot_list keys=",pm._plot_list.keys()
          V=pm._plot_list["VCS"]
-         print V.keys()
+         print "V.keys=", V.keys()
          gm = res30.presentation
          from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
          from gui.uvcdat.uvcdatCommons import gmInfos
