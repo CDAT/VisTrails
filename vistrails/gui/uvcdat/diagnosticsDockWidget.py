@@ -715,13 +715,34 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       import cdms2
       from packages.uvcdat_cdms.init import CDMSVariable
       from core.utils import InstanceObject
+
+      # jfp The following section is fix up the title, this works around some graphics system design flaws.
+      # jfp It can be deleted when we have a better way to do it, e.g. using a template.
+      # jfp Note in particular that the present graphics system doesn't have a real title line; it just
+      # jfp writes variable information in various places above the plot.
+      # jfp This approach won't work at all if we have more than 2 variables to plot together.
+      # jfp Then there is no alternative to using the title the diagnostics provide...
+      U = pvars[0]
+      U.title = '\n'+title+'\n'   # The graphics package looks at a title attribute of the variable, not the plot!
+      if hasattr(U,'long_name'):
+         U.long_name = '_'+' '*48+U.long_name
+      else:
+         U.title = '_'+' '*48+U.title
+      if len(pvars)==2:
+         V = pvars[1]
+         V.id = U.id+' '+V.id  # important to be different, but also we don't want overwriting
+         if hasattr(U,'long_name'):
+            V.long_name = U.long_name
+         if hasattr(U,'units'):
+            V.units = U.units
+         V.title = U.title
+      # jfp ...end of temporary title-fixup section.
+
       for V in pvars:
          # We really need to fix the 2-line plots.  Scale so that both variables use the
          # same axes!  The Diagnostics package can provide upper and lower bounds for the
          # axes (important for a composite plot) and the graphics should follow that.
          # That's for contour (Isofill) as well as line (Yxvsx) and other plots.
-         #V[0]=220  # temporary kludge for TREFHT, plot set 3
-         #V[1]=305  # temporary kludge for TREFHT, plot set 3
          # Until I know better storing vars in tempfile....
          f = tempfile.NamedTemporaryFile()
          filename = f.name
