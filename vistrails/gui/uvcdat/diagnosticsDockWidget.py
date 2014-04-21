@@ -76,7 +76,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.obs2TranslateCheck.setChecked(False)
 
       # disable/hide stuff for now
-      self.changeState('ds1', False)
+      # Presumably ds1 will be used; at least since it starts off checked, it probably should be enabled
+      self.changeState('ds1', True)
       self.changeState('ds2', False)
       self.changeState('obs1', False)
       self.changeState('obs2', False)
@@ -581,6 +582,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    def applyClicked(self):
         from metrics.frontend.uvcdat import setup_filetable, get_plot_data
 
+        if self.checkedItem is None:
+            msg = "Please choose a diagnostic to plot."
+            mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning, msg, QString(msg))
+            mbox.exec_()
+            return None
         diagnostic = str(self.checkedItem.text(0))
         #group = str(self.checkedItem.parent().text(0))
         #Never name something 'type', it's a reserved word! type = str(self.comboBoxType.currentText())
@@ -703,11 +709,34 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       print "presentation:",presentation
       print "x min,max:",presentation.datawc_x1, presentation.datawc_x2
       print "y min,max:",presentation.datawc_y1, presentation.datawc_y2
-      print "res",res30.type
+#      print "res",res30.type
       #define where to drag and drop
       import cdms2
       from packages.uvcdat_cdms.init import CDMSVariable
       from core.utils import InstanceObject
+
+      # jfp The following section is fix up the title, this works around some graphics system design flaws.
+      # jfp It can be deleted when we have a better way to do it, e.g. using a template.
+      # jfp Note in particular that the present graphics system doesn't have a real title line; it just
+      # jfp writes variable information in various places above the plot.
+      # jfp This approach won't work at all if we have more than 2 variables to plot together.
+      # jfp Then there is no alternative to using the title the diagnostics provide...
+      U = pvars[0]
+      U.title = '\n'+title+'\n'   # The graphics package looks at a title attribute of the variable, not the plot!
+      if hasattr(U,'long_name'):
+         U.long_name = '_'+' '*48+U.long_name
+      else:
+         U.title = '_'+' '*48+U.title
+      if len(pvars)==2:
+         V = pvars[1]
+         V.id = U.id+' '+V.id  # important to be different, but also we don't want overwriting
+         if hasattr(U,'long_name'):
+            V.long_name = U.long_name
+         if hasattr(U,'units'):
+            V.units = U.units
+         V.title = U.title
+      # jfp ...end of temporary title-fixup section.
+      
       for V in pvars:
          # We really need to fix the 2-line plots.  Scale so that both variables use the
          # same axes!  The Diagnostics package can provide upper and lower bounds for the
@@ -747,9 +776,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          #d = _app.uvcdatWindow.dockPlot
          # simulate drop plot
          pm = projectController.plot_manager
-         print pm._plot_list.keys()
+         print "pm._plot_list keys=", pm._plot_list.keys()
          V=pm._plot_list["VCS"]
-         print V.keys()
+         print "V.keys=", V.keys()
          gm = res30.presentation
          from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
          from gui.uvcdat.uvcdatCommons import gmInfos
