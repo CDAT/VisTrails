@@ -819,6 +819,11 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
         if pc: return pc.getPoint( iPt )
         else: return None, None
 
+    def getTimeseries( self, actor, iPt ):
+        pc = self.point_cloud_map.get( actor, None )
+        if pc: return pc.getTimeseries( iPt )
+        else: return None, None
+
     def printLogMessage(self, msg_str ):
         print " vtkPartitionedPointCloud: %s" % ( msg_str )
         sys.stdout.flush()      
