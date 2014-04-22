@@ -351,7 +351,13 @@ class ConfigControl(QtGui.QWidget):
         
     def newSubset( self, indices ):
         pass
-    
+
+    def pointPicked( self, tseries, point ):
+        pass
+
+    def plotting(self):
+        return False  
+      
     def setMetadata( self, md ):
         self.metadata = md
         

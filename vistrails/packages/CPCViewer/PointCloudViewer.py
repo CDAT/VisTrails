@@ -564,6 +564,10 @@ class CPCPlot(QtCore.QObject):
                 if pick_pos:        text = " Point[%d] ( %.2f, %.2f ): %s " % ( iPt, pick_pos[0], pick_pos[1], dval )
                 else:               text = "No Pick"
                 self.updateTextDisplay( text )
+                
+                if self.configDialog.plotting():
+                    tseries = self.partitioned_point_cloud.getTimeseries( actor, iPt ) 
+                    self.configDialog.pointPicked( tseries, pick_pos )       
             
     def toggleTopo(self):
         self.topo = ( self.topo + 1 ) % 2
