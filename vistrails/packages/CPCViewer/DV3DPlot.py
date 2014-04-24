@@ -28,11 +28,37 @@ except ImportError:
     QtGui = _QtGui
     USES_PYSIDE = False
     
-import vtk
+import vtk, sys
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 MIN_LINE_LEN = 50
 VTK_NOTATION_SIZE = 14
 from packages.CPCViewer.ColorMapManager import *
+
+class PlotType:
+    Planar = 0
+    Spherical = 1
+    List = 0
+    Grid = 1
+    LevelAliases = [ 'isobaric', "layers", "interfaces" ]
+    
+    @classmethod
+    def validCoords( cls, lat, lon ):
+        return ( id(lat) <> id(None) ) and ( id(lon) <> id(None) )
+    
+    @classmethod
+    def isLevelAxis( cls, pid ):
+        if ( pid.find('level')  >= 0 ): return True
+        if ( pid.find('bottom') >= 0 ) and ( pid.find('top') >= 0 ): return True
+        if pid in cls.LevelAliases: return True
+        return False    
+
+    @classmethod
+    def getPointsLayout( cls, grid ):
+        if grid <> None:
+            if (grid.__class__.__name__ in ( "RectGrid", "FileRectGrid") ): 
+                return cls.Grid
+        return cls.List  
+
 
 def getBool( val ):
     if isinstance( val, str ):
@@ -128,16 +154,13 @@ class DV3DPlot(QtCore.QObject):
     def __init__( self, vtk_render_window = None , **args ):
         QtCore.QObject.__init__( self )
         self.useGui = args.get( 'gui', True )
-        self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
-        self.renderWindowInteractor = self.renderWindow.GetInteractor()
-        style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
-        self.renderWindowInteractor.SetInteractorStyle( style )
         self.xcenter = 100.0
         self.xwidth = 300.0
         self.ycenter = 0.0
         self.ywidth = 180.0
 
         self.widget = None
+        self.textDisplayMgr = None
         self.enableClip = False
         self.variables = {}
 
@@ -145,10 +168,14 @@ class DV3DPlot(QtCore.QObject):
         self.cameraOrientation = {}
         self.labelBuff = ""
         self.configDialog = None
-        self.sliceAxisIndex = 0
         self.colormapManagers= {}
         self.stereoEnabled = 0
         self.maxStageHeight = 100.0
+
+        self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
+        self.renderWindowInteractor = self.renderWindow.GetInteractor()
+        style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
+        self.renderWindowInteractor.SetInteractorStyle( style )
 
     def createRenderWindow(self):
         if self.useGui:
@@ -167,6 +194,9 @@ class DV3DPlot(QtCore.QObject):
         style = vtk.vtkInteractorStyleTrackballCamera()   
         self.renderWindowInteractor.SetInteractorStyle( style )
         return renwin
+    
+    def closeConfigDialog(self):
+        pass
     
     def enableRender(self, **args ):
         return True
@@ -214,7 +244,7 @@ class DV3DPlot(QtCore.QObject):
         enableStereo = getBool( data[2] )
         show_colorBar = getBool( data[3] ) if ( len( data ) > 3 ) else 0 
         cmap_index = args.get( 'index', 0 )
-        metadata = self.point_cloud_overview.getMetadata()
+        metadata = self.getMetadata()
         var_name = metadata.get( 'var_name', '')
         var_units = metadata.get( 'var_units', '')
         self.updateStereo( enableStereo )
@@ -230,6 +260,9 @@ class DV3DPlot(QtCore.QObject):
     
     def getUnits(self, var_index ):
         return ""
+    
+    def getMetadata(self):
+        return {}
     
 
     def updateStereo( self, enableStereo ):   
@@ -250,68 +283,21 @@ class DV3DPlot(QtCore.QObject):
         self.isValid = False
 
     def getLabelActor(self):
-        return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .90), size = VTK_NOTATION_SIZE, bold = True  )
+        return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .90), size = VTK_NOTATION_SIZE, bold = True  ) if self.textDisplayMgr else None
 
     def onResizeEvent(self):
         self.updateTextDisplay( None, True )
         
     def updateTextDisplay( self, text, render=False ):
         if text <> None:
-            metadata = self.point_cloud_overview.getMetadata()
+            metadata = self.getMetadata()
             var_name = metadata.get( 'var_name', '')
             var_units = metadata.get( 'var_units', '')
             self.labelBuff = "%s (%s)\n%s" % ( var_name, var_units, str(text) )
-        self.getLabelActor().VisibilityOn() 
+        label_actor = self.getLabelActor()
+        if label_actor: label_actor.VisibilityOn() 
         if render: self.render()     
 
-    def planeWidgetOn(self):
-        if self.sliceAxisIndex   == 0:
-            self.planeWidget.SetNormal( 1.0, 0.0, 0.0 )
-            self.planeWidget.NormalToXAxisOn()
-        elif self.sliceAxisIndex == 1: 
-            self.planeWidget.SetNormal( 0.0, 1.0, 0.0 )
-            self.planeWidget.NormalToYAxisOn()
-        elif self.sliceAxisIndex == 2: 
-            self.planeWidget.SetNormal( 0.0, 0.0, 1.0 )
-            self.planeWidget.NormalToZAxisOn()  
-        self.updatePlaneWidget()          
-        if not self.planeWidget.GetEnabled( ):
-            self.planeWidget.SetEnabled( 1 )  
-            
-    def updatePlaneWidget(self): 
-        o = list( self.planeWidget.GetOrigin() )
-        spos = self.getCurrentSlicePosition()
-        o[ self.sliceAxisIndex ] = spos
-#        print " Update Plane Widget: Set Origin[%d] = %.2f " % ( self.sliceAxisIndex, spos )
-        self.planeWidget.SetOrigin(o) 
-
-    def planeWidgetOff(self):
-        if self.planeWidget:
-            self.planeWidget.SetEnabled( 0 )   
-                
-    def initPlaneWidget(self, input, bounds ):
-        if self.planeWidget == None:
-            self.planeWidget = vtk.vtkImplicitPlaneWidget()
-            self.planeWidget.SetInteractor( self.renderWindowInteractor )
-            self.planeWidget.SetPlaceFactor( 1.5 )
-            if vtk.VTK_MAJOR_VERSION <= 5:  self.planeWidget.SetInput( input )
-            else:                           self.planeWidget.SetInputData( input )        
-            self.planeWidget.AddObserver("StartInteractionEvent", self.processStartInteractionEvent )
-            self.planeWidget.AddObserver("EndInteractionEvent", self.processEndInteractionEvent )
-            self.planeWidget.AddObserver("InteractionEvent", self.processInteractionEvent )
-            self.planeWidget.KeyPressActivationOff()
-            self.planeWidget.OutlineTranslationOff()
-            self.planeWidget.ScaleEnabledOff()
-            self.planeWidget.OutsideBoundsOn() 
-            self.planeWidget.OriginTranslationOff()
-            self.planeWidget.SetDiagonalRatio( 0.0 )                         
-            self.planeWidget.DrawPlaneOff()
-            self.planeWidget.TubingOff() 
-            self.planeWidget.GetNormalProperty().SetOpacity(0.0)
-#            self.planeWidget.SetInteractor( self.renderWindowInteractor )
-            self.planeWidget.KeyPressActivationOff()
-            self.widget_bounds = bounds 
-            self.planeWidget.PlaceWidget( self.widget_bounds )
 
     def createRenderer(self, **args ):
         background_color = args.get( 'background_color', VTK_BACKGROUND_COLOR )
@@ -340,7 +326,23 @@ class DV3DPlot(QtCore.QObject):
 #        self.clipper.AddObserver( 'StartInteractionEvent', self.startClip )
 #        self.clipper.AddObserver( 'EndInteractionEvent', self.endClip )
 #        self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
-        self.clipOff() 
+            self.clipOff() 
+        
+    def onRightButtonPress(self, caller, event ):
+        pass
+    
+    def toggleClipping(self):
+        if self.clipper.GetEnabled():   self.clipOff()
+        else:                           self.clipOn()
+        
+    def clipOn(self):
+        if self.enableClip:
+            self.clipper.On()
+            self.executeClip()
+
+    def clipOff(self):
+        if self.enableClip:
+            self.clipper.Off()      
         
         
     def startEventLoop(self):
@@ -362,9 +364,8 @@ class DV3DPlot(QtCore.QObject):
             self.renderer.ResetCamera( self.getBounds() )
             
     def initCamera(self):
-        fp = self.point_cloud_overview.getCenter() 
-        self.renderer.GetActiveCamera().SetPosition( fp[0], fp[1], fp[3] )
-        self.renderer.GetActiveCamera().SetFocalPoint( fp[0], fp[1], 0 )
+        self.renderer.GetActiveCamera().SetPosition( self.xcenter, self.ycenter, 0.0 )
+        self.renderer.GetActiveCamera().SetFocalPoint( self.xcenter, self.ycenter, 0.0 )
         self.renderer.GetActiveCamera().SetViewUp( 0, 1, 0 )  
         self.renderer.ResetCameraClippingRange()     
             
