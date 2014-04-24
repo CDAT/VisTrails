@@ -8,13 +8,13 @@ import os.path
 import sys, vtk
 import cPickle
 
-VTK_BACKGROUND_COLOR = ( 1.0, 1.0, 1.0 ) # ( 0.0, 0.0, 0.0 )
-VTK_FOREGROUND_COLOR = ( 0.0, 0.0, 0.0 ) # ( 1.0, 1.0, 1.0 )
-
 pkl_path = os.path.join( os.path.dirname( __file__ ), 'data', 'colormaps.pkl' )
 colormap_file = open( pkl_path, 'rb' )
 colormaps = cPickle.load( colormap_file )
 colormap_file.close()
+
+VTK_BACKGROUND_COLOR = ( 1.0, 1.0, 1.0 ) # ( 0.0, 0.0, 0.0 )
+VTK_FOREGROUND_COLOR = ( 0.0, 0.0, 0.0 ) # ( 1.0, 1.0, 1.0 )
 
 class AlphaManager():
     
