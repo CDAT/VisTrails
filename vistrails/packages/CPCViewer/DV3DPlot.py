@@ -127,6 +127,7 @@ class DV3DPlot(QtCore.QObject):
 
     def __init__( self, vtk_render_window = None , **args ):
         QtCore.QObject.__init__( self )
+        self.useGui = args.get( 'gui', True )
         self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
         self.renderWindowInteractor = self.renderWindow.GetInteractor()
         style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
@@ -139,7 +140,6 @@ class DV3DPlot(QtCore.QObject):
         self.widget = None
         self.enableClip = False
         self.variables = {}
-        self.useGui = args.get( 'gui', True )
 
         self.isValid = True
         self.cameraOrientation = {}
