@@ -6,6 +6,7 @@ Created on Sep 18, 2013
 import sys, math
 import numpy
 import cdms2, cdutil
+from packages.CPCViewer.DV3DPlot import  PlotType
 
 def isNone(obj):
     return ( id(obj) == id(None) )
@@ -23,31 +24,6 @@ def getVarAttribute( var, attribute_name_list ):
             attr_val = var.attributes.get( attribute_name )
             if attr_val: return attr_val
     return None
-
-class PlotType:
-    Planar = 0
-    Spherical = 1
-    List = 0
-    Grid = 1
-    LevelAliases = [ 'isobaric' ]
-    
-    @classmethod
-    def validCoords( cls, lat, lon ):
-        return ( id(lat) <> id(None) ) and ( id(lon) <> id(None) )
-    
-    @classmethod
-    def isLevelAxis( cls, pid ):
-        if ( pid.find('level')  >= 0 ): return True
-        if ( pid.find('bottom') >= 0 ) and ( pid.find('top') >= 0 ): return True
-        if pid in cls.LevelAliases: return True
-        return False    
-
-    @classmethod
-    def getPointsLayout( cls, grid ):
-        if grid <> None:
-            if (grid.__class__.__name__ in ( "RectGrid", "FileRectGrid") ): 
-                return cls.Grid
-        return cls.List  
 
 class PointCollection():
 

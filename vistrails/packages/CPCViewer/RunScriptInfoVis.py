@@ -56,6 +56,7 @@ except ImportError:
 import os, os.path, sys, argparse, time, multiprocessing
 from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
 from packages.CPCViewer.PointCloudViewer import CPCPlot
+from packages.CPCViewer.StructuredGridViewer import StructuredGridPlot
 from packages.CPCViewer.MultiVarPointCollection import InterfaceType
 
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
@@ -114,11 +115,14 @@ elif ns.data_type == "CSU":
     data_file = os.path.join( data_dir, "ColoState", file_name )
     grid_file = os.path.join( data_dir, "ColoState", "grid.nc" )
     varname = "pressure" 
-
-g = CPCPlot( ) 
-ncores=multiprocessing.cpu_count()
-g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op, roi ), n_overview_points=n_overview_points, n_cores = ncores, show=showGui  )   # n_cores = ncores      
-renderWindow = g.renderWindow
+ 
+if ns.data_type == "GEOS5":   
+    g = StructuredGridPlot( ) 
+    g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op, roi ), show=showGui ) 
+else:
+    g = CPCPlot( ) 
+    ncores=multiprocessing.cpu_count()
+    g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op, roi ), n_overview_points=n_overview_points, n_cores = ncores, show=showGui  )   # n_cores = ncores      
  
 app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
 app.exec_() 

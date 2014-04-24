@@ -201,6 +201,7 @@ class CPCPlot(DV3DPlot):
 
     def __init__( self, vtk_render_window = None , **args ):
         DV3DPlot.__init__( self, vtk_render_window,  **args  )
+        self.sliceAxisIndex = 0
         self.partitioned_point_cloud = None
         self.point_cloud_overview = None
         self.volumeThresholdRange = {}
@@ -222,6 +223,54 @@ class CPCPlot(DV3DPlot):
         self.scalarRange = None
         self.sphere_source = None
 
+    def planeWidgetOn(self):
+        if self.sliceAxisIndex   == 0:
+            self.planeWidget.SetNormal( 1.0, 0.0, 0.0 )
+            self.planeWidget.NormalToXAxisOn()
+        elif self.sliceAxisIndex == 1: 
+            self.planeWidget.SetNormal( 0.0, 1.0, 0.0 )
+            self.planeWidget.NormalToYAxisOn()
+        elif self.sliceAxisIndex == 2: 
+            self.planeWidget.SetNormal( 0.0, 0.0, 1.0 )
+            self.planeWidget.NormalToZAxisOn()  
+        self.updatePlaneWidget()          
+        if not self.planeWidget.GetEnabled( ):
+            self.planeWidget.SetEnabled( 1 )  
+            
+    def updatePlaneWidget(self): 
+        o = list( self.planeWidget.GetOrigin() )
+        spos = self.getCurrentSlicePosition()
+        o[ self.sliceAxisIndex ] = spos
+#        print " Update Plane Widget: Set Origin[%d] = %.2f " % ( self.sliceAxisIndex, spos )
+        self.planeWidget.SetOrigin(o) 
+
+    def planeWidgetOff(self):
+        if self.planeWidget:
+            self.planeWidget.SetEnabled( 0 )   
+                
+    def initPlaneWidget(self, input, bounds ):
+        if self.planeWidget == None:
+            self.planeWidget = vtk.vtkImplicitPlaneWidget()
+            self.planeWidget.SetInteractor( self.renderWindowInteractor )
+            self.planeWidget.SetPlaceFactor( 1.5 )
+            if vtk.VTK_MAJOR_VERSION <= 5:  self.planeWidget.SetInput( input )
+            else:                           self.planeWidget.SetInputData( input )        
+            self.planeWidget.AddObserver("StartInteractionEvent", self.processStartInteractionEvent )
+            self.planeWidget.AddObserver("EndInteractionEvent", self.processEndInteractionEvent )
+            self.planeWidget.AddObserver("InteractionEvent", self.processInteractionEvent )
+            self.planeWidget.KeyPressActivationOff()
+            self.planeWidget.OutlineTranslationOff()
+            self.planeWidget.ScaleEnabledOff()
+            self.planeWidget.OutsideBoundsOn() 
+            self.planeWidget.OriginTranslationOff()
+            self.planeWidget.SetDiagonalRatio( 0.0 )                         
+            self.planeWidget.DrawPlaneOff()
+            self.planeWidget.TubingOff() 
+            self.planeWidget.GetNormalProperty().SetOpacity(0.0)
+#            self.planeWidget.SetInteractor( self.renderWindowInteractor )
+            self.planeWidget.KeyPressActivationOff()
+            self.widget_bounds = bounds 
+            self.planeWidget.PlaceWidget( self.widget_bounds )
     
     def start(self):
         self.renderWindowInteractor.Start()
@@ -403,18 +452,8 @@ class CPCPlot(DV3DPlot):
         self.render()
         
 
-    def toggleClipping(self):
-        if self.clipper.GetEnabled():   self.clipOff()
-        else:                           self.clipOn()
-        
-    def clipOn(self):
-        if self.enableClip:
-            self.clipper.On()
-            self.executeClip()
-
-    def clipOff(self):
-        if self.enableClip:
-            self.clipper.Off()      
+    def getMetadata(self):
+        return self.point_cloud_overview.getMetadata()
             
     def onKeyEvent(self, eventArgs ):
         key = eventArgs[0]
