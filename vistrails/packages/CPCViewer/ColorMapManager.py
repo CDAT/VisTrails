@@ -13,8 +13,8 @@ colormap_file = open( pkl_path, 'rb' )
 colormaps = cPickle.load( colormap_file )
 colormap_file.close()
 
-VTK_BACKGROUND_COLOR = ( 1.0, 1.0, 1.0 ) # ( 0.0, 0.0, 0.0 )
-VTK_FOREGROUND_COLOR = ( 0.0, 0.0, 0.0 ) # ( 1.0, 1.0, 1.0 )
+VTK_BACKGROUND_COLOR =  ( 1.0, 1.0, 1.0 ) # ( 0.0, 0.0, 0.0 )
+VTK_FOREGROUND_COLOR =  ( 0.0, 0.0, 0.0 ) # ( 1.0, 1.0, 1.0 )
 
 class AlphaManager():
     

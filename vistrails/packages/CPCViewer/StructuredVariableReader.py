@@ -30,6 +30,7 @@ except ImportError:
     
 import vtk, sys, os, copy, time, traceback
 import cdms2, cdtime, cdutil, MV2, cPickle 
+from packages.CPCViewer.DV3DPlot import  PlotType, getClassName
 from StringIO import StringIO
 import numpy as np
 PortDataVersion = 0
@@ -98,6 +99,16 @@ def decodeFromString( string_value, default_value=None ):
 
 def addr( obj ): 
     return '0' if (obj == None) else obj.GetAddressAsString( obj.__class__.__name__ )
+
+def getRangeBounds( type_str ):
+    if type_str == 'UShort':
+        return [ 0, 65535, 1 ]
+    if type_str == 'UByte':
+        return [ 0, 255, 1 ] 
+    if type_str == 'Float':
+        f = np.finfo(float) 
+        return [ -f.max, f.max, 1 ]
+    return None
 
 def getNewVtkDataArray( scalar_dtype ):
     if scalar_dtype == np.ushort:
@@ -181,6 +192,36 @@ class OutputRec:
         for varCombo in self.varComboList:
             varSelection = str( varCombo.currentText() ) 
             self.varSelections.append( [ varSelection, "" ] )
+
+       
+def getFloatStr( val ):
+    if ( type(val) == type(' ') ): return val
+    return "%.1f" % val
+
+def extractMetadata( fieldData ):
+    mdList = []
+    inputVarList = []
+    varlist = fieldData.GetAbstractArray( 'varlist' ) 
+    if varlist == None:   # module.getFieldData() 
+        print>>sys.stderr, " Can't get Metadata!" 
+    else: 
+        nvar = varlist.GetNumberOfValues()
+        for vid in range(nvar):
+            varName = str( varlist.GetValue(vid) )
+            inputVarList.append( varName )
+            dataVector = fieldData.GetAbstractArray( 'metadata:%s' % varName ) 
+            if dataVector == None:  
+                print>>sys.stderr, " Can't get Metadata for var %s!" % varName 
+            else: 
+                metadata = {}
+                nval = dataVector.GetNumberOfValues()
+                for id in range(nval):
+                    enc_mdata = str( dataVector.GetValue(id) )
+                    md = decodeFromString( enc_mdata )
+                    metadata.update( md )
+                mdList.append( metadata )
+        for md in mdList: md['inputVarList'] = inputVarList
+    return mdList 
             
 def freeImageData( image_data ):
     from packages.vtDV3D.vtUtilities import memoryLogger
@@ -278,6 +319,308 @@ def designateAxisType( self, axis ):
             return AxisType.Longitude    
     return getAxisType( axis )
 
+
+class InputSpecs:
+    
+    def __init__( self, **args ):
+        self.units = ''
+        self.scalarRange = None
+        self.seriesScalarRange = None
+        self.rangeBounds = None
+        self.referenceTimeUnits = None
+        self.metadata = None
+        self._input = None
+        self.fieldData = None
+        self.datasetId = None
+        self.clipper = None
+        self.dtype = None
+        
+    def isFloat(self):
+        return self.dtype == "Float"
+
+#     def selectInputArray( self, raw_input, plotIndex ):
+#         self.updateMetadata( plotIndex )
+#         old_point_data = raw_input.GetPointData()  
+#         nArrays = old_point_data.GetNumberOfArrays() 
+#         if nArrays == 1: return raw_input  
+#         image_data = vtk.vtkImageData()
+#         image_data.ShallowCopy( raw_input )
+#         new_point_data = image_data.GetPointData()        
+#         array_index = plotIndex if plotIndex < nArrays else 0
+#         inputVarList = self.metadata.get( 'inputVarList', [] )
+#         if array_index < len( inputVarList ):
+#             aname = inputVarList[ array_index ] 
+#             new_point_data.SetActiveScalars( aname )
+# #            print "Selecting scalars array %s for input %d" % ( aname, array_index )
+#         else:
+#             print>>sys.stderr, "Error, can't find scalars array for input %d" % array_index
+# #        print "Selecting %s (array-%d) for plot index %d" % ( aname, array_index, plotIndex)
+#         return image_data
+ 
+    def initializeInput( self, imageData, fieldData, plotIndex=0 ): 
+        self._input =  imageData 
+        self.fieldData = fieldData                          
+        self.updateMetadata( plotIndex )
+        
+    def input( self ):
+        if self.clipper:
+            input = self.clipper.GetOutput()
+            input.Update()
+            return input
+        return self._input
+        
+    def clipInput( self, extent ):
+        self.clipper = vtk.vtkImageClip()
+        self.clipper.AddInput( self._input )
+        self.clipper.SetOutputWholeExtent( extent )
+
+    def getWorldCoords( self, image_coords ):
+        plotType = self.metadata[ 'plotType' ]                   
+        world_coords = None
+        try:
+            if plotType == 'zyt':
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                timeAxis = self.metadata[ 'time' ]
+                tval = timeAxis[ image_coords[2] ]
+                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
+                timeValue = str( relTimeValue.tocomp() )          
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), timeValue ]   
+            else:         
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                lev = self.metadata[ 'lev' ]
+                world_coords = [ getFloatStr(lon[ image_coords[0] ]), getFloatStr(lat[ image_coords[1] ]), getFloatStr(lev[ image_coords[2] ]) ]   
+        except:
+            gridSpacing = self.input().GetSpacing()
+            gridOrigin = self.input().GetOrigin()
+            world_coords = [ getFloatStr(gridOrigin[i] + image_coords[i]*gridSpacing[i]) for i in range(3) ]
+        return world_coords
+
+    def getWorldCoordsAsFloat( self, image_coords ):
+        plotType = self.metadata[ 'plotType' ]                   
+        world_coords = None
+        try:
+            if plotType == 'zyt':
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                timeAxis = self.metadata[ 'time' ]
+                tval = timeAxis[ image_coords[2] ]
+                relTimeValue = cdtime.reltime( float( tval ), timeAxis.units ) 
+                timeValue = str( relTimeValue.tocomp() )          
+                world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], timeValue ]   
+            else:         
+                lat = self.metadata[ 'lat' ]
+                lon = self.metadata[ 'lon' ]
+                lev = self.metadata[ 'lev' ]
+                world_coords = [ lon[ image_coords[0] ], lat[ image_coords[1] ], lev[ image_coords[2] ] ]   
+        except:
+            gridSpacing = self.input().GetSpacing()
+            gridOrigin = self.input().GetOrigin()
+            world_coords = [ gridOrigin[i] + image_coords[i]*gridSpacing[i] for i in range(3) ]
+        return world_coords
+    
+    def getWorldCoord( self, image_coord, iAxis, latLonGrid  ):
+        plotType = self.metadata[ 'plotType' ] 
+        if plotType == 'zyt':                  
+            axisNames = [ 'Longitude', 'Latitude', 'Time' ] if latLonGrid else [ 'X', 'Y', 'Time' ]
+        else:
+            axisNames =  [ 'Longitude', 'Latitude', 'Level' ] if latLonGrid else [ 'X', 'Y', 'Level' ]
+        try:
+            axes = [ 'lon', 'lat', 'time' ] if plotType == 'zyt'  else [ 'lon', 'lat', 'lev' ]
+            world_coord = self.metadata[ axes[iAxis] ][ image_coord ]
+            if ( plotType == 'zyt') and  ( iAxis == 2 ):
+                timeAxis = self.metadata[ 'time' ]     
+                timeValue = cdtime.reltime( float( world_coord ), timeAxis.units ) 
+                world_coord = str( timeValue.tocomp() )          
+            return axisNames[iAxis], getFloatStr( world_coord )
+        except:
+            if (plotType == 'zyx') or (iAxis < 2):
+                gridSpacing = self.input().GetSpacing()
+                gridOrigin = self.input().GetOrigin()
+                return axes[iAxis], getFloatStr( gridOrigin[iAxis] + image_coord*gridSpacing[iAxis] ) 
+            return axes[iAxis], ""
+
+    def getRangeBounds( self ):
+        if self.dtype == "Float": 
+            return self.scalarRange
+        return self.rangeBounds  
+        
+    def getDataRangeBounds(self):
+        if self.dtype == "Float":
+            return self.scalarRange
+        if self.rangeBounds:
+            srange = self.getDataValues( self.rangeBounds[0:2] ) 
+            if ( len( self.rangeBounds ) > 2 ): srange.append( self.rangeBounds[2] ) 
+            else:                               srange.append( 0 )
+        else: srange = [ 0, 0, 0 ]
+        return srange
+    
+    def getScalarRange(self): 
+        return self.scalarRange
+    
+    def raiseModuleError( self, msg ):
+        print>>sys.stderr, msg
+        raise Exception( msg )
+
+    def getDataValue( self, image_value):
+        if self.isFloat(): return image_value
+        if not self.scalarRange: 
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
+        valueRange = self.scalarRange
+        sval = ( float(image_value) - self.rangeBounds[0] ) / ( self.rangeBounds[1] - self.rangeBounds[0] )
+        dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
+#        print " GetDataValue(%.3G): valueRange = %s " % ( sval, str( valueRange ) )
+        return dataValue
+                
+    def getDataValues( self, image_value_list ):
+        if self.isFloat(): return image_value_list
+        if not self.scalarRange: 
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
+        valueRange = self.scalarRange
+        dr = ( self.rangeBounds[1] - self.rangeBounds[0] )
+        data_values = []
+        for image_value in image_value_list:
+            sval = 0.0 if ( dr == 0.0 ) else ( image_value - self.rangeBounds[0] ) / dr
+            dataValue = valueRange[0] + sval * ( valueRange[1] - valueRange[0] ) 
+            data_values.append( dataValue )
+        return data_values
+
+    def getImageValue( self, data_value ):
+        if not self.scalarRange: 
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
+        valueRange = self.scalarRange
+        dv = ( valueRange[1] - valueRange[0] )
+        sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv 
+        imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
+        return imageValue
+
+    def getImageValues( self, data_value_list ):
+        if self.isFloat(): return data_value_list
+        if not self.scalarRange: 
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
+        valueRange = self.scalarRange
+        dv = ( valueRange[1] - valueRange[0] )
+        imageValues = []
+        for data_value in data_value_list:
+            sval = 0.0 if ( dv == 0.0 ) else ( data_value - valueRange[0] ) / dv
+            imageValue = self.rangeBounds[0] + sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
+            imageValues.append( imageValue )
+#        print "\n *****************  GetImageValues: data_values = %s, range = %s, imageValues = %s **************** \n" % ( str(data_value_list), str(self.scalarRange), str(imageValues) )
+        return imageValues
+
+    def scaleToImage( self, data_value ):
+        if self.isFloat(): return data_value
+        if not self.scalarRange: 
+            self.raiseModuleError( "ERROR: no variable selected in dataset input to module %s" % getClassName( self ) )
+        dv = ( self.scalarRange[1] - self.scalarRange[0] )
+        sval = 0.0 if ( dv == 0.0 ) else data_value / dv
+        imageScaledValue =  sval * ( self.rangeBounds[1] - self.rangeBounds[0] ) 
+        return imageScaledValue
+
+    def getMetadata( self, key = None ):
+        return self.metadata.get( key, None ) if ( key and self.metadata )  else self.metadata
+  
+    def getFieldData( self ):
+        if self.fieldData == None:
+            print>>sys.stderr, ' Uninitialized field data being accessed in ispec[%x]  ' % id(self)  
+            self.initializeMetadata()
+        return self.fieldData  
+    
+    def updateMetadata( self, plotIndex ):
+        if self.metadata == None:
+            scalars = None
+             
+#            arr_names = [] 
+#            na = self.fieldData.GetNumberOfArrays()
+#            for iF in range( na ):
+#                arr_names.append( self.fieldData.GetArrayName(iF) )
+#            print " updateMetadata: getFieldData, arrays = ", str( arr_names ) ; sys.stdout.flush()
+            
+            if self.fieldData == None:
+                print>>sys.stderr,  ' NULL field data in updateMetadata: ispec[%x]  ' % id(self)  
+                self.initializeMetadata() 
+    
+            self.metadata = self.computeMetadata( plotIndex )
+            
+            if self.metadata <> None:
+                self.rangeBounds = None              
+                self.datasetId = self.metadata.get( 'datasetId', None )                
+                tval = self.metadata.get( 'timeValue', 0.0 )
+                self.referenceTimeUnits = self.metadata.get( 'timeUnits', None )
+                self.timeValue = cdtime.reltime( float( tval ), self.referenceTimeUnits )               
+                self.dtype =  self.metadata.get( 'datatype', None )
+                scalars =  self.metadata.get( 'scalars', None )
+                self.rangeBounds = getRangeBounds( self.dtype )
+                title = self.metadata.get( 'title', None )
+                if title:
+                    targs = title.split(':')
+                    if len( targs ) == 1:
+                        self.titleBuffer = "\n%s" % ( title )
+                    elif len( targs ) > 1:
+                        self.titleBuffer = "%s\n%s" % ( targs[1], targs[0] )
+                else: self.titleBuffer = "" 
+                attributes = self.metadata.get( 'attributes' , None )
+                if attributes:
+                    self.units = attributes.get( 'units' , '' )
+                    srange = attributes.get( 'range', None )
+                    if srange: 
+        #                print "\n ***************** ScalarRange = %s, md[%d], var_md[%d] *****************  \n" % ( str(range), id(metadata), id(var_md) )
+                        self.scalarRange = list( srange )
+                        self.scalarRange.append( 1 )
+                        if not self.seriesScalarRange:
+                            self.seriesScalarRange = list(srange)
+                        else:
+                            if self.seriesScalarRange[0] > srange[0]:
+                                self.seriesScalarRange[0] = srange[0] 
+                            if self.seriesScalarRange[1] < srange[1]:
+                                self.seriesScalarRange[1] = srange[1] 
+
+    def getUnits(self):
+        return self.units
+    
+    def getLayerList(self):
+        layerList = []
+        pointData = self.input().GetPointData()
+        for iA in range( pointData.GetNumberOfArrays() ):
+            array_name = pointData.GetArrayName(iA)
+            if array_name: layerList.append( array_name )
+        return layerList
+    
+    def computeMetadata( self, plotIndex=0 ):
+        if not self.fieldData: self.initializeMetadata() 
+        if self.fieldData:
+            mdList = extractMetadata( self.fieldData )
+            if plotIndex < len(mdList):
+                return mdList[ plotIndex ]
+            else:
+                try: return mdList[ 0 ]
+                except: pass               
+        print>>sys.stderr, "[%s]: Error, Metadata for input %d not found in ispec[%x]  "  % ( self.__class__.__name__,  plotIndex, id(self) )
+        return {}
+        
+    def addMetadataObserver( self, caller, event ):
+        fd = caller.GetOutput().GetFieldData()
+        fd.ShallowCopy( self.fieldData )
+        pass
+
+    def initializeMetadata( self ):
+        try:
+            self.fieldData = vtk.vtkDataSetAttributes()
+            mdarray = getStringDataArray( 'metadata' )
+            self.fieldData.AddArray( mdarray )
+#            diagnosticWriter.log( self, ' initialize field data in ispec[%x]  ' % id(self) )  
+        except Exception, err:
+            print>>sys.stderr, "Error initializing metadata"
+
+    def addMetadata( self, metadata ):
+        dataVector = self.fieldData.GetAbstractArray( 'metadata' ) 
+        if dataVector == None:
+            cname = getClassName( self ) 
+            if cname <> "InputSpecs": print " Can't get Metadata for class %s " % cname
+        else:
+            enc_mdata = encodeToString( metadata )
+            dataVector.InsertNextValue( enc_mdata  )
                    
 class StructuredDataReader:
     
@@ -297,8 +640,10 @@ class StructuredDataReader:
         self.timeValue = None
         self.useTimeIndex = False
         self.timeAxis = None
+        self.fieldData = None
         self.df = cdms2.open( self.fileSpecs ) 
         self.var =  self.df( self.varSpecs )
+        self.outputType = args.get( 'output_type', CDMSDataType.Volume )
 # #        memoryLogger.log("Init CDMSDataReader")
 #         if self.outputType == CDMSDataType.Hoffmuller:
 #             self.addUVCDATConfigGuiFunction( 'chooseLevel', LevelConfigurationDialog, 'L', label='Choose Level' ) 
@@ -306,15 +651,11 @@ class StructuredDataReader:
     def getTimeAxis(self):
         return self.timeAxis
        
-    def getCachedImageData( self, data_id, cell_coords ):
-        image_data = self.imageDataCache.get( data_id, None )
-        if image_data: 
-            image_data.cells.add( cell_coords )
-            return image_data.data
-        return None
+    def getCachedImageData( self, data_id ):
+        return self.imageDataCache.get( data_id, None )
 
-    def setCachedImageData( self, data_id, cell_coords, image_data ):
-        self.imageDataCache[data_id] = CachedImageData( image_data, cell_coords )
+    def setCachedImageData( self, data_id, image_data ):
+        self.imageDataCache[data_id] = image_data
 
     @classmethod
     def clearCache( cls, cell_coords ):
@@ -339,14 +680,7 @@ class StructuredDataReader:
                     print "Removing Cached data: ", str( dataCacheKey )
         memoryLogger.log(" finished clearing data cache ")
         for imageDataItem in cls.imageDataCache.items():
-            imageDataCacheKey = imageDataItem[0]
-            imageDataCacheObj = imageDataItem[1]
-            if cell_coords in imageDataCacheObj.cells:
-                imageDataCacheObj.cells.remove( cell_coords )
-                if len( imageDataCacheObj.cells ) == 0:
-                    freeImageData( imageDataCacheObj.data )
-                    imageDataCacheObj.data = None
-                    print "Removing Cached image data: ", str( imageDataCacheKey )
+            freeImageData( imageDataItem[1] )
         memoryLogger.log("finished clearing image cache")
         
     def getCachedData( self, varDataId, cell_coords ):
@@ -524,18 +858,31 @@ class StructuredDataReader:
 #                print " VolumeReader->generateOutput, portData: ", portData
                 oRecMgr = OutputRecManager( portData[0]  )
         orecs = oRecMgr.getOutputRecs( self.datasetId ) if oRecMgr else None
-        if not orecs: raise Exception( 'No Variable selected for dataset %s.' % self.datasetId )             
+        if not orecs: raise Exception( 'No Variable selected for dataset %s.' % self.datasetId ) 
+        self.output_names = [] 
+        self.outputSpecs = []           
         for orec in orecs:
-            if orec.name == 'pointCloud':
-                self.getFileMetadata( orec, **args ) 
-                self.set3DOutput( name=orec.name )
-            else:
-                cachedImageDataName = self.getImageData( orec, **args ) 
-                if cachedImageDataName: 
-                    cachedImageData = self.getCachedImageData( cachedImageDataName, cell_coords )            
-                    if   orec.ndim >= 3: self.set3DOutput( name=orec.name,  output=cachedImageData )
-                    elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=cachedImageData )
+            cachedImageDataName = self.getImageData( orec, **args ) 
+            self.output_names.append( cachedImageDataName )
+            ispec = InputSpecs()
+            ispec.initializeInput( self.getCachedImageData( cachedImageDataName ), self.getFieldData() )
+            self.outputSpecs.append( ispec )
+#                 if cachedImageDataName: 
+#                     cachedImageData = self.getCachedImageData( cachedImageDataName )            
+#                     if   orec.ndim >= 3: self.set3DOutput( name=orec.name,  output=cachedImageData )
+#                     elif orec.ndim == 2: self.set2DOutput( name=orec.name,  output=cachedImageData )
         self.currentTime = self.getTimestep()
+
+    def output( self, iIndex=0 ):
+        cachedImageDataName = self.output_names[ iIndex ]
+        cachedImageData = self.getCachedImageData( cachedImageDataName ) 
+        return cachedImageData
+
+    def outputSpec( self, iIndex=0 ):
+        return self.outputSpecs[ iIndex ]
+    
+    def nOutputs(self):
+        return len( self.outputSpecs )
      
     def getTimestep( self ):
         dt = self.timeRange[3]
@@ -609,9 +956,26 @@ class StructuredDataReader:
                 fieldData.AddArray( getStringDataArray( 'metadata:%s' % varName,   [ enc_mdata ]  ) ) 
                 vars.append( varName )                   
         fieldData.AddArray( getStringDataArray( 'varlist',  vars  ) )                       
+
+    def getFieldData( self ):
+        if self.fieldData == None:
+            self.initializeMetadata()
+        return self.fieldData  
+
+    def initializeMetadata( self ):
+        try:
+            self.fieldData = vtk.vtkDataSetAttributes()
+            mdarray = getStringDataArray( 'metadata' )
+            self.fieldData.AddArray( mdarray )
+        except Exception, err:
+            print>>sys.stderr, "Error initializing metadata"
+
+    def addMetadata( self, metadata ):
+        dataVector = self.fieldData.GetAbstractArray( 'metadata' ) 
+        enc_mdata = encodeToString( metadata )
+        dataVector.InsertNextValue( enc_mdata  )
                
     def getImageData( self, orec, **args ):
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
         """
         This method converts cdat data into vtkImageData objects. The ds object is a CDMSDataset instance which wraps a CDAT CDMS Dataset object. 
         The ds.getVarDataCube method execution extracts a CDMS variable object (varName) and then cuts out a data slice with the correct axis ordering (returning a NumPy masked array).   
@@ -665,7 +1029,7 @@ class StructuredDataReader:
                                       
             iTimestep = self.timeIndex if ( varName <> '__zeros__' ) else 0
             varDataIdIndex = iTimestep  
-            cell_coords = DV3DPipelineHelper.getCellCoordinates( self.moduleID ) 
+            cell_coords = (0,0)
             roiStr = ":".join( [ ( "%.1f" % self.cdmsDataset.gridBounds[i] ) for i in range(4) ] ) if self.cdmsDataset.gridBounds else ""
             varDataId = '%s;%s;%d;%s;%s' % ( dsid, varName, self.outputType, str(varDataIdIndex), roiStr )
             varDataIds.append( varDataId )
@@ -719,7 +1083,7 @@ class StructuredDataReader:
         if not varDataSpecs: return None            
 
         cachedImageDataName = '-'.join( varDataIds )
-        image_data = self.getCachedImageData( cachedImageDataName, cell_coords ) 
+        image_data = self.getCachedImageData( cachedImageDataName ) 
         if not image_data:
 #            print 'Building Image for cache: %s ' % cachedImageDataName
             image_data = vtk.vtkImageData() 
@@ -739,7 +1103,7 @@ class StructuredDataReader:
             image_data.SetSpacing(  gridSpacing[0], gridSpacing[1], gridSpacing[2] )
 #            print " ********************* Create Image Data, extent = %s, spacing = %s ********************* " % ( str(extent), str(gridSpacing) )
 #            offset = ( -gridSpacing[0]*gridExtent[0], -gridSpacing[1]*gridExtent[2], -gridSpacing[2]*gridExtent[4] )
-            self.setCachedImageData( cachedImageDataName, cell_coords, image_data )
+            self.setCachedImageData( cachedImageDataName, image_data )
                 
         nVars = len( varList )
 #        npts = image_data.GetNumberOfPoints()
@@ -858,7 +1222,7 @@ class StructuredDataReader:
         if axis.isLatitude(): 
             self.lat = axis
             iCoord  = 1
-        if isLevelAxis( axis ): 
+        if axis.isLevel() or PlotType.isLevelAxis(  axis.id ): 
             self.lev = axis
             iCoord  = 2 if ( outputType <> CDMSDataType.Hoffmuller ) else -1
         if axis.isTime():

@@ -271,10 +271,7 @@ class CPCPlot(DV3DPlot):
             self.planeWidget.KeyPressActivationOff()
             self.widget_bounds = bounds 
             self.planeWidget.PlaceWidget( self.widget_bounds )
-    
-    def start(self):
-        self.renderWindowInteractor.Start()
-        
+            
     def activateConfigDialog(self, dialog, show=False ):
             w = dialog.getConfigWidget()
             w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.processConfigCmd )
@@ -1253,6 +1250,7 @@ class CPCPlot(DV3DPlot):
         interface = init_args[2]
         if self.widget and show: self.widget.show()
         self.createConfigDialog( show, interface )
+        self.start()
 
 
     
