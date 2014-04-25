@@ -422,7 +422,6 @@ class ImagePlaneWidget:
 #----------------------------------------------------------------------------
 
     def StartInteraction(self): 
-        from PersistentModule import PersistentVisualizationModule
         update_rate = self.Interactor.GetDesiredUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.updateInteractor()
@@ -431,7 +430,6 @@ class ImagePlaneWidget:
 #----------------------------------------------------------------------------
 
     def EndInteraction(self): 
-        from PersistentModule import PersistentVisualizationModule
         update_rate = self.Interactor.GetStillUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.ResetNavigationInteraction()
@@ -468,7 +466,7 @@ class ImagePlaneWidget:
         if not self.ActionHandler.showInteractiveLens: self.ActivateCursor(0)
         self.EndInteraction()
         self.Interactor.Render()
-
+            
 #----------------------------------------------------------------------------
 
     def StartSliceMotion(self):

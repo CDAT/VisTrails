@@ -34,6 +34,13 @@ MIN_LINE_LEN = 50
 VTK_NOTATION_SIZE = 14
 from packages.CPCViewer.ColorMapManager import *
 
+def CheckAbort(obj, event):
+    if obj.GetEventPending() != 0:
+        obj.SetAbortRender(1)
+
+def getClassName( instance ):
+    return instance.__class__.__name__ if ( instance <> None ) else "None" 
+
 class PlotType:
     Planar = 0
     Spherical = 1
@@ -47,9 +54,11 @@ class PlotType:
     
     @classmethod
     def isLevelAxis( cls, pid ):
-        if ( pid.find('level')  >= 0 ): return True
-        if ( pid.find('bottom') >= 0 ) and ( pid.find('top') >= 0 ): return True
+        lname = pid.lower()
+        if ( lname.find('lev')  >= 0 ): return True
+        if ( lname.find('bottom') >= 0 ) and ( lname.find('top') >= 0 ): return True
         if pid in cls.LevelAliases: return True
+        if lname in cls.LevelAliases: return True
         return False    
 
     @classmethod
@@ -151,7 +160,7 @@ class DV3DPlot(QtCore.QObject):
 
     sliceAxes = [ 'x', 'y', 'z' ]  
 
-    def __init__( self, vtk_render_window = None , **args ):
+    def __init__( self,  **args ):
         QtCore.QObject.__init__( self )
         self.useGui = args.get( 'gui', True )
         self.xcenter = 100.0
@@ -171,11 +180,24 @@ class DV3DPlot(QtCore.QObject):
         self.colormapManagers= {}
         self.stereoEnabled = 0
         self.maxStageHeight = 100.0
+        self.observerTargets = set()
 
-        self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
+        self.renderWindow = args.get( 'renwin', self.createRenderWindow() )
         self.renderWindowInteractor = self.renderWindow.GetInteractor()
         style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
         self.renderWindowInteractor.SetInteractorStyle( style )
+        self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
+        self.activated = False
+
+    def clearReferrents(self):
+        self.removeObservers()
+        self.renderer = None
+        self.renderWindowInteractor = None
+
+    def removeObservers( self ): 
+        for target in self.observerTargets:
+            target.RemoveAllObservers()
+        self.observerTargets.clear()
 
     def createRenderWindow(self):
         if self.useGui:
@@ -185,14 +207,11 @@ class DV3DPlot(QtCore.QObject):
             self.connect( self.widget, QtCore.SIGNAL('event'), self.processEvent )  
             self.connect( self.widget, QtCore.SIGNAL("Close"), self.closeConfigDialog  ) 
             renwin = self.widget.GetRenderWindow()
-            self.renderWindowInteractor = renwin.GetInteractor()
         else:
             renwin = vtk.vtkRenderWindow()
             self.renderWindowInteractor = vtk.vtkGenericRenderWindowInteractor()
             self.renderWindowInteractor.SetRenderWindow( renwin )
             
-        style = vtk.vtkInteractorStyleTrackballCamera()   
-        self.renderWindowInteractor.SetInteractorStyle( style )
         return renwin
     
     def closeConfigDialog(self):
@@ -277,7 +296,9 @@ class DV3DPlot(QtCore.QObject):
     def getColormap(self, cmap_index = 0 ):
         colormapManager = self.getColormapManager( index=cmap_index )
         return [ colormapManager.colormapName, colormapManager.invertColormap, self.stereoEnabled ]
- 
+
+    def start(self):
+        self.renderWindowInteractor.Start() 
          
     def invalidate(self):
         self.isValid = False
@@ -298,6 +319,16 @@ class DV3DPlot(QtCore.QObject):
         if label_actor: label_actor.VisibilityOn() 
         if render: self.render()     
 
+    def getLut( self, cmap_index=0  ):
+        colormapManager = self.getColormapManager( index=cmap_index )
+        return colormapManager.lut
+        
+    def updatingColormap( self, cmap_index, colormapManager ):
+        pass
+
+    def addObserver( self, target, event, observer ):
+        self.observerTargets.add( target ) 
+        target.AddObserver( event, observer ) 
 
     def createRenderer(self, **args ):
         background_color = args.get( 'background_color', VTK_BACKGROUND_COLOR )
@@ -313,6 +344,7 @@ class DV3DPlot(QtCore.QObject):
         except:     print>>sys.stderr,  "Warning, vtkPointPicker patch not installed, picking will not work properly."
         self.pointPicker.InitializePickList()             
         self.renderWindowInteractor.SetPicker(self.pointPicker) 
+        self.addObserver( self.renderer, 'ModifiedEvent', self.activateEvent )
         if self.enableClip:
             self.clipper = vtk.vtkBoxWidget()
             self.clipper.RotationEnabledOff()
@@ -327,10 +359,72 @@ class DV3DPlot(QtCore.QObject):
 #        self.clipper.AddObserver( 'EndInteractionEvent', self.endClip )
 #        self.clipper.AddObserver( 'InteractionEvent', self.executeClip )
             self.clipOff() 
-        
-    def onRightButtonPress(self, caller, event ):
-        pass
+
+    def isConfigStyle( self, iren ):
+        if not iren: return False
+        return getClassName( iren.GetInteractorStyle() ) == getClassName( self.configurationInteractorStyle )
+
+    def setInteractionState(self, caller, event):
+        print "Caught key press event"
+        return 0
     
+    def onAnyEvent(self, caller, event):
+        return 0
+
+    def updateLevelingEvent(self, caller, event):
+        return 0
+    
+    def onKeyPress(self, caller, event):
+        print "Caught key press event"
+        return 0
+    
+    def onKeyRelease(self, caller, event):
+        return 0
+    
+    def onLeftButtonPress(self, caller, event):
+        return 0
+    
+    def onModified(self, caller, event):
+        return 0
+    
+    def onRender(self, caller, event):
+        return 0
+
+    def onLeftButtonRelease(self, caller, event):
+        return 0
+
+    def onRightButtonRelease(self, caller, event):
+        return 0
+
+    def onRightButtonPress(self, caller, event):
+        return 0
+    
+    def updateInteractor(self): 
+        return 0    
+    
+    def activateEvent( self, caller, event ):
+        if not self.activated:
+#            self.addObserver( self.renwin,"AbortCheckEvent", CheckAbort)
+#            self.activateWidgets( self.renderWindowInteractor )                                  
+            self.addObserver( self.renderWindowInteractor, 'CharEvent', self.setInteractionState )                   
+            self.addObserver( self.renderWindowInteractor, 'MouseMoveEvent', self.updateLevelingEvent )
+#                        self.addObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
+            self.addObserver( self.renderWindowInteractor, 'AnyEvent', self.onAnyEvent )  
+#                        self.addObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
+#                        self.addObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
+            self.addObserver( self.renderWindowInteractor, 'CharEvent', self.onKeyPress )
+            self.addObserver( self.renderWindowInteractor, 'KeyReleaseEvent', self.onKeyRelease )
+            self.addObserver( self.renderWindowInteractor, 'LeftButtonPressEvent', self.onLeftButtonPress )
+            self.addObserver( self.renderWindowInteractor, 'ModifiedEvent', self.onModified )
+            self.addObserver( self.renderWindowInteractor, 'RenderEvent', self.onRender )                   
+            self.addObserver( self.renderWindowInteractor, 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
+            self.addObserver( self.renderWindowInteractor, 'RightButtonReleaseEvent', self.onRightButtonRelease )
+            self.addObserver( self.renderWindowInteractor, 'RightButtonPressEvent', self.onRightButtonPress )
+#             for configurableFunction in self.configurableFunctions.values():
+#                 configurableFunction.activateWidget( self.renderWindowInteractor  )
+            self.updateInteractor() 
+            self.activated = True 
+            
     def toggleClipping(self):
         if self.clipper.GetEnabled():   self.clipOff()
         else:                           self.clipOn()
@@ -364,7 +458,7 @@ class DV3DPlot(QtCore.QObject):
             self.renderer.ResetCamera( self.getBounds() )
             
     def initCamera(self):
-        self.renderer.GetActiveCamera().SetPosition( self.xcenter, self.ycenter, 0.0 )
+        self.renderer.GetActiveCamera().SetPosition( self.xcenter, self.ycenter, 400.0 )
         self.renderer.GetActiveCamera().SetFocalPoint( self.xcenter, self.ycenter, 0.0 )
         self.renderer.GetActiveCamera().SetViewUp( 0, 1, 0 )  
         self.renderer.ResetCameraClippingRange()     

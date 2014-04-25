@@ -34,7 +34,7 @@ class PlotType:
     Spherical = 1
     List = 0
     Grid = 1
-    LevelAliases = [ 'isobaric' ]
+    LevelAliases = [ 'isobaric', "layers", "interfaces"  ]
     
     @classmethod
     def validCoords( cls, lat, lon ):
@@ -42,8 +42,9 @@ class PlotType:
     
     @classmethod
     def isLevelAxis( cls, pid ):
-        if ( pid.find('level')  >= 0 ): return True
-        if ( pid.find('bottom') >= 0 ) and ( pid.find('top') >= 0 ): return True
+        lname = pid.lower()
+        if ( lname.find('lev')  >= 0 ): return True
+        if ( lname.find('bottom') >= 0 ) and ( lname.find('top') >= 0 ): return True
         if pid in cls.LevelAliases: return True
         return False    
 
