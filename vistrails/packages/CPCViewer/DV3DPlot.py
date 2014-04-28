@@ -412,7 +412,7 @@ class DV3DPlot(QtCore.QObject):
             self.addObserver( self.renderWindowInteractor, 'AnyEvent', self.onAnyEvent )  
 #                        self.addObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
 #                        self.addObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
-            self.addObserver( self.renderWindowInteractor, 'CharEvent', self.onKeyPress )
+#            self.addObserver( self.renderWindowInteractor, 'CharEvent', self.onKeyPress )
             self.addObserver( self.renderWindowInteractor, 'KeyReleaseEvent', self.onKeyRelease )
             self.addObserver( self.renderWindowInteractor, 'LeftButtonPressEvent', self.onLeftButtonPress )
             self.addObserver( self.renderWindowInteractor, 'ModifiedEvent', self.onModified )

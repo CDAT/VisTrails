@@ -478,8 +478,9 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
 #        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
         
     def startLeveling( self, x, y ):
-        if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
-        else:               self.windowLeveler.startWindowLevel( x, y )
+#        if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
+#        else:               
+        self.windowLeveler.startWindowLevel( x, y )
         self.updateActiveFunctionList()
         self.adjustRangeInput = -1
         self.emit(QtCore.SIGNAL('startLeveling()'))
@@ -501,7 +502,6 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.windowLeveler.setWindowLevelFromRange( self.range )
             
     def updateLeveling( self, x, y, wsize ):
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper     
         if self.altMode:
             refinement_range = self.windowRefiner.updateRefinement( [ x, y ], wsize )
             for iR in [ 0, 1 ]: self.range[3+iR] = refinement_range[iR]
@@ -509,7 +509,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
             leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
             for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.range_bounds ) if self.boundByRange else leveling_range[iR]
         self.emit( QtCore.SIGNAL('updateLeveling()') )
-        return self.broadcastLevelingData( active_modules = DV3DPipelineHelper.getActivePlotList() )
+#        return self.broadcastLevelingData( active_modules = DV3DPipelineHelper.getActivePlotList() )
 #        print "updateLeveling: %s " % str( self.range )
 
     def setImageDataRange(  self, imageRange  ):
@@ -566,6 +566,14 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         return self.range # self.wrapData( range )
 
 class StructuredGridPlot(DV3DPlot): 
+
+    NoModifier = 0
+    ShiftModifier = 1
+    CtrlModifier = 2
+    AltModifier = 3
+    
+    LEFT_BUTTON = 0
+    RIGHT_BUTTON = 1
      
     global_coords = [-1, -1, -1]
     
@@ -596,7 +604,13 @@ class StructuredGridPlot(DV3DPlot):
         self.enableBasemap = True
         self.map_opacity = [ 0.4, 0.4 ]
         self.roi = None
+        self.isAltMode = False
+        self.createColormap = True
         self.inputSpecs = {}
+        self.InteractionState = None
+        self.LastInteractionState = None
+        self.configuring = False
+        self.navigationInteractorStyle = None
 
         self.addConfigurableLevelingFunction( 'colorScale', 'C', label='Colormap Scale', units='data', setLevel=self.scaleColormap, getLevel=self.getDataRangeBounds, layerDependent=True, adjustRangeInput=0, group=ConfigGroup.Color )
         self.addConfigurableLevelingFunction( 'opacity', 'O', label='Slice Plane Opacity', rangeBounds=[ 0.0, 1.0 ],  setLevel=self.setOpacity, activeBound='min',  getLevel=self.getOpacity, isDataValue=False, layerDependent=True, bound = False, group=ConfigGroup.Rendering )
@@ -1046,14 +1060,13 @@ class StructuredGridPlot(DV3DPlot):
         key = caller.GetKeyCode() 
         keysym = caller.GetKeySym()
         shift = caller.GetShiftKey()
-        alt = not key and keysym.startswith("Alt")
+#        print " setInteractionState -- Key Press: %c ( %d: %s ), event = %s " % ( key, ord(key), str(keysym), str( event ) )
+        alt = ( keysym <> None) and keysym.startswith("Alt")
         if alt:
             self.isAltMode = True
         else: 
-#            ikey = ord(key[0]) if key else 0
-            if shift: keysym = keysym.upper()
             print " ------------------------------------------ setInteractionState, key=%s, keysym=%s, shift = %s, isAltMode = %s    ------------------------------------------ " % (str(key), str(keysym), str(shift), str(self.isAltMode) )
-            self.processKeyEvent( keysym, caller, event )
+            self.processKeyEvent( key, caller, event )
 
     def processKeyEvent( self, key, caller=None, event=None ):
 #        print "process Key Event, key = %s" % ( key )
@@ -1073,8 +1086,83 @@ class StructuredGridPlot(DV3DPlot):
                 self.updateInteractionState( state, self.isAltMode  )                 
                 self.isAltMode = False 
 
+    def onLeftButtonPress( self, caller, event ):
+        istyle = self.renderWindowInteractor.GetInteractorStyle()
+#        print "(%s)-LBP: s = %s, nis = %s " % ( getClassName( self ), getClassName(istyle), getClassName(self.navigationInteractorStyle) )
+        if not self.finalizeLeveling(): 
+            shift = caller.GetShiftKey()
+            self.currentButton = self.LEFT_BUTTON
+ #           self.clearInstructions()
+            self.UpdateCamera()   
+            x, y = caller.GetEventPosition()      
+            self.startConfiguration( x, y, [ 'leveling', 'generic' ] )  
+        return 0
+
+    def onRightButtonPress( self, caller, event ):
+        shift = caller.GetShiftKey()
+        self.currentButton = self.RIGHT_BUTTON
+ #       self.clearInstructions()
+        self.UpdateCamera()
+        x, y = caller.GetEventPosition()
+        if self.InteractionState <> None:
+            self.startConfiguration( x, y,  [ 'generic' ] )
+        return 0
+
+    def onLeftButtonRelease( self, caller, event ):
+        self.currentButton = None 
+    
+    def onRightButtonRelease( self, caller, event ):
+        self.currentButton = None 
+
+    def startConfiguration( self, x, y, config_types ): 
+        if (self.InteractionState <> None) and not self.configuring:
+            configFunct = self.configurableFunctions[ self.InteractionState ]
+            if configFunct.type in config_types:
+                self.configuring = True
+                configFunct.start( self.InteractionState, x, y )
+                self.haltNavigationInteraction()
+#                if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
+
+    def updateLevelingEvent( self, caller, event ):
+        x, y = caller.GetEventPosition()
+        wsize = caller.GetRenderWindow().GetSize()
+        self.updateLeveling( x, y, wsize )
+                
+    def updateLeveling( self, x, y, wsize, **args ):  
+        if self.configuring:
+            configFunct = self.configurableFunctions[ self.InteractionState ]
+            if configFunct.type == 'leveling':
+                configData = configFunct.update( self.InteractionState, x, y, wsize )
+                if configData <> None:
+                    self.setParameter( configFunct.name, configData ) 
+                    textDisplay = configFunct.getTextDisplay()
+                    if textDisplay <> None:  self.updateTextDisplay( textDisplay )
+
+    def UpdateCamera(self):
+        pass
+
+    def haltNavigationInteraction(self):
+        if self.renderWindowInteractor:
+            istyle = self.renderWindowInteractor.GetInteractorStyle()  
+            if self.navigationInteractorStyle == None:
+                self.navigationInteractorStyle = istyle    
+            self.renderWindowInteractor.SetInteractorStyle( self.configurationInteractorStyle )  
+#            print "\n ---------------------- [%s] halt Navigation: nis = %s, is = %s  ----------------------  \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle)  ) 
+    
+    def resetNavigation(self):
+        if self.renderWindowInteractor:
+            if self.navigationInteractorStyle <> None: 
+                self.renderWindowInteractor.SetInteractorStyle( self.navigationInteractorStyle )
+            istyle = self.renderWindowInteractor.GetInteractorStyle()  
+#            print "\n ---------------------- [%s] reset Navigation: nis = %s, is = %s  ---------------------- \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle) )        
+            self.enableVisualizationInteraction()
+
+    def getInteractionState( self, key ):
+        for configFunct in self.configurableFunctions.values():
+            if configFunct.matches( key ): return ( configFunct.name, configFunct.persisted )
+        return ( None, None )    
+
     def updateInteractionState( self, state, altMode ): 
-        from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper    
         rcf = None
         if state == None: 
             self.finalizeLeveling()
@@ -1094,8 +1182,7 @@ class StructuredGridPlot(DV3DPlot):
                 configFunct.open( state, self.isAltMode )
                 self.InteractionState = state                   
                 self.LastInteractionState = self.InteractionState
-                if DV3DPipelineHelper.isLevelingConfigMode():
-                    self.disableVisualizationInteraction()
+                self.disableVisualizationInteraction()
             elif state == 'colorbar':
                 self.toggleColormapVisibility()                        
             elif state == 'reset':
@@ -1547,7 +1634,28 @@ class StructuredGridPlot(DV3DPlot):
     def finalizeLeveling( self, cmap_index=0 ):
         ispec = self.inputSpecs[ cmap_index ] 
         ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
+        if self.configuring: 
+            self.finalizeConfigurationObserver( self.InteractionState )            
+            self.resetNavigation()
+            self.configuring = False
+            self.InteractionState = None
+            return True
+        return False
 #            self.updateSliceOutput()
+
+    def finalizeConfigurationObserver( self, parameter_name, **args ):
+        self.finalizeParameter( parameter_name, **args )    
+#        for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args ) 
+        self.endInteraction( **args ) 
+
+    def finalizeParameter(self, parameter_name, **args ):
+        pass
+    
+    def endInteraction( self, **args ):  
+        self.resetNavigation() 
+        self.configuring = False
+        self.InteractionState = None
+        self.enableVisualizationInteraction()
 
     def initializeConfiguration( self, cmap_index=0, **args ):
         ispec = self.inputSpecs[ cmap_index ] 
@@ -1576,6 +1684,8 @@ class StructuredGridPlot(DV3DPlot):
     def onKeyPress( self, caller, event ):
         key = caller.GetKeyCode() 
         keysym = caller.GetKeySym()
+        print " -- Key Press: %s ( %s ), event = %s " % ( key, str(keysym), str( event ) )
+        if keysym == None: return
         alt = ( keysym.lower().find('alt') == 0 )
         ctrl = caller.GetControlKey() 
         shift = caller.GetShiftKey() 
