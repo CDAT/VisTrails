@@ -7,6 +7,7 @@ import tempfile
 
 import metrics.frontend.uvcdat
 from metrics.frontend.options import Options
+import metrics.frontend.defines as defines
 
 import metrics.fileio.findfiles
 import metrics.packages.diagnostic_groups
@@ -37,6 +38,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    obs1files = None
    obs2files = None
    ds_menu = None
+   region_box = None
    Types = dg_menu.keys()
    standard_alltypes = ["AMWG","LMWG","OMWG", "PCWG", "MPAS", "WGNE", "Metrics"]
    DisabledTypes = list( set(standard_alltypes) - set(Types) )
@@ -204,8 +206,19 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.changeState('obs2', button)
 
    def regionChanged(self, index):
+      rl = defines.all_regions.keys()
+      rl.sort()
       print 'Region changed - index: ', index
-      print 'This would need passed to the diags code'
+      print 'key 0: '
+      print rl[0]
+      if index != -1:
+         print 'key index: '
+         print rl[index]
+         print 'box coords: '
+         print defines.all_regions[rl[index]]
+         self.region_box = defines.all_regions[rl[index]]
+      else:
+         self.region_box = None
 
    def obs1trans(self, state):
       print 'This is for translating var names between datasets and obs sets'
@@ -353,9 +366,25 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 #### NEXT EDITS HERE FOR DS1 vs DS2 vs OBS....
    def plotsetchanged(self,item,column):
       import metrics.frontend.uvcdat
-      txt = item.text(item.columnCount()-1)
+      txt = str(item.text(item.columnCount()-1))
 #      print 'need to call init for the thing that was just selected to get pre_compute done'
       
+      if 'REGIONAL' in txt.upper():
+         print 'This appears to be a regional diagnostic'
+         rl = defines.all_regions.keys()
+         rl.sort()
+         for i in range(self.comboBoxRegion.count()):
+            self.comboBoxRegion.removeItem(0)
+         self.comboBoxRegion.addItems(rl)
+         self.RegionLabel.setEnabled(True)
+         self.comboBoxRegion.setEnabled(True)
+      else:
+         self.RegionLabel.setEnabled(False)
+         self.comboBoxRegion.setEnabled(False)
+         for i in range(self.comboBoxRegion.count()):
+            self.comboBoxRegion.removeItem(0)
+         
+
       if self.useObs1 == True:
          if type(self.observations1) is list:
             self.observation1 = str(self.comboBoxObservation1.currentText())
@@ -593,12 +622,14 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         variable = str(self.comboBoxVar.currentText())
         auxname = str(self.comboBoxAux.currentText())
         season = str(self.comboBoxSeason.currentText())
-        auxname = str(self.comboBoxAux.currentText())
+
+        # region_box was set when region was clicked.
         print "diagnostic: %s" % diagnostic
         print "observation1: %s" % self.observation1
         print "observation2: %s" % self.observation2
         print "variable: %s" % variable
         print "auxiliary option: %s" % auxname
+        print "region_box: %s" %self.region_box
         print "season: %s" % season
         # initial test, first cut:
         # This stuff should go elsewhere...
@@ -644,7 +675,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
          ### ADDED STR() HERE. NOT SURE IF IT WAS NEEDED YET ###
         self.diagnostic_set_name = str(diagnostic)
-        self.plot_spec = self.ds_menu[diagnostic](ft1, ft2, variable, season, aux)
+        self.plot_spec = self.ds_menu[diagnostic](ft1, ft2, variable, season, self.region_box, aux)
 #        print 'options at apply clicked: ', self.opts
 #        print 'options.opts at apply clicked: ', self.opts._opts
 
