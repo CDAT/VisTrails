@@ -179,6 +179,66 @@ class NodeData( QtCore.QObject ):
     
     def __init__(self, **args ):
         QtCore.QObject.__init__( self )
+        self.ix0 = args.get( "ix0", None )
+        self.y0 = args.get( "y0", None )
+        self.ix1 = args.get( "ix1", None )
+        self.y1 = args.get( "y1", None )
+        self.s = args.get( "s", 0.5 )
+        self.color = args.get( "color", NodeData.YELLOW )
+        self.free = args.get( "free", False )
+        self.index =  args.get( "index", -1 )
+        self.dx0 = args.get( "dx0", None )
+        self.dx1 = args.get( "dx1", None )
+        self.spt0 = None
+        self.spt1 = None
+        self.vector = None
+
+    def setImageVectorData(self, ipt1, s ): 
+        self.ix1 = ipt1[0] 
+        self.y1 = ipt1[1]  
+        self.s = s 
+
+    def getDataPoint(self):
+        return ( self.dx0, self.y0 )
+
+    def getDataEndPoint(self):
+        return ( self.dx1, self.y1 ) if self.dx1 else None
+    
+    def getDataPosition( self ): 
+        if self.dx1 == None: return [ self.dx0, self.y0 ]
+        return [ self.dx0 + self.s * ( self.dx1 - self.dx0 ), self.y0 + self.s * ( self.y1 - self.y0 ) ]
+        
+    def getImagePosition( self ): 
+        if self.ix1 == None: return [ self.ix0, self.y0 ]
+        return [ self.ix0 + self.s * ( self.ix1 - self.ix0 ), self.y0 + self.s * ( self.y1 - self.y0 ) ]
+    
+    def getScenePoint(self):
+        return self.spt0
+
+    def getSceneEndPoint(self):
+        return self.spt1
+    
+    def getScenePosition(self):
+        vector = self.getVector()
+        if vector and (self.s > 0.0):
+            return vector.getPoint( self.s  ) 
+        return self.spt0
+    
+    def getVector(self):
+        if (self.vector == None) and (self.spt1 <> None):
+            self.vector = MovementConstraintVector( self.spt0, self.spt1 )
+        return self.vector
+
+class NodeData1( QtCore.QObject ):
+    RED = 0
+    BLUE = 1
+    YELLOW = 2
+    CYAN = 3
+    MAGENTA = 4
+    GRAY = 5
+    
+    def __init__(self, **args ):
+        QtCore.QObject.__init__( self )
         self.y0 = args.get( "y0", None )
         self.y1 = args.get( "y1", None )
         self.s = args.get( "s", 0.5 )
@@ -211,6 +271,10 @@ class NodeData( QtCore.QObject ):
     def getDataPosition( self ): 
         if self.dx1 == None: return [ self.dx0, self.y0 ]
         return [ self.dx0 + self.s * ( self.dx1 - self.dx0 ), self.y0 + self.s * ( self.y1 - self.y0 ) ]
+
+    def getImagePosition( self ): 
+        if self.ix1 == None: return [ self.ix0, self.y0 ]
+        return [ self.ix0 + self.s * ( self.ix1 - self.ix0 ), self.y0 + self.s * ( self.y1 - self.y0 ) ]
             
     def getScenePoint(self):
         return self.spt0

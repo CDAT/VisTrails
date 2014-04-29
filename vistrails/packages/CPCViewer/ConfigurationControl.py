@@ -664,7 +664,8 @@ class ParallelCoordinatesWidget(QtGui.QWidget):
                 print " Set column %s, Range: %s, data range = %s " % ( varid, str(vrange), str((ss_raw_data.min(),ss_raw_data.max())))
                 
 
-        self.plot.SetInputData( self.table )   
+        if vtk.VTK_MAJOR_VERSION <= 5:  self.plot.SetInput( self.table )
+        else:                           self.plot.SetInputData( self.table )          
         na = self.chart.GetNumberOfAxes()
         for i in range(na):
             vrange = ranges[i]

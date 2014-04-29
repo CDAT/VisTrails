@@ -205,8 +205,8 @@ class Counter():
 class CPCPlot(DV3DPlot):  
     
 
-    def __init__( self, vtk_render_window = None , **args ):
-        DV3DPlot.__init__( self, vtk_render_window,  **args  )
+    def __init__( self, **args ):
+        DV3DPlot.__init__( self, **args  )
         self.sliceAxisIndex = 0
         self.partitioned_point_cloud = None
         self.point_cloud_overview = None
@@ -779,7 +779,7 @@ class CPCPlot(DV3DPlot):
         pc.generateSubset( spec=self.current_subset_specs )
         if self.render_mode == ProcessMode.LowRes: 
             self.configDialog.newSubset( self.point_cloud_overview.getCellData() )
-        self.render( self.render_mode )
+        self.render( mode=self.render_mode )
         sys.stdout.flush()
 
     def processConfigCmd( self, args ):

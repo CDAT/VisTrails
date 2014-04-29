@@ -57,6 +57,7 @@ import os, os.path, sys, argparse, time, multiprocessing
 from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
 from packages.CPCViewer.PointCloudViewer import CPCPlot
 from packages.CPCViewer.StructuredGridViewer import StructuredGridPlot
+from packages.CPCViewer.VolumeViewer import VolumePlot
 from packages.CPCViewer.MultiVarPointCollection import InterfaceType
 
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
@@ -117,7 +118,7 @@ elif ns.data_type == "CSU":
     varname = "pressure" 
  
 if ns.data_type == "GEOS5":   
-    g = StructuredGridPlot( ) 
+    g = VolumePlot( ) 
     g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op, roi ), show=showGui ) 
 else:
     g = CPCPlot( ) 
