@@ -482,7 +482,7 @@ class MultiVarPointCollection():
                     self.vars[ varname ] = var
                     var_data = self.getDataBlock( var )
                     if not isNone( var_data ):  
-                        self.point_data_arrays[ varname ] = var_data.data
+                        self.point_data_arrays[ varname ] = var_data
                         vrng = ( var_data.min(), var_data.max() )
                         self.vrange[ varname ] = vrng 
         #                self.var_data_cache[ self.iTimeStep ] = var_data

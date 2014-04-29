@@ -28,54 +28,13 @@ except ImportError:
     QtGui = _QtGui
     USES_PYSIDE = False
     
-import vtk, sys
+import vtk, sys, os
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 MIN_LINE_LEN = 50
 VTK_NOTATION_SIZE = 14
 from packages.CPCViewer.ColorMapManager import *
-
-def CheckAbort(obj, event):
-    if obj.GetEventPending() != 0:
-        obj.SetAbortRender(1)
-
-def getClassName( instance ):
-    return instance.__class__.__name__ if ( instance <> None ) else "None" 
-
-class PlotType:
-    Planar = 0
-    Spherical = 1
-    List = 0
-    Grid = 1
-    LevelAliases = [ 'isobaric', "layers", "interfaces" ]
-    
-    @classmethod
-    def validCoords( cls, lat, lon ):
-        return ( id(lat) <> id(None) ) and ( id(lon) <> id(None) )
-    
-    @classmethod
-    def isLevelAxis( cls, pid ):
-        lname = pid.lower()
-        if ( lname.find('lev')  >= 0 ): return True
-        if ( lname.find('bottom') >= 0 ) and ( lname.find('top') >= 0 ): return True
-        if pid in cls.LevelAliases: return True
-        if lname in cls.LevelAliases: return True
-        return False    
-
-    @classmethod
-    def getPointsLayout( cls, grid ):
-        if grid <> None:
-            if (grid.__class__.__name__ in ( "RectGrid", "FileRectGrid") ): 
-                return cls.Grid
-        return cls.List  
-
-
-def getBool( val ):
-    if isinstance( val, str ):
-        if( val.lower()[0] == 't' ): return True
-        if( val.lower()[0] == 'f' ): return False
-        try:    val = int(val)
-        except: pass
-    return bool( val )
+from packages.CPCViewer.StructuredGridConfiguration import *
+from packages.CPCViewer.StructuredVariableReader import StructuredDataReader
 
 class QVTKAdaptor( QVTKRenderWindowInteractor ):
     
@@ -157,8 +116,15 @@ class TextDisplayMgr:
         return textActor 
        
 class DV3DPlot(QtCore.QObject):  
+    
+    NoModifier = 0
+    ShiftModifier = 1
+    CtrlModifier = 2
+    AltModifier = 3
+    
+    LEFT_BUTTON = 0
+    RIGHT_BUTTON = 1
 
-    sliceAxes = [ 'x', 'y', 'z' ]  
 
     def __init__( self,  **args ):
         QtCore.QObject.__init__( self )
@@ -167,11 +133,13 @@ class DV3DPlot(QtCore.QObject):
         self.xwidth = 300.0
         self.ycenter = 0.0
         self.ywidth = 180.0
+        self.iOrientation = 0
 
         self.widget = None
         self.textDisplayMgr = None
         self.enableClip = False
         self.variables = {}
+        self.metadata = {}
 
         self.isValid = True
         self.cameraOrientation = {}
@@ -186,8 +154,678 @@ class DV3DPlot(QtCore.QObject):
         self.renderWindowInteractor = self.renderWindow.GetInteractor()
         style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
         self.renderWindowInteractor.SetInteractorStyle( style )
+        
+        self.configuring = False
+        self.configurableFunctions = {}
         self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
+        self.navigationInteractorStyle = None
         self.activated = False
+
+        self.pipelineBuilt = False
+        self.baseMapActor = None
+        self.enableBasemap = True
+        self.map_opacity = [ 0.4, 0.4 ]
+        self.roi = None
+        self.isAltMode = False
+        self.createColormap = True
+        self.inputSpecs = {}
+        self.InteractionState = None
+        self.LastInteractionState = None
+
+    def getRangeBounds( self, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getRangeBounds()  
+
+    def setRangeBounds( self, rbounds, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        ispec.rangeBounds[:] = rbounds[:] 
+
+    def setMaxScalarValue(self, iDType ):  
+        if iDType   == vtk.VTK_UNSIGNED_CHAR:   self._max_scalar_value = 255
+        elif iDType == vtk.VTK_UNSIGNED_SHORT:  self._max_scalar_value = 256*256-1
+        elif iDType == vtk.VTK_SHORT:           self._max_scalar_value = 256*128-1
+        else:                                   self._max_scalar_value = self.getRangeBounds()[1]  
+
+    def decimateImage( self, image, decx, decy ):
+        image.Update()
+        dims = image.GetDimensions()
+        image_size = dims[0] * dims[1]
+        result = image
+        if image_size > MAX_IMAGE_SIZE:
+            resample = vtk.vtkImageShrink3D()
+            resample.SetInput( image )
+            resample.SetShrinkFactors( decx, decy, 1 )
+            result = resample.GetOutput() 
+            result.Update()
+        return result
+
+    def getScaleBounds(self):
+        return [ 0.5, 100.0 ]
+
+    def setInputZScale( self, zscale_data, input_index=0, **args  ):
+        ispec = self.inputSpecs[ input_index ] 
+        if ispec.input() <> None:
+            input = ispec.input()
+            ns = input.GetNumberOfScalarComponents()
+            spacing = input.GetSpacing()
+            ix, iy, iz = spacing
+            sz = zscale_data[1]
+            if iz <> sz:
+#                print " PVM >---------------> Change input zscale: %.4f -> %.4f" % ( iz, sz )
+                input.SetSpacing( ix, iy, sz )  
+                input.Modified() 
+                self.processScaleChange( spacing, ( ix, iy, sz ) )
+                return True
+        return False
+    
+    def getDataRangeBounds(self, inputIndex=0 ):
+        ispec = self.getInputSpec( inputIndex )
+        return ispec.getDataRangeBounds() if ispec else None
+
+    def onSlicerLeftButtonPress( self, caller, event ):
+        self.currentButton = self.LEFT_BUTTON   
+        return 0
+
+    def onSlicerRightButtonPress( self, caller, event ):
+        self.currentButton = self.RIGHT_BUTTON
+        return 0
+        
+    def getAxes(self):
+        pass
+
+    def input( self, iIndex = 0 ):
+        return self.variable_reader.output( iIndex )
+
+    def isBuilt(self):
+        return self.pipelineBuilt
+    
+    def initializeInputs( self, **args ):
+        nOutputs = self.variable_reader.nOutputs()
+        for inputIndex in range( nOutputs ):
+            ispec = self.variable_reader.outputSpec( inputIndex )
+            self.inputSpecs[inputIndex] = ispec 
+            if self.roi == None:  
+                self.roi = ispec.metadata.get( 'bounds', None )  
+            self.intiTime( ispec, **args )
+        self.initMetadata()
+        
+        
+    def initMetadata(self):
+        spec = self.inputSpecs[0]
+        attributes = spec.metadata.get( 'attributes' , None )
+        if attributes:
+            self.metadata['var_name'] = attributes[ 'long_name']
+            self.metadata['var_units'] = attributes[ 'units']
+
+    def intiTime(self, ispec, **args):
+        t = cdtime.reltime( 0, self.variable_reader.referenceTimeUnits )
+        if t.cmp( cdtime.reltime( 0, ispec.referenceTimeUnits ) ) == 1:
+            self.variable_reader.referenceTimeUnits = ispec.referenceTimeUnits 
+        tval = args.get( 'timeValue', None )
+        if tval: self.timeValue = cdtime.reltime( float( args[ 'timeValue' ] ), ispec.referenceTimeUnits )
+
+    def execute(self, **args ):
+        initConfig = False
+        isAnimation = args.get( 'animate', False )
+        if not self.isBuilt(): 
+            self.initializeInputs()        
+            self.buildPipeline()
+            self.buildBaseMap()
+            self.pipelineBuilt = True
+            initConfig = True
+            
+        if not initConfig: self.applyConfiguration( **args  )   
+        
+        self.updateModule( **args ) 
+        
+        if not isAnimation:
+# #            self.displayInstructions( "Shift-right-click for config menu" )
+            if initConfig: 
+                self.initializeConfiguration( mid=id(self) )  
+            else:   
+                self.applyConfiguration()
+
+    def updateModule( self, input_index = 0, **args  ):
+        ispec = self.inputSpecs[ input_index ] 
+        mapper = self.volume.GetMapper()
+        mapper.SetInput( ispec.input() )
+        mapper.Modified()
+
+    def terminate( self ):
+        pass
+    
+    def getScalarRange( self, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.scalarRange  
+
+    def addConfigurableFunction(self, name, function_args, key, **args):
+        self.configurableFunctions[name] = ConfigurableFunction( name, function_args, key, **args )
+
+    def addConfigurableLevelingFunction(self, name, key, **args):
+        self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, **args )
+
+    def getConfigFunction( self, name ):
+        return self.configurableFunctions.get(name,None)
+
+    def removeConfigurableFunction(self, name ):        
+        del self.configurableFunctions[name]
+
+    def applyConfiguration(self, **args ):       
+        for configFunct in self.configurableFunctions.values():
+            configFunct.applyParameter( **args  )
+
+    def setBasemapLineSpecs( self, shapefile_type, value ):
+        self.basemapLineSpecs[shapefile_type] = value
+        npixels = int( round( value[0] ) )
+        density = int( round( value[1] ) )
+        polys_list = self.shapefilePolylineActors.get( shapefile_type, [ None, None, None, None, None ] ) 
+        try:
+            selected_polys = polys_list[ density ]
+            if not selected_polys:
+                if npixels: 
+                    self.createBasemapPolyline( shapefile_type )
+            else:
+                for polys in polys_list:
+                    if polys:
+                        polys.SetVisibility( npixels and ( id(polys) == id(selected_polys) ) )
+                selected_polys.GetProperty().SetLineWidth( npixels )           
+            self.render()
+        except IndexError:
+            print>>sys.stderr, " setBasemapLineSpecs: Density too large: %d " % density
+
+    def setBasemapCoastlineLineSpecs( self, value, **args ):
+        self.setBasemapLineSpecs('coastline', value )
+
+    def setBasemapStatesLineSpecs( self, value, **args ):
+        self.setBasemapLineSpecs('states', value )
+
+    def setBasemapLakesLineSpecs( self, value, **args ):
+        self.setBasemapLineSpecs('lakes', value )
+        
+    def setBasemapCountriesLineSpecs( self, value, **args ):
+        self.setBasemapLineSpecs('countries', value )
+
+    def getBasemapLineSpecs( self, shapefile_type ):
+        return self.basemapLineSpecs.get( shapefile_type, None )
+        
+    def getBasemapCoastlineLineSpecs( self, **args ):
+        return self.getBasemapLineSpecs('coastline' )
+        
+    def getBasemapStatesLineSpecs( self, **args ):
+        return self.getBasemapLineSpecs('states' )
+
+    def getBasemapLakesLineSpecs( self, **args ):
+        return self.getBasemapLineSpecs('lakes' )
+
+    def getBasemapCountriesLineSpecs( self, **args ):
+        return self.getBasemapLineSpecs('countries' )
+
+    def setInteractionState(self, caller, event):
+        key = caller.GetKeyCode() 
+        keysym = caller.GetKeySym()
+        shift = caller.GetShiftKey()
+#        print " setInteractionState -- Key Press: %c ( %d: %s ), event = %s " % ( key, ord(key), str(keysym), str( event ) )
+        alt = ( keysym <> None) and keysym.startswith("Alt")
+        if alt:
+            self.isAltMode = True
+        else: 
+            print " ------------------------------------------ setInteractionState, key=%s, keysym=%s, shift = %s, isAltMode = %s    ------------------------------------------ " % (str(key), str(keysym), str(shift), str(self.isAltMode) )
+            self.processKeyEvent( key, caller, event )
+
+    def processKeyEvent( self, key, caller=None, event=None ):
+#        print "process Key Event, key = %s" % ( key )
+        md = self.getInputSpec().getMetadata()
+        if ( self.createColormap and ( key == 'l' ) ): 
+            self.toggleColormapVisibility()                       
+            self.render() 
+        elif (  key == 'r'  ):
+            self.resetCamera()              
+        elif ( md and ( md.get('plotType','')=='xyz' ) and ( key == 't' )  ):
+            self.showInteractiveLens = not self.showInteractiveLens 
+            self.render() 
+        else:
+            ( state, persisted ) =  self.getInteractionState( key )
+#            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
+            if state <> None: 
+                self.updateInteractionState( state, self.isAltMode  )                 
+                self.isAltMode = False 
+
+    def onLeftButtonPress( self, caller, event ):
+        istyle = self.renderWindowInteractor.GetInteractorStyle()
+#        print "(%s)-LBP: s = %s, nis = %s " % ( getClassName( self ), getClassName(istyle), getClassName(self.navigationInteractorStyle) )
+        if not self.finalizeLeveling(): 
+            shift = caller.GetShiftKey()
+            self.currentButton = self.LEFT_BUTTON
+ #           self.clearInstructions()
+            self.UpdateCamera()   
+            x, y = caller.GetEventPosition()      
+            self.startConfiguration( x, y, [ 'leveling', 'generic' ] )  
+        return 0
+
+    def onRightButtonPress( self, caller, event ):
+        shift = caller.GetShiftKey()
+        self.currentButton = self.RIGHT_BUTTON
+ #       self.clearInstructions()
+        self.UpdateCamera()
+        x, y = caller.GetEventPosition()
+        if self.InteractionState <> None:
+            self.startConfiguration( x, y,  [ 'generic' ] )
+        return 0
+
+    def onLeftButtonRelease( self, caller, event ):
+        self.currentButton = None 
+    
+    def onRightButtonRelease( self, caller, event ):
+        self.currentButton = None 
+
+    def startConfiguration( self, x, y, config_types ): 
+        if (self.InteractionState <> None) and not self.configuring:
+            configFunct = self.configurableFunctions[ self.InteractionState ]
+            if configFunct.type in config_types:
+                self.configuring = True
+                configFunct.start( self.InteractionState, x, y )
+                self.haltNavigationInteraction()
+#                if (configFunct.type == 'leveling'): self.getLabelActor().VisibilityOn()
+
+    def updateLevelingEvent( self, caller, event ):
+        x, y = caller.GetEventPosition()
+        wsize = caller.GetRenderWindow().GetSize()
+        self.updateLeveling( x, y, wsize )
+                
+    def updateLeveling( self, x, y, wsize, **args ):  
+        if self.configuring:
+            configFunct = self.configurableFunctions[ self.InteractionState ]
+            if configFunct.type == 'leveling':
+                configData = configFunct.update( self.InteractionState, x, y, wsize )
+                if configData <> None:
+                    self.setParameter( configFunct.name, configData ) 
+                    textDisplay = configFunct.getTextDisplay()
+                    if textDisplay <> None:  self.updateTextDisplay( textDisplay )
+                    self.render()
+
+    def UpdateCamera(self):
+        pass
+    
+    def setParameter( self, name, value ):
+        pass
+
+    def haltNavigationInteraction(self):
+        if self.renderWindowInteractor:
+            istyle = self.renderWindowInteractor.GetInteractorStyle()  
+            if self.navigationInteractorStyle == None:
+                self.navigationInteractorStyle = istyle    
+            self.renderWindowInteractor.SetInteractorStyle( self.configurationInteractorStyle )  
+#            print "\n ---------------------- [%s] halt Navigation: nis = %s, is = %s  ----------------------  \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle)  ) 
+    
+    def resetNavigation(self):
+        if self.renderWindowInteractor:
+            if self.navigationInteractorStyle <> None: 
+                self.renderWindowInteractor.SetInteractorStyle( self.navigationInteractorStyle )
+            istyle = self.renderWindowInteractor.GetInteractorStyle()  
+#            print "\n ---------------------- [%s] reset Navigation: nis = %s, is = %s  ---------------------- \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle) )        
+            self.enableVisualizationInteraction()
+
+    def getInteractionState( self, key ):
+        for configFunct in self.configurableFunctions.values():
+            if configFunct.matches( key ): return ( configFunct.name, configFunct.persisted )
+        return ( None, None )    
+
+    def updateInteractionState( self, state, altMode ): 
+        rcf = None
+        if state == None: 
+            self.finalizeLeveling()
+            self.endInteraction()   
+        else:            
+            if self.InteractionState <> None: 
+                configFunct = self.configurableFunctions[ self.InteractionState ]
+                configFunct.close()   
+            configFunct = self.configurableFunctions.get( state, None )
+            if configFunct and ( configFunct.type <> 'generic' ): 
+                rcf = configFunct
+#                print " UpdateInteractionState, state = %s, cf = %s " % ( state, str(configFunct) )
+            if not configFunct and self.acceptsGenericConfigs:
+                configFunct = ConfigurableFunction( state, None, None )              
+                self.configurableFunctions[ state ] = configFunct
+            if configFunct:
+                configFunct.open( state, self.isAltMode )
+                self.InteractionState = state                   
+                self.LastInteractionState = self.InteractionState
+                self.disableVisualizationInteraction()
+            elif state == 'colorbar':
+                self.toggleColormapVisibility()                        
+            elif state == 'reset':
+                self.resetCamera()              
+                if  len(self.persistedParameters):
+                    pname = self.persistedParameters.pop()
+                    configFunct = self.configurableFunctions[pname]
+                    param_value = configFunct.reset() 
+                    if param_value: self.persistParameterList( [ (configFunct.name, param_value), ], update=True, list=False )                                      
+        return rcf
+
+    def getInputSpec( self, input_index=0 ):
+        return self.inputSpecs.get( input_index, None )
+
+    def getDataValue( self, image_value, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getDataValue( image_value )
+
+    def getTimeAxis(self):
+        ispec = self.getInputSpec()     
+        timeAxis = ispec.getMetadata('time') if ispec else None
+        return timeAxis
+                    
+    def getDataValues( self, image_value_list, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getDataValues( image_value_list )  
+        
+    def getImageValue( self, data_value, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getImageValue( data_value )  
+    
+    def getImageValues( self, data_value_list, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.getImageValues( data_value_list )  
+
+    def scaleToImage( self, data_value, input_index = 0 ):
+        ispec = self.inputSpecs[ input_index ] 
+        return ispec.scaleToImage( data_value )  
+
+    def finalizeLeveling( self, cmap_index=0 ):
+        ispec = self.inputSpecs[ cmap_index ] 
+        ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
+        if self.configuring: 
+            self.finalizeConfigurationObserver( self.InteractionState )            
+            self.resetNavigation()
+            self.configuring = False
+            self.InteractionState = None
+            return True
+        return False
+#            self.updateSliceOutput()
+
+    def finalizeConfigurationObserver( self, parameter_name, **args ):
+        self.finalizeParameter( parameter_name, **args )    
+#        for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args ) 
+        self.endInteraction( **args ) 
+
+    def finalizeParameter(self, parameter_name, **args ):
+        pass
+    
+    def endInteraction( self, **args ):  
+        self.resetNavigation() 
+        self.configuring = False
+        self.InteractionState = None
+        self.enableVisualizationInteraction()
+
+    def initializeConfiguration( self, cmap_index=0, **args ):
+        ispec = self.inputSpecs[ cmap_index ] 
+        for configFunct in self.configurableFunctions.values():
+            configFunct.init( ispec, **args )
+        ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
+#        self.updateSliceOutput()
+
+    def getColormapSpec(self, cmap_index=0): 
+        colormapManager = self.getColormapManager( index=cmap_index )
+        spec = []
+        spec.append( colormapManager.colormapName )
+        spec.append( str( colormapManager.invertColormap ) )
+        value_range = colormapManager.lut.GetTableRange() 
+        spec.append( str( value_range[0] ) )
+        spec.append( str( value_range[1] ) ) 
+#        print " %s -- getColormapSpec: %s " % ( self.getName(), str( spec ) )
+        return ','.join( spec )
+
+    def onKeyPress( self, caller, event ):
+        key = caller.GetKeyCode() 
+        keysym = caller.GetKeySym()
+        print " -- Key Press: %s ( %s ), event = %s " % ( key, str(keysym), str( event ) )
+        if keysym == None: return
+        alt = ( keysym.lower().find('alt') == 0 )
+        ctrl = caller.GetControlKey() 
+        shift = caller.GetShiftKey() 
+
+    def getMapOpacity(self):
+        return self.map_opacity
+    
+    def setMapOpacity(self, opacity_vals, **args ):
+        self.map_opacity = opacity_vals
+        self.updateMapOpacity() 
+
+    def updateMapOpacity(self, cmap_index=0 ):
+        if self.baseMapActor:
+            self.baseMapActor.SetOpacity( self.map_opacity[0] )
+            self.render()
+
+    def showInteractiveLens(self): 
+        pass
+
+    def updateLensDisplay(self, screenPos, coord):
+        pass
+           
+    def buildBaseMap(self):
+        if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
+        world_map =  None  
+        map_border_size = 20 
+            
+        self.y0 = -90.0  
+        self.x0 =  0.0  
+        dataPosition = None
+        if world_map == None:
+            self.map_file = defaultMapFile
+            self.map_cut = defaultMapCut
+        else:
+            self.map_file = world_map[0].name
+            self.map_cut = world_map[1]
+        
+        self.world_cut =  -1 
+        if  (self.roi <> None): 
+            roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
+            map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
+            if map_cut_size[0] > 360.0: map_cut_size[0] = 360.0
+            if map_cut_size[1] > 180.0: map_cut_size[1] = 180.0
+        else:
+            map_cut_size = [ 360, 180 ]
+            
+                  
+        if self.world_cut == -1: 
+            if  (self.roi <> None): 
+                if roi_size[0] > 180:             
+                    self.ComputeCornerPosition()
+                    self.world_cut = self.NormalizeMapLon( self.x0 )
+                else:
+                    dataPosition = [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
+            else:
+                dataPosition = [ 180, 0 ] # [ ( self.roi[1] + self.roi[0] ) / 2.0, ( self.roi[3] + self.roi[2] ) / 2.0 ]
+        else:
+            self.world_cut = self.map_cut
+        
+        self.imageInfo = vtk.vtkImageChangeInformation()        
+        image_reader = vtk.vtkJPEGReader()      
+        image_reader.SetFileName(  self.map_file )
+        image_reader.Update()
+        baseImage = image_reader.GetOutput() 
+        new_dims, scale = None, None
+        if dataPosition == None:    
+            baseImage = self.RollMap( baseImage ) 
+            new_dims = baseImage.GetDimensions()
+            scale = [ 360.0/new_dims[0], 180.0/new_dims[1], 1 ]
+        else:                       
+            baseImage, new_dims = self.getBoundedMap( baseImage, dataPosition, map_cut_size, map_border_size )             
+            scale = [ map_cut_size[0]/new_dims[0], map_cut_size[1]/new_dims[1], 1 ]
+                          
+        self.baseMapActor = vtk.vtkImageActor()
+        self.baseMapActor.SetOrigin( 0.0, 0.0, 0.0 )
+        self.baseMapActor.SetScale( scale )
+        self.baseMapActor.SetOrientation( 0.0, 0.0, 0.0 )
+        self.baseMapActor.SetOpacity( self.map_opacity[0] )
+        mapCorner = [ self.x0, self.y0 ]
+                
+        self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
+        if vtk.VTK_MAJOR_VERSION <= 5:  self.baseMapActor.SetInput(baseImage)
+        else:                           self.baseMapActor.SetInputData(baseImage)        
+        self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]        
+        self.renderer.AddActor( self.baseMapActor )
+
+
+    def ComputeCornerPosition( self ):
+        if (self.roi[0] >= -180) and (self.roi[1] <= 180) and (self.roi[1] > self.roi[0]):
+            self.x0 = -180
+            return 180
+        if (self.roi[0] >= 0) and (self.roi[1] <= 360) and (self.roi[1] > self.roi[0]):
+            self.x0 = 0
+            return 0
+        self.x0 = int( round( self.roi[0] / 10.0 ) ) * 10
+#        print "Set Corner pos: %s, roi: %s " % ( str(self.x0), str(self.roi) )
+        
+    def GetScaling( self, image_dims ):
+        return 360.0/image_dims[0], 180.0/image_dims[1],  1
+
+    def GetFilePath( self, cut ):
+        filename = "%s_%d.jpg" % ( self.world_image, cut )
+        return os.path.join( self.data_dir, filename ) 
+        
+    def RollMap( self, baseImage ):
+        baseImage.Update()
+        if self.world_cut  == self.map_cut: return baseImage
+        baseExtent = baseImage.GetExtent()
+        baseSpacing = baseImage.GetSpacing()
+        x0 = baseExtent[0]
+        x1 = baseExtent[1]
+        newCut = self.NormalizeMapLon( self.world_cut )
+        delCut = newCut - self.map_cut
+#        print "  %%%%%% Roll Map %%%%%%: world_cut=%.1f, map_cut=%.1f, newCut=%.1f " % ( float(self.world_cut), float(self.map_cut), float(newCut) )
+        imageLen = x1 - x0 + 1
+        sliceSize =  imageLen * ( delCut / 360.0 )
+        sliceCoord = int( round( x0 + sliceSize) )        
+        extent = list( baseExtent ) 
+        
+        extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
+        clip0 = vtk.vtkImageClip()
+        clip0.SetInput( baseImage )
+        clip0.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
+        
+        extent[0:2] = [ x0 + sliceCoord, x1 ]
+        clip1 = vtk.vtkImageClip()
+        clip1.SetInput( baseImage )
+        clip1.SetOutputWholeExtent( extent[0], extent[1], extent[2], extent[3], extent[4], extent[5] )
+        
+        append = vtk.vtkImageAppend()
+        append.SetAppendAxis( 0 )
+        append.AddInput( clip1.GetOutput() )          
+        append.AddInput( clip0.GetOutput() )
+        
+        imageInfo = vtk.vtkImageChangeInformation()
+        imageInfo.SetInputConnection( append.GetOutputPort() ) 
+        imageInfo.SetOutputOrigin( 0.0, 0.0, 0.0 )
+        imageInfo.SetOutputExtentStart( 0, 0, 0 )
+        imageInfo.SetOutputSpacing( baseSpacing[0], baseSpacing[1], baseSpacing[2] )
+        
+        result = imageInfo.GetOutput() 
+        result.Update()
+        return result
+
+    def NormalizeMapLon( self, lon ): 
+        while ( lon < ( self.map_cut - 0.01 ) ): lon = lon + 360
+        return ( ( lon - self.map_cut ) % 360 ) + self.map_cut
+
+    def getBoundedMap( self, baseImage, dataLocation, map_cut_size, map_border_size ):
+        baseImage.Update()
+        baseExtent = baseImage.GetExtent()
+        baseSpacing = baseImage.GetSpacing()
+        x0 = baseExtent[0]
+        x1 = baseExtent[1]
+        y0 = baseExtent[2]
+        y1 = baseExtent[3]
+        imageLen = [ x1 - x0 + 1, y1 - y0 + 1 ]
+        selectionDim = [ map_cut_size[0]/2, map_cut_size[1]/2 ]
+        dataXLoc = dataLocation[0]
+        imageInfo = vtk.vtkImageChangeInformation()
+        dataYbounds = [ dataLocation[1]-selectionDim[1], dataLocation[1]+selectionDim[1] ]
+        vertExtent = [ y0, y1 ]
+        bounded_dims = None
+        if dataYbounds[0] > -90.0:
+            yOffset = dataYbounds[0] + 90.0
+            extOffset = int( round( ( yOffset / 180.0 ) * imageLen[1] ) )
+            vertExtent[0] = y0 + extOffset
+            self.y0 = dataYbounds[0]
+        if dataYbounds[1] < 90.0:
+            yOffset = 90.0 - dataYbounds[1]
+            extOffset = int( round( ( yOffset / 180.0 ) * imageLen[1] ) )
+            vertExtent[1] = y1 - extOffset
+            
+        overlapsBorder = ( self.NormalizeMapLon(dataLocation[0]-selectionDim[0]) > self.NormalizeMapLon(dataLocation[0]+selectionDim[0]) )
+        if overlapsBorder:
+            cut0 = self.NormalizeMapLon( dataXLoc + selectionDim[0] )
+            sliceSize =  imageLen[0] * ( ( cut0 - self.map_cut ) / 360.0 )
+            sliceCoord = int( round( x0 + sliceSize) )        
+            extent = list( baseExtent )         
+            extent[0:2] = [ x0, x0 + sliceCoord - 1 ]
+            clip0 = vtk.vtkImageClip()
+            clip0.SetInput( baseImage )
+            clip0.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
+            size0 = extent[1] - extent[0] + 1
+        
+            self.x0 = dataLocation[0] - selectionDim[0]
+            cut1 = self.NormalizeMapLon( self.x0 ) 
+            sliceSize =  imageLen[0] * ( ( cut1 - self.map_cut )/ 360.0 )
+            sliceCoord = int( round( x0 + sliceSize) )       
+            extent[0:2] = [ x0 + sliceCoord, x1 ]
+            clip1 = vtk.vtkImageClip()
+            clip1.SetInput( baseImage )
+            clip1.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
+            size1 = extent[1] - extent[0] + 1
+#            print "Set Corner pos: %s, cuts: %s " % ( str(self.x0), str( (cut0, cut1) ) )
+        
+            append = vtk.vtkImageAppend()
+            append.SetAppendAxis( 0 )
+            append.AddInput( clip1.GetOutput() )          
+            append.AddInput( clip0.GetOutput() )
+            bounded_dims = ( size0 + size1, vertExtent[1] - vertExtent[0] + 1 )
+            
+            imageInfo.SetInputConnection( append.GetOutputPort() ) 
+
+        else:
+                        
+            self.x0 = dataXLoc - selectionDim[0]
+            cut0 = self.NormalizeMapLon( self.x0 )
+            sliceSize =  imageLen[0] * ( ( cut0 - self.map_cut ) / 360.0 )
+            sliceCoord = int( round( x0 + sliceSize) )        
+            extent = list( baseExtent )         
+            extent[0] = x0 + sliceCoord - 1
+        
+            cut1 = self.NormalizeMapLon( dataXLoc + selectionDim[0] )
+            sliceSize =  imageLen[0] * ( ( cut1 - self.map_cut ) / 360.0 )
+            sliceCoord = int( round( x0 + sliceSize) )       
+            extent[1] = x0 + sliceCoord
+            clip = vtk.vtkImageClip()
+            clip.SetInput( baseImage )
+            clip.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
+            bounded_dims = ( extent[1] - extent[0] + 1, vertExtent[1] - vertExtent[0] + 1 )
+#            print "Set Corner pos: %s, dataXLoc: %s " % ( str(self.x0), str( (dataXLoc, selectionDim[0]) ) )
+
+            imageInfo.SetInputConnection( clip.GetOutputPort() ) 
+                       
+        imageInfo.SetOutputOrigin( 0.0, 0.0, 0.0 )
+        imageInfo.SetOutputExtentStart( 0, 0, 0 )
+        imageInfo.SetOutputSpacing( baseSpacing[0], baseSpacing[1], baseSpacing[2] )
+        
+        result = imageInfo.GetOutput() 
+        result.Update()
+        return result, bounded_dims
+
+    def init(self, **args ):
+        init_args = args[ 'init_args' ]      
+        show = args.get( 'show', False )  
+        n_cores = args.get( 'n_cores', 32 )    
+        lut = self.getLUT()
+        if self.widget and show: self.widget.show()
+        self.createRenderer()
+        self.initCamera()
+        interface = init_args[2]
+        self.variable_reader = StructuredDataReader( init_args )
+        self.variable_reader.execute( )       
+        self.execute( )
+        self.start()
+#        self.createConfigDialog( show, interface )
 
     def clearReferrents(self):
         self.removeObservers()
@@ -281,7 +919,7 @@ class DV3DPlot(QtCore.QObject):
         return ""
     
     def getMetadata(self):
-        return {}
+        return self.metadata
     
 
     def updateStereo( self, enableStereo ):   
@@ -363,40 +1001,17 @@ class DV3DPlot(QtCore.QObject):
     def isConfigStyle( self, iren ):
         if not iren: return False
         return getClassName( iren.GetInteractorStyle() ) == getClassName( self.configurationInteractorStyle )
-
-    def setInteractionState(self, caller, event):
-        print "Caught key press event"
-        return 0
     
     def onAnyEvent(self, caller, event):
         return 0
-
-    def updateLevelingEvent(self, caller, event):
-        return 0
-    
-    def onKeyPress(self, caller, event):
-        print "Caught key press event"
-        return 0
-    
+        
     def onKeyRelease(self, caller, event):
         return 0
-    
-    def onLeftButtonPress(self, caller, event):
-        return 0
-    
+        
     def onModified(self, caller, event):
         return 0
     
     def onRender(self, caller, event):
-        return 0
-
-    def onLeftButtonRelease(self, caller, event):
-        return 0
-
-    def onRightButtonRelease(self, caller, event):
-        return 0
-
-    def onRightButtonPress(self, caller, event):
         return 0
     
     def updateInteractor(self): 
