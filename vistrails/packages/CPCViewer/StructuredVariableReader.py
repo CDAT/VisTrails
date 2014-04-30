@@ -3,12 +3,35 @@ Created on Nov 21, 2011
 
 @author: tpmaxwel
 '''
-   
+from __future__ import with_statement
+from __future__ import division
+
+_TRY_PYSIDE = True
+
+try:
+    if not _TRY_PYSIDE:
+        raise ImportError()
+    import PySide.QtCore as _QtCore
+    QtCore = _QtCore
+    import PySide.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = True
+except ImportError:
+    import sip
+    try: sip.setapi('QString', 2)
+    except: pass
+    try: sip.setapi('QVariant', 2)
+    except: pass
+    import PyQt4.QtCore as _QtCore
+    QtCore = _QtCore
+    import PyQt4.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = False
+    
 import vtk, sys, os, copy, time, traceback
 import cdms2, cdtime, cdutil, MV2, cPickle 
 PortDataVersion = 0
 from packages.CPCViewer.ConfigFunctions import *
-from packages.CPCViewer.StructuredDataset import *
                    
 class StructuredDataReader:
 
@@ -48,8 +71,8 @@ class StructuredDataReader:
 
     @classmethod
     def clearCache( cls, cell_coords ):
-#         from packages.vtDV3D.vtUtilities import memoryLogger
-#         memoryLogger.log("start VolumeRader.clearCache")
+        from packages.vtDV3D.vtUtilities import memoryLogger
+        memoryLogger.log("start VolumeRader.clearCache")
         for dataCacheItems in cls.dataCache.items():
             dataCacheKey = dataCacheItems[0]
             dataCacheObj = dataCacheItems[1]
@@ -67,10 +90,10 @@ class StructuredDataReader:
                     dataCacheObj.data['varData'] = None
                     del cls.dataCache[ dataCacheKey ]
                     print "Removing Cached data: ", str( dataCacheKey )
-#        memoryLogger.log(" finished clearing data cache ")
+        memoryLogger.log(" finished clearing data cache ")
         for imageDataItem in cls.imageDataCache.items():
             freeImageData( imageDataItem[1] )
-#        memoryLogger.log("finished clearing image cache")
+        memoryLogger.log("finished clearing image cache")
         
     def getCachedData( self, varDataId, cell_coords ):
         dataCacheObj = self.dataCache.setdefault( varDataId, DataCache() )
@@ -170,6 +193,8 @@ class StructuredDataReader:
 #            print "Time Step Labels: %s" % str( self.timeLabels )
            
     def execute(self, **args ):
+        import api
+        from packages.vtDV3D.CDMS_DatasetReaders import CDMSDataset
         cdms_vars = [ self.var ]
         iVar = 1
         cdms_var = cdms_vars.pop(0)

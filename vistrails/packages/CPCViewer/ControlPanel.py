@@ -1,3 +1,52 @@
+from __future__ import with_statement
+from __future__ import division
+from GraphEditor import *
+
+_TRY_PYSIDE = True
+
+try:
+    if not _TRY_PYSIDE:
+        raise ImportError()
+    import PySide.QtCore as _QtCore
+    QtCore = _QtCore
+    import PySide.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = True
+except ImportError:
+    import sip
+    try: sip.setapi('QString', 2)
+    except: pass
+    try: sip.setapi('QVariant', 2)
+    except: pass
+    import PyQt4.QtCore as _QtCore
+    QtCore = _QtCore
+    import PyQt4.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = False
+
+# def _pyside_import_module(moduleName):
+#     pyside = __import__('PySide', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# def _pyqt4_import_module(moduleName):
+#     pyside = __import__('PyQt4', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# if USES_PYSIDE:
+#     import_module = _pyside_import_module
+# 
+#     Signal = QtCore.Signal
+#     Slot = QtCore.Slot
+#     Property = QtCore.Property
+# else:
+#     import_module = _pyqt4_import_module
+# 
+#     Signal = QtCore.pyqtSignal
+#     Slot = QtCore.pyqtSlot
+#     Property = QtCore.pyqtProperty
+
 import sys, collections, math
 import os.path
 import vtk, time
@@ -6,6 +55,287 @@ from ColorMapManager import ColorMapManager
 import vtk.util.numpy_support as VN
 import numpy
 
+POS_VECTOR_COMP = [ 'xpos', 'ypos', 'zpos' ]
+SLICE_WIDTH_LR_COMP = [ 'xlrwidth', 'ylrwidth', 'zlrwidth' ]
+SLICE_WIDTH_HR_COMP = [ 'xhrwidth', 'yhrwidth', 'zhrwidth' ]
+
+def extract_arg( args, argname, **kwargs ):
+    target = kwargs.get( 'defval', None )
+    offset = kwargs.get( 'offset', 0 )
+    for iArg in range( offset, len(args) ):
+        if args[iArg] == argname:
+            target = args[iArg+1]
+    return target
+
+def deserialize_value( sval ):
+    if isinstance( sval, float ): 
+        return sval
+    try:
+        return int(sval)
+    except ValueError:
+        try:
+            return float(sval)
+        except ValueError:
+            return sval
+
+def get_value_decl( val ):
+    if isinstance( val, bool ): return "bool"
+    if isinstance( val, int ): return "int"
+    if isinstance( val, float ): return "float"
+    return "str"
+       
+class ConfigParameter( QtCore.QObject ):
+    
+    @staticmethod
+    def getParameter( config_name, **args ):
+        if args.get('ctype') == 'Leveling':
+            return LevelingConfigParameter( config_name, **args )
+        if args.get('ctype') == 'Range':
+            return RangeConfigParameter( config_name, **args )
+        else:
+            return ConfigParameter( config_name, **args )
+
+    def __init__(self, name, **args ):
+        super( ConfigParameter, self ).__init__() 
+        self.name = name 
+        self.varname = args.get( 'varname', name ) 
+        self.ptype = args.get( 'ptype', name ) 
+        self.values = args
+        self.valueKeyList = list( args.keys() )
+     
+    def __str__(self):
+        return " ConfigParameter[%s]: %s " % ( self.name, str( self.values ) )
+   
+    def addValueKey( self, key ):
+        if not (key in self.valueKeyList):
+            self.valueKeyList.append( key ) 
+    
+    def values_decl(self):
+        decl = []
+        for key in self.valueKeyList:
+            val = self.values.get( key, None )
+            if ( val <> None ): decl.append( get_value_decl( val )  ) 
+        return decl
+                            
+    def pack( self ):
+        try:
+            return ( self.ptype, [ str( self.values[key] ) for key in self.valueKeyList ] )
+        except KeyError:
+            print "Error packing parameter %s%s. Values = %s " % ( self.name, str(self.valueKeyList), str(self.values))
+
+    def unpack( self, value_strs ):
+        if len( value_strs ) <> len( self.values.keys() ): 
+            print>>sys.stderr, " Error: parameter structure mismatch in %s ( %d vs %d )" % ( self.name,  len( value_strs ), len( self.values.keys() ) ); sys.stderr.flush()
+        for ( key, str_val ) in zip( self.valueKeyList, value_strs ):
+            self.values[key] = deserialize_value( str_val ) 
+#        print " && Unpack parameter %s: %s " % ( self.name, str( self.values ) ); sys.stdout.flush()
+            
+    def __len__(self):
+        return len(self.values)
+
+    def __getitem__(self, key):
+        return self.values.get( key, None )
+
+    def __setitem__(self, key, value ):
+        self.values[key] = value 
+        self.addValueKey( key )
+
+    def __call__(self, **args ):
+        self.values.update( args )
+        args1 = [ self.ptype ]
+        for item in args.items():
+            args1.extend( list(item) )
+            self.addValueKey( item[0] )
+        args1.append( self.name )
+        self.emit( QtCore.SIGNAL("ValueChanged"), args1 )
+         
+    def getName(self):
+        return self.name
+
+    def getVarName(self):
+        return self.varname
+
+    def getParameterType(self):
+        return self.ptype
+    
+    def initialize( self, config_str ):
+        self.values = eval( config_str )
+        self.sort()
+
+    def serialize( self ):
+        return str( self.values )
+
+    def getValue( self, key='value', default_value=None ):
+        return self.values.get( key, default_value )
+
+    def setValue( self, key, val, update=False  ):
+        self.values[ key ] = val
+        self.addValueKey( key )
+        if update: 
+            args1 = [  self.ptype, key, val, self.name]
+            self.emit( QtCore.SIGNAL("ValueChanged"), args1 )
+
+    def incrementValue( self, index, inc ):
+        self.values[ index ] = self.values[ index ] + inc
+        
+class LevelingConfigParameter( ConfigParameter ):
+    
+    def __init__(self, name, **args ):
+        super( LevelingConfigParameter, self ).__init__( name, **args ) 
+        self.wposSensitivity = args.get( 'pos_s', 0.05 )
+        self.wsizeSensitivity = args.get( 'width_s', 0.05 )
+        self.normalized = True
+        self.range_bounds = [ 0.0, 1.0 ]     
+        if 'rmin' in args: 
+            if (self.rmin <> 0) or (self.rmax <> 1):
+                self.normalized = False 
+                self.range_bounds = [ self['rmin'], self['rmax'] ]              
+            self.computeWindow()
+        else:               
+            self.computeRange()
+        self.scaling_bounds = None
+        
+    def setScaledRange( self, srange ):
+        self.normalized = False 
+        self.range_bounds = [ srange[0], srange[1] ]  
+        self['rmin'] =  srange[0]           
+        self['rmax'] =  srange[1]
+        self.computeWindow()           
+        
+    @property
+    def rmin(self):
+        return self['rmin']
+
+    @rmin.setter
+    def rmin(self, value):
+        self['rmin'] = value
+        self.computeWindow()
+        
+    @property
+    def rmax(self):
+        return self['rmax']
+
+    @rmax.setter
+    def rmax(self, value):
+        self['rmax'] = value
+        self.computeWindow()
+
+    @property
+    def wpos(self):
+        return self['wpos']
+
+    @wpos.setter
+    def wpos(self, value):
+        self['wpos'] = value
+        self.computeRange()  
+        
+    @property
+    def wsize(self):
+        return self['wsize']
+
+    @wsize.setter
+    def wsize(self, value):
+        self['wsize'] = value
+        self.computeRange()  
+        
+    def setScalingBounds( self, sbounds ):
+        self.scaling_bounds = sbounds
+
+    def shiftWindow( self, position_inc, width_inc ):
+        if position_inc <> 0:
+            self.wpos = self.wpos + position_inc * self.wposSensitivity
+        if width_inc <> 0:
+            if self.wsize < 2 * self.wsizeSensitivity:
+                self.wsize = self.wsize *  2.0**width_inc 
+            else:
+                self.wsize = self.wsize + width_inc * self.wsizeSensitivity 
+        self.computeRange() 
+                     
+    def computeRange(self):
+        window_radius = self.wsize/2.0    
+        rmin = self.wpos - window_radius # max( self.wpos - window_radius, 0.0 )
+        rmax = self.wpos + window_radius # min( self.wpos + window_radius, 1.0 )
+        self( rmin = rmin, rmax = rmax, name=self.varname ) # min( rmin, 1.0 - self.wsize ), rmax =  max( rmax, self.wsize ) )
+
+    def computeWindow(self):
+        wpos = ( self.rmax + self.rmin ) / 2.0
+        wwidth = ( self.rmax - self.rmin ) 
+        self( wpos = wpos, wsize = wwidth, name=self.varname ) # min( max( wpos, 0.0 ), 1.0 ), wsize = max( min( wwidth, 1.0 ), 0.0 ) )
+        
+    def getScaledRange(self):
+        if self.scaling_bounds:
+            ds = self.scaling_bounds[1] - self.scaling_bounds[0]
+            return ( self.scaling_bounds[0] + self.rmin * ds, self.scaling_bounds[0] + self.rmax * ds )
+        else:
+            return self.getRange()
+
+    
+    def setWindowSensitivity(self, pos_s, width_s):
+        self.wposSensitivity = pos_s
+        self.wsizeSensitivity = width_s
+
+    def setRange(self, range ):
+        self.rmin = range[0] # min( max( range[0], 0.0 ), 1.0 )
+        self.rmax = range[1] # max( min( range[1], 1.0 ), 0.0 )
+        
+    def setWindow( self, wpos, wwidth ):
+        self.wpos =   wpos # min( max( wpos, 0.0 ), 1.0 )
+        self.wsize =  wwidth #     max( min( wwidth, 1.0 ), 0.0 )      
+        self.emit( QtCore.SIGNAL("ValueChanged"), ( self.ptype, 'rmin', self.rmin, 'rmax', self.rmax, 'name', self.varname ) )
+
+    def getWindow(self):
+        return ( self.wpos, self.wsize )
+
+    def getRange( self ):
+        return ( self.rmin, self.rmax )
+
+    def getNormalizedRange( self ):
+        if self.normalized:
+            return ( self.rmin, self.rmax )
+        else:
+            rb = ( self.range_bounds[1] - self.range_bounds[0] )
+            return [ ( self.rmin - self.range_bounds[0] ) / rb, ( self.rmax - self.range_bounds[0] ) / rb ]
+            
+            
+            
+class RangeConfigParameter( ConfigParameter ):
+    
+    def __init__(self, name, **args ):
+        super( RangeConfigParameter, self ).__init__( name, **args ) 
+        self.scaling_bounds = None
+        
+    @property
+    def rmin(self):
+        return self['rmin']
+
+    @rmin.setter
+    def rmin(self, value):
+        self['rmin'] = value
+        
+    @property
+    def rmax(self):
+        return self['rmax']
+
+    @rmax.setter
+    def rmax(self, value):
+        self['rmax'] = value
+        
+    def setScalingBounds( self, sbounds ):
+        self.scaling_bounds = sbounds
+        
+    def getScaledRange(self):
+        if self.scaling_bounds:
+            ds = self.scaling_bounds[1] - self.scaling_bounds[0]
+            return ( self.scaling_bounds[0] + self.rmin * ds, self.scaling_bounds[0] + self.rmax * ds )
+        else:
+            return self.getRange()
+
+    def setRange(self, range ):
+        self.rmin = range[0] # min( max( range[0], 0.0 ), 1.0 )
+        self.rmax = range[1] # max( min( range[1], 1.0 ), 0.0 )
+        
+    def getRange( self ):
+        return ( self.rmin, self.rmax )
 
 class ConfigControl(QtGui.QWidget):
     

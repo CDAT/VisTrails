@@ -4,11 +4,62 @@ Created on Aug 29, 2013
 @author: tpmaxwel
 '''
 
+from __future__ import with_statement
+from __future__ import division
+
+_TRY_PYSIDE = True
+
+try:
+    if not _TRY_PYSIDE:
+        raise ImportError()
+    import PySide.QtCore as _QtCore
+    QtCore = _QtCore
+    import PySide.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = True
+except ImportError:
+    import sip
+    try: sip.setapi('QString', 2)
+    except: pass
+    try: sip.setapi('QVariant', 2)
+    except: pass
+    import PyQt4.QtCore as _QtCore
+    QtCore = _QtCore
+    import PyQt4.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = False
+
+
+# def _pyside_import_module(moduleName):
+#     pyside = __import__('PySide', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# def _pyqt4_import_module(moduleName):
+#     pyside = __import__('PyQt4', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# if USES_PYSIDE:
+#     import_module = _pyside_import_module
+# 
+#     Signal = QtCore.Signal
+#     Slot = QtCore.Slot
+#     Property = QtCore.Property
+# else:
+#     import_module = _pyqt4_import_module
+# 
+#     Signal = QtCore.pyqtSignal
+#     Slot = QtCore.pyqtSlot
+#     Property = QtCore.pyqtProperty
+
 import sys, cdms2
-import os.path, traceback, threading
+import os.path, traceback
 import vtk, time
+from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from packages.CPCViewer.DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, kill_all_zombies
-from packages.CPCViewer.ConfigFunctions import extract_arg, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
+from packages.CPCViewer.ControlPanel import extract_arg, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
+from packages.CPCViewer.QtConfigGui import CPCConfigGui 
 from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.MapManager import MapManager
 from packages.CPCViewer.MultiVarPointCollection import InterfaceType, PlotType
@@ -235,7 +286,6 @@ class CPCPlot(StructuredGridPlot):
             if show: dialog.show()
 
     def createConfigDialog( self, show=False, interface=InterfaceType.ClimatePointCloud ):
-        from packages.CPCViewer.QtConfigGui import CPCConfigGui 
         self.configDialog = CPCConfigGui( self.point_cloud_overview.getPointCollection() )
         self.activateConfigDialog( self.configDialog, show )       
 #        if interface == InterfaceType.InfoVis:
@@ -1205,15 +1255,15 @@ class CPCPlot(StructuredGridPlot):
         self.initCollections( nCollections, init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
         interface = init_args[2]
         if self.widget and show: self.widget.show()
-        if self.useGui: self.createConfigDialog( show, interface )
+        self.createConfigDialog( show, interface )
         self.start()
 
 
     
-class QPointCollectionMgrThread( threading.Thread ):
+class QPointCollectionMgrThread( QtCore.QThread ):
     
     def __init__( self, pointCollectionMgr, **args ):
-        threading.Thread.__init__( self ) # , parent=pointCollectionMgr )
+        QtCore.QThread.__init__( self, parent=pointCollectionMgr )
         self.pointCollectionMgr = pointCollectionMgr
         self.delayTime = args.get( 'delayTime', 0.02 )
         self.args = args

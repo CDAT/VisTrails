@@ -3,6 +3,30 @@ Created on Apr 29, 2014
 
 @author: tpmaxwel
 '''
+from __future__ import with_statement
+from __future__ import division
+
+_TRY_PYSIDE = True
+
+try:
+    if not _TRY_PYSIDE:
+        raise ImportError()
+    import PySide.QtCore as _QtCore
+    QtCore = _QtCore
+    import PySide.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = True
+except ImportError:
+    import sip
+    try: sip.setapi('QString', 2)
+    except: pass
+    try: sip.setapi('QVariant', 2)
+    except: pass
+    import PyQt4.QtCore as _QtCore
+    QtCore = _QtCore
+    import PyQt4.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = False
     
 import sys, vtk, cdms2, traceback, os, cdtime, math 
 from packages.CPCViewer.ColorMapManager import *  
@@ -30,9 +54,10 @@ def distance( p0, p1 ):
 def interp_zero( x0, y0, x1, y1 ):
     return y0 + (y1-y0)*(-x0/(x1-x0))
 
-class TransferFunction:
+class TransferFunction( QtCore.QObject ):
     
     def __init__(self, tf_type, **args ):
+        QtCore.QObject.__init__( self )
         self.type = tf_type
         self.data = args.get( 'data', None )
                 

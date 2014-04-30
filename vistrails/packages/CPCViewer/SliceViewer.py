@@ -3,6 +3,30 @@ Created on Apr 23, 2014
 
 @author: tpmaxwell
 '''
+from __future__ import with_statement
+from __future__ import division
+
+_TRY_PYSIDE = True
+
+try:
+    if not _TRY_PYSIDE:
+        raise ImportError()
+    import PySide.QtCore as _QtCore
+    QtCore = _QtCore
+    import PySide.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = True
+except ImportError:
+    import sip
+    try: sip.setapi('QString', 2)
+    except: pass
+    try: sip.setapi('QVariant', 2)
+    except: pass
+    import PyQt4.QtCore as _QtCore
+    QtCore = _QtCore
+    import PyQt4.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = False
     
 import sys, vtk, cdms2, traceback, os, cdtime 
 from packages.CPCViewer.ColorMapManager import *  
@@ -12,6 +36,8 @@ from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
 from packages.CPCViewer.StructuredGridPlot import  *
 from packages.CPCViewer.ConfigFunctions import *
  
+
+
 class SlicePlot(StructuredGridPlot): 
 
     sliceAxes = [ 'x', 'y', 'z' ]       
