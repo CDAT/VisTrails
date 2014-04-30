@@ -3,39 +3,14 @@ Created on Apr 29, 2014
 
 @author: tpmaxwel
 '''
-from __future__ import with_statement
-from __future__ import division
-
-_TRY_PYSIDE = True
-
-try:
-    if not _TRY_PYSIDE:
-        raise ImportError()
-    import PySide.QtCore as _QtCore
-    QtCore = _QtCore
-    import PySide.QtGui as _QtGui
-    QtGui = _QtGui
-    USES_PYSIDE = True
-except ImportError:
-    import sip
-    try: sip.setapi('QString', 2)
-    except: pass
-    try: sip.setapi('QVariant', 2)
-    except: pass
-    import PyQt4.QtCore as _QtCore
-    QtCore = _QtCore
-    import PyQt4.QtGui as _QtGui
-    QtGui = _QtGui
-    USES_PYSIDE = False
     
-from packages.CPCViewer.DV3DPlot import DV3DPlot
 import sys, vtk, cdms2, traceback, os, cdtime, math 
 from packages.CPCViewer.ColorMapManager import *  
 from packages.CPCViewer.Shapefile import shapeFileReader     
 from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
-from packages.CPCViewer.DV3DPlot import  *
+from packages.CPCViewer.StructuredGridPlot import  *
 from packages.CPCViewer.GraphEditor import NodeData
-from packages.CPCViewer.StructuredGridConfiguration import *
+from packages.CPCViewer.ConfigFunctions import *
 import numpy as np
 
 LegacyAbsValueTransferFunction = 0
@@ -55,17 +30,16 @@ def distance( p0, p1 ):
 def interp_zero( x0, y0, x1, y1 ):
     return y0 + (y1-y0)*(-x0/(x1-x0))
 
-class TransferFunction( QtCore.QObject ):
+class TransferFunction:
     
     def __init__(self, tf_type, **args ):
-        QtCore.QObject.__init__( self )
         self.type = tf_type
         self.data = args.get( 'data', None )
                 
     def setType(self, tf_type ):
         self.type = tf_type
  
-class VolumePlot(DV3DPlot): 
+class VolumePlot(StructuredGridPlot): 
 
     NI_RANGE_POSITION = 10001
     NI_RANGE_WIDTH = 10002
@@ -73,7 +47,7 @@ class VolumePlot(DV3DPlot):
     NI_SHAPE_ADJ_1 = 10004
     
     def __init__( self,  **args ):
-        DV3DPlot.__init__( self,  **args  )
+        StructuredGridPlot.__init__( self,  **args  )
         self.max_opacity = 1.0
         self.vthresh = None
         self.filterOutliers = False
@@ -110,13 +84,14 @@ class VolumePlot(DV3DPlot):
             extent = self.cropZextent if self.cropZextent else self.input().GetExtent()[4:6] 
             origin = self.input().GetOrigin() 
             for ib in [4,5]: 
-                self.cropRegion[ib] = ( origin[ib/2] + new_spacing[ib/2]*extent[ib-4] ) 
+                self.cropRegion[ib] = ( origin[int(ib/2)] + new_spacing[int(ib/2)]*extent[ib-4] ) 
             if self.volumeMapper.GetCropping():
                 self.cropVolume( False ) 
 #         self.volume.Modified()
 #         self.updateModule()
          
     def activateEvent( self, caller, event ):
+        StructuredGridPlot.activateEvent( self, caller, event )
         if self.clipper and ( self.cropRegion == None ):
             self.renwin = self.renderer.GetRenderWindow( )
             if self.renwin <> None:
@@ -368,6 +343,7 @@ class VolumePlot(DV3DPlot):
 
         self.renderer.AddVolume( self.volume )
         self.renderer.SetBackground( VTK_BACKGROUND_COLOR[0], VTK_BACKGROUND_COLOR[1], VTK_BACKGROUND_COLOR[2] )
+        self.setColormap( [ 'jet', 1, 0, 0 ] )
 
       
     def clipObserver( self, caller=None, event=None ):
@@ -448,9 +424,9 @@ class VolumePlot(DV3DPlot):
             self.rebuildColorTransferFunction( imageRange )
 #            print " Volume Renderer[%d]: Scale Colormap: ( %.4g, %.4g ) " % ( self.moduleID, ctf_data[0], ctf_data[1] )
 
-    def setColormap( self, data, cmap_index=0 ):
-        if DV3DPlot.setColormap( self, data, cmap_index ):
-            colormapManager = self.getColormapManager( index=cmap_index ) 
+    def setColormap( self, data, **args ):
+        if StructuredGridPlot.setColormap( self, data, **args ):
+            colormapManager = self.getColormapManager( **args ) 
             self.rebuildColorTransferFunction( colormapManager.getImageScale() )
             self.render() 
             

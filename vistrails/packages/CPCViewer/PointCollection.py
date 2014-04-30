@@ -6,7 +6,7 @@ Created on Sep 18, 2013
 import sys, math
 import numpy
 import cdms2, cdutil
-from packages.CPCViewer.DV3DPlot import  PlotType
+from packages.CPCViewer.StructuredGridPlot import  PlotType
 
 def isNone(obj):
     return ( id(obj) == id(None) )

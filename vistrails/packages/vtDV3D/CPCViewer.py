@@ -5,7 +5,7 @@ Created on Oct 29, 2013
 '''
 from packages.vtDV3D.PersistentModule import *
 from packages.CPCViewer.PointCloudViewer import CPCPlot
-from packages.CPCViewer.ConfigurationControl import ConfigurationWidget
+from packages.CPCViewer.QtConfigGui import ConfigurationWidget
 from packages.vtDV3D.CDMS_VariableReaders import  CDMSReaderConfigurationWidget
 from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
 from PyQt4.QtCore import *

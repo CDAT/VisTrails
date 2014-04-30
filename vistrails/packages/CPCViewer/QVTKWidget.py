@@ -32,6 +32,28 @@ except ImportError:
     QtGui = _QtGui
     USES_PYSIDE = False
     
+from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+
+class QVTKAdaptor( QVTKRenderWindowInteractor ):
+    
+    def __init__( self, **args ):
+        QVTKRenderWindowInteractor.__init__( self, **args )
+        print str( dir( self ) )
+    
+    def keyPressEvent( self, qevent ):
+        QVTKRenderWindowInteractor.keyPressEvent( self, qevent )
+        self.emit( QtCore.SIGNAL('event'), ( 'KeyEvent', qevent.key(), str( qevent.text() ), qevent.modifiers() ) )
+#        print " QVTKAdaptor keyPressEvent: %x [%s] " % ( qevent.key(), str( qevent.text() ) )
+#        sys.stdout.flush()
+
+    def closeEvent( self, event ):
+        self.emit( QtCore.SIGNAL('Close') )
+        QVTKRenderWindowInteractor.closeEvent( self, event )
+
+    def resizeEvent( self, event ):
+        self.emit( QtCore.SIGNAL('event'), ( 'ResizeEvent', 0 ) )
+        QVTKRenderWindowInteractor.resizeEvent( self, event )
+            
     
 class QVTKWidget(QtGui.QWidget):
     """

@@ -3,50 +3,6 @@ Created on Sep 18, 2013
 
 @author: tpmaxwel
 '''
-from __future__ import with_statement
-from __future__ import division
-
-_TRY_PYSIDE = True
-
-try:
-    if not _TRY_PYSIDE:
-        raise ImportError()
-    import PySide.QtCore as _QtCore
-    QtCore = _QtCore
-    USES_PYSIDE = True
-except ImportError:
-    import sip
-    try: sip.setapi('QString', 2)
-    except: pass
-    try: sip.setapi('QVariant', 2)
-    except: pass
-    import PyQt4.QtCore as _QtCore
-    QtCore = _QtCore
-    USES_PYSIDE = False
-
-
-# def _pyside_import_module(moduleName):
-#     pyside = __import__('PySide', globals(), locals(), [moduleName], -1)
-#     return getattr(pyside, moduleName)
-# 
-# 
-# def _pyqt4_import_module(moduleName):
-#     pyside = __import__('PyQt4', globals(), locals(), [moduleName], -1)
-#     return getattr(pyside, moduleName)
-# 
-# 
-# if USES_PYSIDE:
-#     import_module = _pyside_import_module
-# 
-#     Signal = QtCore.Signal
-#     Slot = QtCore.Slot
-#     Property = QtCore.Property
-# else:
-#     import_module = _pyqt4_import_module
-# 
-#     Signal = QtCore.pyqtSignal
-#     Slot = QtCore.pyqtSlot
-#     Property = QtCore.pyqtProperty
 
 import sys, os
 import numpy
@@ -173,13 +129,12 @@ class PointCollectionExecutionTarget:
         data_packet[ 'trange' ] = self.point_collection.getThresholdedRange()
         return data_packet
 
-class vtkPointCloud(QtCore.QObject):
+class vtkPointCloud():
 
     shperical_to_xyz_trans = vtk.vtkSphericalTransform()
     radian_scaling = math.pi / 180.0 
 
     def __init__( self, pcIndex=0, nPartitions=1 ):
-        QtCore.QObject.__init__( self )
         self.nPartitions = nPartitions
         self.polydata = None
         self.vardata = None
@@ -722,10 +677,9 @@ class vtkLocalPointCloud( vtkPointCloud ):
             if update_points: self.generateSubset()
             self.updateScalars() 
                   
-class vtkPartitionedPointCloud( QtCore.QObject ):
+class vtkPartitionedPointCloud():
     
     def __init__( self, nPartitions, init_args, **args  ):
-        QtCore.QObject.__init__( self )
         self.point_clouds = {}
         self.point_cloud_map = {}
         self.nPartitions = int( round( nPartitions ) )
