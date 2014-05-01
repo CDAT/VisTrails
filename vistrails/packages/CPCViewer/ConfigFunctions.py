@@ -80,6 +80,8 @@ def get_value_decl( val ):
        
 class ConfigParameter:
     
+    ValueChanged = SIGNAL( 'ValueChanged' )
+    
     @staticmethod
     def getParameter( config_name, **args ):
         if args.get('ctype') == 'Leveling':
@@ -141,7 +143,7 @@ class ConfigParameter:
             args1.extend( list(item) )
             self.addValueKey( item[0] )
         args1.append( self.name )
-        self.emit( QtCore.SIGNAL("ValueChanged"), args1 )
+        self.ValueChanged( args1 )
          
     def getName(self):
         return self.name
@@ -167,7 +169,7 @@ class ConfigParameter:
         self.addValueKey( key )
         if update: 
             args1 = [  self.ptype, key, val, self.name]
-            self.emit( QtCore.SIGNAL("ValueChanged"), args1 )
+            self.ValueChanged( args1 )
 
     def incrementValue( self, index, inc ):
         self.values[ index ] = self.values[ index ] + inc
@@ -275,7 +277,7 @@ class LevelingConfigParameter( ConfigParameter ):
     def setWindow( self, wpos, wwidth ):
         self.wpos =   wpos # min( max( wpos, 0.0 ), 1.0 )
         self.wsize =  wwidth #     max( min( wwidth, 1.0 ), 0.0 )      
-        self.emit( QtCore.SIGNAL("ValueChanged"), ( self.ptype, 'rmin', self.rmin, 'rmax', self.rmax, 'name', self.varname ) )
+        self.ValueChanged( ( self.ptype, 'rmin', self.rmin, 'rmax', self.rmax, 'name', self.varname ) )
 
     def getWindow(self):
         return ( self.wpos, self.wsize )
@@ -806,7 +808,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.setLevelDataHandler( self.range )
         if self.widget: 
             self.widget.initLeveling( self.range )
-            self.widget.UpdateSignal.connect( self.broadcastLevelingData ) # self.connect( self.widget, QtCore.SIGNAL('update(QString)'), self.broadcastLevelingData )
+            self.widget.UpdateSignal.connect( self.broadcastLevelingData ) # self.connect( self.widget, QSIGNAL('update(QString)'), self.broadcastLevelingData )
 
 #        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
         

@@ -9,7 +9,6 @@ from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.Shapefile import shapeFileReader     
 from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
 from packages.CPCViewer.StructuredGridPlot import  *
-from packages.CPCViewer.GraphEditor import NodeData
 from packages.CPCViewer.ConfigFunctions import *
 import numpy as np
 
@@ -38,6 +37,55 @@ class TransferFunction:
                 
     def setType(self, tf_type ):
         self.type = tf_type
+        
+class NodeData:
+    RED = 0
+    BLUE = 1
+    YELLOW = 2
+    CYAN = 3
+    MAGENTA = 4
+    GRAY = 5
+    
+    def __init__(self, **args ):
+        self.ix0 = args.get( "ix0", None )
+        self.y0 = args.get( "y0", None )
+        self.ix1 = args.get( "ix1", None )
+        self.y1 = args.get( "y1", None )
+        self.s = args.get( "s", 0.5 )
+        self.color = args.get( "color", NodeData.YELLOW )
+        self.free = args.get( "free", False )
+        self.index =  args.get( "index", -1 )
+        self.dx0 = args.get( "dx0", None )
+        self.dx1 = args.get( "dx1", None )
+        self.spt0 = None
+        self.spt1 = None
+        self.vector = None
+
+    def setImageVectorData(self, ipt1, s ): 
+        self.ix1 = ipt1[0] 
+        self.y1 = ipt1[1]  
+        self.s = s 
+
+    def getDataPoint(self):
+        return ( self.dx0, self.y0 )
+
+    def getDataEndPoint(self):
+        return ( self.dx1, self.y1 ) if self.dx1 else None
+    
+    def getDataPosition( self ): 
+        if self.dx1 == None: return [ self.dx0, self.y0 ]
+        return [ self.dx0 + self.s * ( self.dx1 - self.dx0 ), self.y0 + self.s * ( self.y1 - self.y0 ) ]
+        
+    def getImagePosition( self ): 
+        if self.ix1 == None: return [ self.ix0, self.y0 ]
+        return [ self.ix0 + self.s * ( self.ix1 - self.ix0 ), self.y0 + self.s * ( self.y1 - self.y0 ) ]
+    
+    def getScenePoint(self):
+        return self.spt0
+
+    def getSceneEndPoint(self):
+        return self.spt1
+    
  
 class VolumePlot(StructuredGridPlot): 
 
@@ -152,17 +200,6 @@ class VolumePlot(StructuredGridPlot):
             spacing = self.volume.GetScale()
             sx, sy, sz = spacing    
             return [ 1.0, sz, 1 ]  
-
-#     def setupTransferFunctionConfigDialog( self ):
-#         if self.transferFunctionConfig == None:
-#             self.transferFunctionConfig = TransferFunctionConfigurationDialog()
-#             self.transferFunctionConfig.addTransferFunction( 'default' )
-#             self.connect(self.transferFunctionConfig, SIGNAL('close()'), self.clearTransferFunctionConfigDialog )
-#             self.connect(self.transferFunctionConfig, SIGNAL('config(int,float,float,float)'), self.configTransferFunction )
-#             self.connect(self.transferFunctionConfig, SIGNAL('doneConfig()'), self.persistTransferFunctionConfig )  
-#             self.connect(self.transferFunctionConfig, SIGNAL('update'), self.updateOTF )                      
-#         self.transferFunctionConfig.setVisible( self.transFunctGraphVisible )
-#         if self.transFunctGraphVisible: self.transferFunctionConfig.show()
     
     def configTransferFunction(self, nodeIndex, value0, value1, value2 ):
         rangeBounds = self.getRangeBounds()
@@ -403,9 +440,6 @@ class VolumePlot(StructuredGridPlot):
         print "Event %s on class %s "  % ( event, caller.__class__.__name__ ) 
 #        print "  --- Volume Input Extent: %s " % str( self.input().GetWholeExtent() )
         pass          
-
-#    def onAnyEvent(self, caller, event ):
-#        print "Event %s on class %s "  % ( event, caller.__class__.__name__ ) 
                                                                                                
     def onKeyPress( self, caller, event ):
         key = caller.GetKeyCode() 

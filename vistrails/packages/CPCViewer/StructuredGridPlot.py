@@ -5,26 +5,18 @@ Created on Apr 23, 2014
 '''
     
 import vtk, sys, os
-MIN_LINE_LEN = 50
-VTK_NOTATION_SIZE = 14
 from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.ConfigFunctions import *
 from packages.CPCViewer.StructuredVariableReader import StructuredDataReader
-from packages.CPCViewer.DV3DPlot import DV3DPlot
+from packages.CPCViewer.DV3DPlot import *
       
 class StructuredGridPlot(DV3DPlot):  
     
     def __init__( self,  **args ):
         DV3DPlot.__init__( self,  **args )
-        self.xcenter = 100.0
-        self.xwidth = 300.0
-        self.ycenter = 0.0
-        self.ywidth = 180.0
         self.iOrientation = 0
 
-        self.widget = None
         self.textDisplayMgr = None
-        self.enableClip = False
         self.variables = {}
         self.metadata = {}
 
@@ -33,8 +25,6 @@ class StructuredGridPlot(DV3DPlot):
         self.labelBuff = ""
         self.configDialog = None
         self.stereoEnabled = 0
-        self.maxStageHeight = 100.0
-        self.observerTargets = set()
         self.inputSpecs = {}
 
 

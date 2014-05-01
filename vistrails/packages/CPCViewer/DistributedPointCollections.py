@@ -9,8 +9,9 @@ import numpy
 from cdms2.error import CDMSError
 import vtk,  time,  math
 from vtk.util import numpy_support
-from MultiVarPointCollection import MultiVarPointCollection, PlotType, isNone
-from PointCollection import PointCollection
+from packages.CPCViewer.MultiVarPointCollection import MultiVarPointCollection, PlotType, isNone
+from packages.CPCViewer.PointCollection import PointCollection
+from packages.CPCViewer.ConfigFunctions import SIGNAL
 from multiprocessing import Process, Queue
 
 class ScalarRangeType:         
@@ -630,6 +631,7 @@ class vtkLocalPointCloud( vtkPointCloud ):
 #         self.actor.SetVisibility( True  )
 
     def generateSubset(self, **args ):
+        print " ++++++++++++++++++++++ vtkLocalPointCloud[%d].generateSubset: current_subset_specs: %s (%s) " % ( self.pcIndex, self.current_subset_specs, str(args) )
         self.current_subset_specs = args.get('spec', self.current_subset_specs)
 #         if self.current_subset_specs[0] == 'Z3':
 #             print " vtkLocalPointCloud[%d]: current_subset_specs: %s (%s) " % ( self.pcIndex, self.current_subset_specs, str(args) )
@@ -677,7 +679,8 @@ class vtkLocalPointCloud( vtkPointCloud ):
             if update_points: self.generateSubset()
             self.updateScalars() 
                   
-class vtkPartitionedPointCloud():
+class vtkPartitionedPointCloud:
+    NewDataAvailable = SIGNAL('newDataAvailable')
     
     def __init__( self, nPartitions, init_args, **args  ):
         self.point_clouds = {}
@@ -712,7 +715,6 @@ class vtkPartitionedPointCloud():
         
     def timerEvent( self, event ):
         if event.timerId() == self.dataQueueTimer: self.checkProcQueues()
-#        if event.timerId() == self.scalingTimer: self.emit( QtCore.SIGNAL('updateScaling') )
         
     def processProcQueue(self):
         for pc_item in self.point_clouds.items():
@@ -728,7 +730,7 @@ class vtkPartitionedPointCloud():
     def checkProcQueues(self):
         pc_item, rv = self.processProcQueue()
         if rv:
-            self.emit( QtCore.SIGNAL('newDataAvailable'), pc_item[0], rv )
+            self.NewDataAvailable( pc_item[0], rv )
             self.stopCheckingProcQueues()
             pc_item[1].show()
             
@@ -863,7 +865,8 @@ class vtkPartitionedPointCloud():
         return pts
 
     def postDataQueueEvent( self ):
-        QtCore.QCoreApplication.postEvent( self, QtCore.QTimerEvent( self.dataQueueTimer ) ) 
+        pass
+#        QtCore.QCoreApplication.postEvent( self, QtCore.QTimerEvent( self.dataQueueTimer ) ) 
     
 
 def kill_all_zombies():

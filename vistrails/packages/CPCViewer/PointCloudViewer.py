@@ -8,11 +8,11 @@ import sys, cdms2
 import os.path, traceback, threading
 import vtk, time
 from packages.CPCViewer.DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, kill_all_zombies
-from packages.CPCViewer.ConfigFunctions import extract_arg, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
+from packages.CPCViewer.ConfigFunctions import extract_arg, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP, SIGNAL
 from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.MapManager import MapManager
 from packages.CPCViewer.MultiVarPointCollection import InterfaceType, PlotType
-from packages.CPCViewer.StructuredGridPlot import StructuredGridPlot
+from packages.CPCViewer.DV3DPlot import DV3DPlot
 
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
@@ -151,11 +151,13 @@ class Counter():
         return False
     
     
-class CPCPlot(StructuredGridPlot):  
+class CPCPlot( DV3DPlot ):  
+    ValueChanged = SIGNAL('ValueChanged')
+    ConfigCmd = SIGNAL('ConfigCmd')
     
 
     def __init__( self, **args ):
-        StructuredGridPlot.__init__( self, **args  )
+        DV3DPlot.__init__( self, **args  )
         self.sliceAxisIndex = 0
         self.partitioned_point_cloud = None
         self.point_cloud_overview = None
@@ -227,26 +229,26 @@ class CPCPlot(StructuredGridPlot):
             self.widget_bounds = bounds 
             self.planeWidget.PlaceWidget( self.widget_bounds )
             
-    def activateConfigDialog(self, dialog, show=False ):
-            w = dialog.getConfigWidget()
-            w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.processConfigCmd )
-        #    dialog.connect( self, QtCore.SIGNAL("UpdateGui"), dialog.externalUpdate )
-            dialog.activate()        
-            if show: dialog.show()
-
-    def createConfigDialog( self, show=False, interface=InterfaceType.ClimatePointCloud ):
-        from packages.CPCViewer.QtConfigGui import CPCConfigGui 
-        self.configDialog = CPCConfigGui( self.point_cloud_overview.getPointCollection() )
-        self.activateConfigDialog( self.configDialog, show )       
-#        if interface == InterfaceType.InfoVis:
-#            self.infovisDialog = CPCInfoVisGui( self.point_cloud_overview.getPointCollection() )
-#            self.activateConfigDialog( self.infovisDialog, show )
- 
-    def closeConfigDialog(self):
-        if self.configDialog:
-            self.configDialog.closeDialog()
-        if self.infovisDialog:
-            self.infovisDialog.closeDialog()
+#     def activateConfigDialog(self, dialog, show=False ):
+#             w = dialog.getConfigWidget()
+#             w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.processConfigCmd )
+#         #    dialog.connect( self, QtCore.SIGNAL("UpdateGui"), dialog.externalUpdate )
+#             dialog.activate()        
+#             if show: dialog.show()
+# 
+#     def createConfigDialog( self, show=False, interface=InterfaceType.ClimatePointCloud ):
+#         from packages.CPCViewer.QtConfigGui import CPCConfigGui 
+#         self.configDialog = CPCConfigGui( self.point_cloud_overview.getPointCollection() )
+#         self.activateConfigDialog( self.configDialog, show )       
+# #        if interface == InterfaceType.InfoVis:
+# #            self.infovisDialog = CPCInfoVisGui( self.point_cloud_overview.getPointCollection() )
+# #            self.activateConfigDialog( self.infovisDialog, show )
+#  
+#     def closeConfigDialog(self):
+#         if self.configDialog:
+#             self.configDialog.closeDialog()
+#         if self.infovisDialog:
+#             self.infovisDialog.closeDialog()
 
     @property
     def current_subset_specs(self):
@@ -411,34 +413,34 @@ class CPCPlot(StructuredGridPlot):
     def onKeyEvent(self, eventArgs ):
         key = eventArgs[0]
         keysym =  eventArgs[1]
-        mods = eventArgs[2]
-        shift = mods & QtCore.Qt.ShiftModifier
-        ctrl = mods & QtCore.Qt.ControlModifier
-        alt = mods & QtCore.Qt.AltModifier
-#        print " KeyPress %x '%s' %d %d %d" % ( key, keysym, shift, ctrl, alt ) 
-        sys.stdout.flush()
-        upArrow = QtCore.Qt.Key_Up
-        if key == upArrow:
-            if self.process_mode == ProcessMode.Thresholding:
-                self.shiftThresholding( 1, 0 )  
-#             elif self.process_mode == ProcessMode.Slicing: 
-#                 self.shiftSlice( 1, 0 )           
-        if key == QtCore.Qt.Key_Down:
-            if self.process_mode == ProcessMode.Thresholding:
-                self.shiftThresholding( -1, 0 )  
-#             elif self.process_mode == ProcessMode.Slicing: 
-#                 self.shiftSlice( -1, 0 )
-    
-        if key == QtCore.Qt.Key_Left:   
-            if self.process_mode == ProcessMode.Thresholding:
-                self.shiftThresholding( 0, -1 )
-#             elif self.process_mode == ProcessMode.Slicing: 
-#                 self.shiftSlice( 0, -1 )
-        if key == QtCore.Qt.Key_Right:       
-            if self.process_mode == ProcessMode.Thresholding:
-                self.shiftThresholding( 0, 1 )
-#             elif self.process_mode == ProcessMode.Slicing: 
-#                 self.shiftSlice( 0, 1 )
+#         mods = eventArgs[2]
+#         shift = mods & QtCore.Qt.ShiftModifier
+#         ctrl = mods & QtCore.Qt.ControlModifier
+#         alt = mods & QtCore.Qt.AltModifier
+# #        print " KeyPress %x '%s' %d %d %d" % ( key, keysym, shift, ctrl, alt ) 
+#         sys.stdout.flush()
+#         upArrow = QtCore.Qt.Key_Up
+#         if key == upArrow:
+#             if self.process_mode == ProcessMode.Thresholding:
+#                 self.shiftThresholding( 1, 0 )  
+# #             elif self.process_mode == ProcessMode.Slicing: 
+# #                 self.shiftSlice( 1, 0 )           
+#         if key == QtCore.Qt.Key_Down:
+#             if self.process_mode == ProcessMode.Thresholding:
+#                 self.shiftThresholding( -1, 0 )  
+# #             elif self.process_mode == ProcessMode.Slicing: 
+# #                 self.shiftSlice( -1, 0 )
+#     
+#         if key == QtCore.Qt.Key_Left:   
+#             if self.process_mode == ProcessMode.Thresholding:
+#                 self.shiftThresholding( 0, -1 )
+# #             elif self.process_mode == ProcessMode.Slicing: 
+# #                 self.shiftSlice( 0, -1 )
+#         if key == QtCore.Qt.Key_Right:       
+#             if self.process_mode == ProcessMode.Thresholding:
+#                 self.shiftThresholding( 0, 1 )
+# #             elif self.process_mode == ProcessMode.Slicing: 
+# #                 self.shiftSlice( 0, 1 )
             
         if   keysym == "s":  self.toggleTopo()
         elif keysym == "t":  self.stepTime()
@@ -816,59 +818,59 @@ class CPCPlot(StructuredGridPlot):
             if paramKeys[1] == 'Color Scale':
                 self.scalarRange = config_param  
                 self.scalarRange.setScalingBounds( self.point_cloud_overview.getValueRange()  )  
-                self.connect( self.scalarRange, QtCore.SIGNAL('ValueChanged'), self.processColorScaleCommand ) 
+                self.scalarRange.ValueChanged.connect( self.processColorScaleCommand ) 
                 norm_range = self.scalarRange.getScaledRange() 
                 self.point_cloud_overview.setScalarRange( norm_range )  
                 self.setColorbarRange( norm_range )              
             elif paramKeys[1] == 'Color Map':
                 self.colorMapCfg = config_param 
-                self.connect( self.colorMapCfg, QtCore.SIGNAL('ValueChanged'), self.processColorMapCommand ) 
+                self.colorMapCfg.ValueChanged.connect( self.processColorMapCommand ) 
                 self.processColorMapCommand()
             elif paramKeys[1] == 'Opacity Scale':
                 self.oscale = config_param   
-                self.connect( self.oscale, QtCore.SIGNAL('ValueChanged'), self.processOpacityScalingCommand ) 
+                self.oscale.ValueChanged.connect(  self.processOpacityScalingCommand ) 
         elif paramKeys[0] == 'Subsets':
             if paramKeys[1] == 'Slice Planes':
                 self.sliceProperties = config_param
-                self.connect( self.sliceProperties, QtCore.SIGNAL('ValueChanged'), self.processSlicePropertiesCommand )  
+                self.sliceProperties.ValueChanged.connect(  self.processSlicePropertiesCommand )  
 #                self.enableSlicing()
             elif paramKeys[1] == 'Threshold Range':
                 self.volumeThresholdRange[self.defvar] = config_param                 
                 config_param.setScalingBounds( self.point_cloud_overview.getValueRange()  ) 
-                self.connect( config_param, QtCore.SIGNAL('ValueChanged'), self.processThresholdRangeCommand )      
+                config_param.ValueChanged.connect(  self.processThresholdRangeCommand )      
         elif paramKeys[0] == 'Analysis':
             if paramKeys[1] == 'Threshold Range':
                 try:
                     vname = paramKeys[2]
                     config_param.setScalingBounds( self.point_cloud_overview.getValueRange( vname )  ) 
                     self.volumeThresholdRange[vname] = config_param                 
-                    self.connect( config_param, QtCore.SIGNAL('ValueChanged'), self.processThresholdRangeCommand )  
+                    config_param.ValueChanged.connect(  self.processThresholdRangeCommand )  
                 except AttributeError:
                     pass    
 #                self.enableThresholding()
         elif paramKeys[0] == 'Points':
             if paramKeys[1] == 'Point Size':
                 self.pointSize = config_param   
-                self.connect( self.pointSize, QtCore.SIGNAL('ValueChanged'), self.processPointSizeCommand ) 
+                self.pointSize.ValueChanged.connect(  self.processPointSizeCommand ) 
                 for ires in [ ProcessMode.LowRes, ProcessMode.HighRes ]:
                     pc = self.getPointCloud(ires)  
                     pc.setPointSize( config_param.getValue(ires) )                                 
             elif paramKeys[1] == 'Max Resolution':
                 self.maxRes = config_param   
-                self.connect( self.maxRes, QtCore.SIGNAL('ValueChanged'), self.processMaxResolutionCommand ) 
+                self.maxRes.ValueChanged.connect(  self.processMaxResolutionCommand ) 
         elif paramKeys[0] == 'Geometry':
             if paramKeys[1] == 'Projection':
                 self.projection = config_param   
-                self.connect( self.projection, QtCore.SIGNAL('ValueChanged'), self.processProjectionCommand ) 
+                self.projection.ValueChanged.connect(  self.processProjectionCommand ) 
             elif paramKeys[1] == 'Vertical Scaling':
                 self.vscale = config_param   
-                self.connect( self.vscale, QtCore.SIGNAL('ValueChanged'), self.processVerticalScalingCommand ) 
+                self.vscale.ValueChanged.connect(  self.processVerticalScalingCommand ) 
             elif paramKeys[1] == 'Vertical Variable':
                 self.vertVar = config_param   
-                self.connect( self.vertVar, QtCore.SIGNAL('ValueChanged'), self.processVerticalVariableCommand )
+                self.vertVar.ValueChanged.connect(  self.processVerticalVariableCommand )
         elif paramKeys[0] == 'Variables':
             self.variables[ paramKeys[1] ] = config_param
-            self.connect( config_param, QtCore.SIGNAL('ValueChanged'), self.processVariableCommand )
+            config_param.ValueChanged.connect(  self.processVariableCommand )
                 
     def processMaxResolutionCommand(self, args=None ):
         max_res_spec =  self.maxRes.getValue() 
@@ -1114,7 +1116,7 @@ class CPCPlot(StructuredGridPlot):
     def initCollections( self, nCollections, init_args, **args ):
         if nCollections > 0:
             self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args, **args )
-            self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('newDataAvailable'), self.newDataAvailable )
+            self.partitioned_point_cloud.NewDataAvailable.connect( self.newDataAvailable )
         else:
             self.render_mode = ProcessMode.LowRes
 #        self.partitioned_point_cloud.connect( self.partitioned_point_cloud, QtCore.SIGNAL('updateScaling'), self.updateScaling )        

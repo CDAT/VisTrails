@@ -4,28 +4,76 @@ Created on Feb 4, 2014
 @author: tpmaxwel
 '''
 
+from __future__ import with_statement
+from __future__ import division
+
+_TRY_PYSIDE = True
+
+try:
+    if not _TRY_PYSIDE:
+        raise ImportError()
+    import PySide.QtCore as _QtCore
+    QtCore = _QtCore
+    import PySide.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = True
+except ImportError:
+    import sip
+    try: sip.setapi('QString', 2)
+    except: pass
+    try: sip.setapi('QVariant', 2)
+    except: pass
+    import PyQt4.QtCore as _QtCore
+    QtCore = _QtCore
+    import PyQt4.QtGui as _QtGui
+    QtGui = _QtGui
+    USES_PYSIDE = False
+
+
+# def _pyside_import_module(moduleName):
+#     pyside = __import__('PySide', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# def _pyqt4_import_module(moduleName):
+#     pyside = __import__('PyQt4', globals(), locals(), [moduleName], -1)
+#     return getattr(pyside, moduleName)
+# 
+# 
+# if USES_PYSIDE:
+#     import_module = _pyside_import_module
+# 
+#     Signal = QtCore.Signal
+#     Slot = QtCore.Slot
+#     Property = QtCore.Property
+# else:
+#     import_module = _pyqt4_import_module
+# 
+#     Signal = QtCore.pyqtSignal
+#     Slot = QtCore.pyqtSlot
+#     Property = QtCore.pyqtProperty
+
 import os, os.path, sys, argparse, time, multiprocessing
 from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
 from packages.CPCViewer.PointCloudViewer import CPCPlot
-from packages.CPCViewer.SliceViewer import SlicePlot
-from packages.CPCViewer.VolumeViewer import VolumePlot
 from packages.CPCViewer.MultiVarPointCollection import InterfaceType
 
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
 parser.add_argument( 'PATH' )
 parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
+parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="GEOS5", help='input data type')
 ns = parser.parse_args( sys.argv )
 
 kill_all_zombies()
+app = QtGui.QApplication(['Point Cloud Plotter'])
 point_size = 1
 n_overview_points = 500000
 grid_coords = ( None, None, None, None )
 data_dir = os.path.expanduser( ns.data_dir )
 height_varnames = []
 var_proc_op = None
-interface = InterfaceType.InfoVis
-roi = None # ( 0, 0, 50, 50 )
+showGui = True
+interface = InterfaceType.ClimatePointCloud
 
 
 if ns.data_type == "WRF":
@@ -65,13 +113,11 @@ elif ns.data_type == "CSU":
     data_file = os.path.join( data_dir, "ColoState", file_name )
     grid_file = os.path.join( data_dir, "ColoState", "grid.nc" )
     varname = "pressure" 
- 
-if ns.data_type == "GEOS5":   
-    g = VolumePlot(gui=False) 
-    g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op, roi, 'xyt' ), show=True ) 
 
-else:
-    g = CPCPlot(gui=False) 
-    ncores=multiprocessing.cpu_count()
-    g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op, roi, 'xyz' ), n_overview_points=n_overview_points, n_cores=1, show=True  )   # n_cores = ncores      
+g = CPCPlot( ) 
+g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op ), n_overview_points=n_overview_points, n_cores=multiprocessing.cpu_count(), show=showGui  )   # multiprocessing.cpu_count()       
+renderWindow = g.renderWindow
  
+app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
+app.exec_() 
+g.terminate() 

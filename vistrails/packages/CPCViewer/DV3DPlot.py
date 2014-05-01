@@ -7,6 +7,8 @@ from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.ConfigFunctions import *
 import sys
 import vtk, os, sys
+MIN_LINE_LEN = 50
+VTK_NOTATION_SIZE = 14
 
 class TextDisplayMgr:
     
@@ -77,13 +79,20 @@ class DV3DPlot():
     LEFT_BUTTON = 0
     RIGHT_BUTTON = 1
  
-
     def __init__( self,  **args ):
         self.useGui = args.get( 'gui', True )
         self.renderWindow = args.get( 'renwin', self.createRenderWindow() )
         self.renderWindowInteractor = self.renderWindow.GetInteractor()
         style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
         self.renderWindowInteractor.SetInteractorStyle( style )
+        self.maxStageHeight = 100.0
+        self.observerTargets = set()
+        self.enableClip = False
+        self.xcenter = 100.0
+        self.xwidth = 300.0
+        self.ycenter = 0.0
+        self.ywidth = 180.0
+        self.widget = None
         
         self.configuring = False
         self.configurableFunctions = {}
@@ -274,10 +283,7 @@ class DV3DPlot():
 
     def createRenderer(self, **args ):
         background_color = args.get( 'background_color', VTK_BACKGROUND_COLOR )
-        self.renderer = vtk.vtkRenderer()
-        self.renderer.SetBackground(*background_color)
-
-        self.renderWindow.AddRenderer( self.renderer )    
+        self.renderer.SetBackground(*background_color)   
         self.renderWindowInteractor.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )  
         self.textDisplayMgr = TextDisplayMgr( self.renderer )             
         self.pointPicker = vtk.vtkPointPicker()
@@ -305,10 +311,7 @@ class DV3DPlot():
     def isConfigStyle( self, iren ):
         if not iren: return False
         return getClassName( iren.GetInteractorStyle() ) == getClassName( self.configurationInteractorStyle )
-    
-    def onAnyEvent(self, caller, event):
-        return 0
-        
+            
     def onKeyRelease(self, caller, event):
         return 0
         
@@ -323,27 +326,17 @@ class DV3DPlot():
     
     def activateEvent( self, caller, event ):
         if not self.activated:
-#            self.addObserver( self.renwin,"AbortCheckEvent", CheckAbort)
-#            self.activateWidgets( self.renderWindowInteractor )                                  
             self.addObserver( self.renderWindowInteractor, 'CharEvent', self.setInteractionState )                   
             self.addObserver( self.renderWindowInteractor, 'MouseMoveEvent', self.updateLevelingEvent )
-#                        self.addObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
-            self.addObserver( self.renderWindowInteractor, 'AnyEvent', self.onAnyEvent )  
-#                        self.addObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
-#                        self.addObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
-#            self.addObserver( self.renderWindowInteractor, 'CharEvent', self.onKeyPress )
             self.addObserver( self.renderWindowInteractor, 'KeyReleaseEvent', self.onKeyRelease )
-            self.addObserver( self.renderWindowInteractor, 'LeftButtonPressEvent', self.onLeftButtonPress )
+            self.addObserver( self.renderWindowInteractor, 'LeftButtonPressEvent', self.onLeftButtonPress )            
             self.addObserver( self.renderWindowInteractor, 'ModifiedEvent', self.onModified )
             self.addObserver( self.renderWindowInteractor, 'RenderEvent', self.onRender )                   
             self.addObserver( self.renderWindowInteractor, 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
             self.addObserver( self.renderWindowInteractor, 'RightButtonReleaseEvent', self.onRightButtonRelease )
             self.addObserver( self.renderWindowInteractor, 'RightButtonPressEvent', self.onRightButtonPress )
-#             for configurableFunction in self.configurableFunctions.values():
-#                 configurableFunction.activateWidget( self.renderWindowInteractor  )
             self.updateInteractor() 
             self.activated = True 
-
 
     def clearReferrents(self):
         self.removeObservers()
@@ -356,20 +349,12 @@ class DV3DPlot():
         self.observerTargets.clear()
 
     def createRenderWindow(self):
-        if self.useGui:
-            from QVTKWidget import QVTKAdaptor, QtCore
-            self.widget = QVTKAdaptor()
-            self.widget.Initialize()
-            self.widget.Start()        
-            self.widget.connect( self.widget, QtCore.SIGNAL('event'), self.processEvent )  
-            self.widget.connect( self.widget, QtCore.SIGNAL("Close"), self.closeConfigDialog  ) 
-            renwin = self.widget.GetRenderWindow()
-        else:
-            renwin = vtk.vtkRenderWindow()
-            self.renderWindowInteractor = vtk.vtkRenderWindowInteractor()
-            self.renderWindowInteractor.SetRenderWindow( renwin )
-            
-        return renwin
+        self.renderer = vtk.vtkRenderer()
+        renWin = vtk.vtkRenderWindow()
+        renWin.AddRenderer( self.renderer )
+        self.renderWindowInteractor = vtk.vtkRenderWindowInteractor()
+        self.renderWindowInteractor.SetRenderWindow(renWin)            
+        return renWin
     
     def closeConfigDialog(self):
         pass
@@ -455,15 +440,15 @@ class DV3DPlot():
         return [ colormapManager.colormapName, colormapManager.invertColormap, self.stereoEnabled ]
 
     def start(self):
-        self.renderWindowInteractor.Initialize() 
-        self.renderWindowInteractor.Render()
-        self.renderWindowInteractor.Start() 
+        self.renderWindowInteractor.Initialize()
+        self.renderWindow.Render()
+        self.renderWindowInteractor.Start()
          
     def invalidate(self):
         self.isValid = False
 
-    def startEventLoop(self):
-        self.renderWindowInteractor.Start()
+#     def startEventLoop(self):
+#         self.renderWindowInteractor.Start()
 
     def recordCamera( self ):
         c = self.renderer.GetActiveCamera()

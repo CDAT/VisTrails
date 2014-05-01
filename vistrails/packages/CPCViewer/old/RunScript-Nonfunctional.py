@@ -4,29 +4,43 @@ Created on Feb 4, 2014
 @author: tpmaxwel
 '''
 
-import os, os.path, sys, argparse, time, multiprocessing
+import os.path, sys, argparse
+from PyQt4 import QtCore, QtGui
 from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
 from packages.CPCViewer.PointCloudViewer import CPCPlot
-from packages.CPCViewer.SliceViewer import SlicePlot
-from packages.CPCViewer.VolumeViewer import VolumePlot
-from packages.CPCViewer.MultiVarPointCollection import InterfaceType
+from packages.CPCViewer.ControlPanel import ConfigManager
+
+def displayRenderWindowQt( renderWindow ):
+    from packages.CPCViewer.PointCloudViewer import QVTKAdaptor
+    import vtk
+       
+    app = QtGui.QApplication(['Point Cloud Plotter'])    
+    widget = QVTKAdaptor( rw=renderWindow )
+    widget.Initialize()
+    widget.Start()        
+    renderWindowInteractor = renderWindow.GetInteractor()           
+    style = vtk.vtkInteractorStyleTrackballCamera()   
+    renderWindowInteractor.SetInteractorStyle( style )
+    g.connect( widget, QtCore.SIGNAL('event'), g.processEvent )  
+    g.connect( widget, QtCore.SIGNAL("Close"), g.closeConfigDialog  ) 
+    widget.show()      
+    app.connect( app, QtCore.SIGNAL("aboutToQuit()"), g.terminate ) 
+    app.exec_() 
+    g.terminate() 
 
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
 parser.add_argument( 'PATH' )
 parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
+parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="MMF", help='input data type')
 ns = parser.parse_args( sys.argv )
 
 kill_all_zombies()
 point_size = 1
 n_overview_points = 500000
-grid_coords = ( None, None, None, None )
+height_varname = None
 data_dir = os.path.expanduser( ns.data_dir )
 height_varnames = []
 var_proc_op = None
-interface = InterfaceType.InfoVis
-roi = None # ( 0, 0, 50, 50 )
-
 
 if ns.data_type == "WRF":
     data_file = os.path.join( data_dir, "WRF/wrfout_d01_2013-07-01_00-00-00.nc" )
@@ -54,24 +68,21 @@ elif ns.data_type == "GEOD":
     data_file = os.path.join( data_dir, "GeodesicGrid", file_name )
     grid_file = os.path.join( data_dir, "GeodesicGrid", "grid.nc" )
     varname = "temperature_ifc" # "vorticity" # 
-elif ns.data_type == "CubedSphere":
-    file_name =  "vsnow00-10.cam.h1.2006-12-01-00000.nc" # "vorticity_19010102_000000.nc" # 
-    data_file = os.path.join( data_dir, "CubedSphere/3d", file_name )
-    grid_file = None
-#    grid_coords = ( 'lon', 'lat', 'lev', None )
-    varname = "U"
-elif ns.data_type == "CSU":
-    file_name =  "psfc.nc" 
-    data_file = os.path.join( data_dir, "ColoState", file_name )
-    grid_file = os.path.join( data_dir, "ColoState", "grid.nc" )
-    varname = "pressure" 
- 
-if ns.data_type == "GEOS5":   
-    g = VolumePlot(gui=False) 
-    g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op, roi, 'xyt' ), show=True ) 
+    var_proc_op = None
+    
+g = CPCPlot( gui=False ) 
+g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=1  )
 
-else:
-    g = CPCPlot(gui=False) 
-    ncores=multiprocessing.cpu_count()
-    g.init( init_args = ( grid_file, data_file, interface, varname, grid_coords, var_proc_op, roi, 'xyz' ), n_overview_points=n_overview_points, n_cores=1, show=True  )   # n_cores = ncores      
- 
+cfgManager = ConfigManager()
+cfgManager.connect( cfgManager, QtCore.SIGNAL("ConfigCmd"), g.processConfigCmd )
+cfgManager.build()
+cfgManager.initParameters()
+
+g.processCategorySelectionCommand( [ 'Subsets' ] )
+
+renderWindow = g.renderWindow
+
+g.start()
+
+# verification code:
+# displayRenderWindowQt( renderWindow )
