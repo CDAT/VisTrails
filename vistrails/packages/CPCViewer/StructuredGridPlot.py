@@ -500,7 +500,7 @@ class StructuredGridPlot(DV3DPlot):
         self.variable_reader.execute( )       
         self.execute( )
         self.start()
-#        self.createConfigDialog( show, interface )
+        if self.useGui: self.createConfigDialog( show, self.processConfigCmd, interface )
 
 
     def getLabelActor(self):

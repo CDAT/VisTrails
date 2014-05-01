@@ -78,6 +78,8 @@ class DV3DPlot():
     
     LEFT_BUTTON = 0
     RIGHT_BUTTON = 1
+
+    sliceAxes = [ 'x', 'y', 'z' ]       
  
     def __init__( self,  **args ):
         self.useGui = args.get( 'gui', True )
@@ -205,6 +207,9 @@ class DV3DPlot():
                     if textDisplay <> None:  self.updateTextDisplay( textDisplay )
                     self.render()
 
+    def updateTextDisplay( self, text, render=False ):
+        pass 
+    
     def UpdateCamera(self):
         pass
     

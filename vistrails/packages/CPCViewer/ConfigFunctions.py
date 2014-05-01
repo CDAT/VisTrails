@@ -77,6 +77,147 @@ def get_value_decl( val ):
     if isinstance( val, int ): return "int"
     if isinstance( val, float ): return "float"
     return "str"
+
+class ConfigurationInterface:
+    
+    ConfigCmd = SIGNAL("ConfigCmd")
+    GuiCmd = SIGNAL("GuiCmd")
+
+    def __init__(self, **args ):    
+        self.metadata = args.get( 'metadata', {} )
+        defvar = args.get( 'defvar', {} )
+        self.cfgManager = ConfigManager( defvar=defvar ) 
+        callback = args.get( 'callback', None )
+        if callback: self.cfgManager.ConfigCmd.connect( callback )       
+        
+    def newSubset( self, indices ):
+        for ctrl in self.tagged_controls:
+            ctrl.newSubset( indices )
+        
+    def activate(self):
+        self.cfgManager.initParameters()
+#        self.configContainer.selectCategory( self.iSubsetCatIndex )
+                           
+    def build( self, **args ):
+        init_roi = args.get( 'roi', ( 0, -90, 360, 90 ) )
+        defvar = self.cfgManager.getMetadata( 'defvar' )
+        self.iColorCatIndex = self.addCategory( 'Color' )
+        cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
+        cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=1, Stereo=0, Colorbar=0  )             
+        self.iSubsetCatIndex = self.addCategory( 'Subsets' )
+        cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5, xhrwidth=0.0025, xlrwidth=0.005, yhrwidth=0.0025, ylrwidth=0.005 )
+        var_rec = self.metadata[ defvar ]
+        vrange = var_rec[2]
+        thresh_cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Threshold Range", rmin=vrange[0], rmax=vrange[1], ctype = 'Leveling', varname=defvar )        
+        roi_cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "ROI", roi=init_roi  )
+        op_cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Opacity Scale", rmin=0.0, rmax=1.0, ctype = 'Range'  )               
+        self.iPointsCatIndex = self.addCategory( 'Points' )
+        cparm = self.cfgManager.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 10 ), ( "High Res", "# Pixels",  1, 10, 3 ) ] )
+        cparm = self.cfgManager.addParameter( self.iPointsCatIndex, "Max Resolution", value=1.0 )
+        self.GeometryCatIndex = self.addCategory( 'Geometry' )
+        cparm = self.cfgManager.addParameter( self.GeometryCatIndex, "Projection", choices = [ "Lat/Lon", "Spherical" ], init_index=0 )
+        cparm = self.cfgManager.addParameter( self.GeometryCatIndex, "Vertical Scaling", value=0.5 )
+        vertical_vars = args.get( 'vertical_vars', [] )
+        vertical_vars.insert( 0, "Levels" )
+        cparm = self.cfgManager.addParameter( self.GeometryCatIndex, "Vertical Variable", choices = vertical_vars, init_index=0  )
+        self.AnalysisCatIndex = self.addCategory( 'Analysis' )
+        cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "Animation" )
+        
+    def saveConfig(self):
+        self.cfgManager.saveConfig()
+        
+    def addCategory(self, cat_name ):
+        return self.cfgManager.addCategory( cat_name )
+
+class ConfigManager:
+    ConfigCmd = SIGNAL("ConfigCmd")
+    
+    def __init__( self, controller=None, **args ): 
+        self.cfgFile = None
+        self.cfgDir = None
+        self.controller = controller
+        self.config_params = {}
+        self.iCatIndex = 0
+        self.cats = {}
+        self.metadata = args
+        
+    def getMetadata(self, key=None ):
+        return self.metadata.get( key, None ) if key else self.metadata
+
+    def addParam(self, key ,cparm ):
+        self.config_params[ key ] = cparm
+#        print "Add param[%s]" % key
+                     
+    def saveConfig( self ):
+        try:
+            f = open( self.cfgFile, 'w' )
+            for config_item in self.config_params.items():
+                cfg_str = " %s = %s " % ( config_item[0], config_item[1].serialize() )
+                f.write( cfg_str )
+            f.close()
+        except IOError:
+            print>>sys.stderr, "Can't open config file: %s" % self.cfgFile
+
+    def addParameter( self, iCatIndex, config_name, **args ):
+        categoryName = self.controller.getCategoryName( iCatIndex ) if self.controller else self.cats[ iCatIndex ]
+        cparm = ConfigParameter.getParameter( config_name, **args )
+        varname = args.get('varname', None )
+        key_tok = [ categoryName, config_name ]
+        if varname: key_tok.append( varname )
+        self.addParam( ':'.join( key_tok ), cparm )
+        return cparm
+
+    def readConfig( self ):
+        try:
+            f = open( self.cfgFile, 'r' )
+            while( True ):
+                config_str = f.readline()
+                if not config_str: break
+                cfg_tok = config_str.split('=')
+                parm = self.config_params.get( cfg_tok[0].strip(), None )
+                if parm: parm.initialize( cfg_tok[1] )
+        except IOError:
+            print>>sys.stderr, "Can't open config file: %s" % self.cfgFile                       
+        
+    def initParameters(self):
+        if not self.cfgDir:
+            self.cfgDir = os.path.join( os.path.expanduser( "~" ), ".cpc" )
+            if not os.path.exists(self.cfgDir): 
+                os.mkdir(  self.cfgDir )
+        if not self.cfgFile:
+            self.cfgFile = os.path.join( self.cfgDir, "cpcConfig.txt" )
+        else:
+            self.readConfig()            
+        emitter = self.controller if self.controller else self
+        for config_item in self.config_params.items():
+            emitter.ConfigCmd( ( "InitParm",  config_item[0], config_item[1] ) )
+
+    def getParameterPersistenceList(self):
+        plist = []
+        for cfg_item in self.config_params.items():
+            key = cfg_item[0]
+            cfg_spec = cfg_item[1].pack()
+            plist.append( ( key, cfg_spec[1] ) )
+        return plist
+
+    def initialize( self, parm_name, parm_values ):
+        if not ( isinstance(parm_values,list) or isinstance(parm_values,tuple) ):
+            parm_values = [ parm_values ]
+        cfg_parm = self.config_params.get( parm_name, None )
+        if cfg_parm: cfg_parm.unpack( parm_values )
+
+    def getPersistentParameterSpecs(self):
+        plist = []
+        for cfg_item in self.config_params.items():
+            key = cfg_item[0]
+            values_decl = cfg_item[1].values_decl()
+            plist.append( ( key, values_decl ) )
+        return plist
+    
+    def addCategory(self, cat_name ):
+        self.iCatIndex = self.iCatIndex + 1
+        self.cats[ self.iCatIndex ] = cat_name
+        return self.iCatIndex
        
 class ConfigParameter:
     
@@ -92,7 +233,6 @@ class ConfigParameter:
             return ConfigParameter( config_name, **args )
 
     def __init__(self, name, **args ):
-        super( ConfigParameter, self ).__init__() 
         self.name = name 
         self.varname = args.get( 'varname', name ) 
         self.ptype = args.get( 'ptype', name ) 
@@ -177,7 +317,7 @@ class ConfigParameter:
 class LevelingConfigParameter( ConfigParameter ):
     
     def __init__(self, name, **args ):
-        super( LevelingConfigParameter, self ).__init__( name, **args ) 
+        ConfigParameter.__init__( self, name, **args ) 
         self.wposSensitivity = args.get( 'pos_s', 0.05 )
         self.wsizeSensitivity = args.get( 'width_s', 0.05 )
         self.normalized = True
@@ -297,7 +437,7 @@ class LevelingConfigParameter( ConfigParameter ):
 class RangeConfigParameter( ConfigParameter ):
     
     def __init__(self, name, **args ):
-        super( RangeConfigParameter, self ).__init__( name, **args ) 
+        ConfigParameter.__init__( self, name, **args ) 
         self.scaling_bounds = None
         
     @property

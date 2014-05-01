@@ -8,7 +8,7 @@ import sys, cdms2
 import os.path, traceback, threading
 import vtk, time
 from packages.CPCViewer.DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, kill_all_zombies
-from packages.CPCViewer.ConfigFunctions import extract_arg, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP, SIGNAL
+from packages.CPCViewer.ConfigFunctions import *
 from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.MapManager import MapManager
 from packages.CPCViewer.MultiVarPointCollection import InterfaceType, PlotType
@@ -229,27 +229,6 @@ class CPCPlot( DV3DPlot ):
             self.widget_bounds = bounds 
             self.planeWidget.PlaceWidget( self.widget_bounds )
             
-#     def activateConfigDialog(self, dialog, show=False ):
-#             w = dialog.getConfigWidget()
-#             w.connect( w, QtCore.SIGNAL("ConfigCmd"), self.processConfigCmd )
-#         #    dialog.connect( self, QtCore.SIGNAL("UpdateGui"), dialog.externalUpdate )
-#             dialog.activate()        
-#             if show: dialog.show()
-# 
-#     def createConfigDialog( self, show=False, interface=InterfaceType.ClimatePointCloud ):
-#         from packages.CPCViewer.QtConfigGui import CPCConfigGui 
-#         self.configDialog = CPCConfigGui( self.point_cloud_overview.getPointCollection() )
-#         self.activateConfigDialog( self.configDialog, show )       
-# #        if interface == InterfaceType.InfoVis:
-# #            self.infovisDialog = CPCInfoVisGui( self.point_cloud_overview.getPointCollection() )
-# #            self.activateConfigDialog( self.infovisDialog, show )
-#  
-#     def closeConfigDialog(self):
-#         if self.configDialog:
-#             self.configDialog.closeDialog()
-#         if self.infovisDialog:
-#             self.infovisDialog.closeDialog()
-
     @property
     def current_subset_specs(self):
         return self._current_subset_specs
@@ -1207,7 +1186,13 @@ class CPCPlot( DV3DPlot ):
         self.initCollections( nCollections, init_args, lut = lut, maxStageHeight=self.maxStageHeight  )
         interface = init_args[2]
         if self.widget and show: self.widget.show()
-        if self.useGui: self.createConfigDialog( show, interface )
+        if self.useGui: self.createConfigDialog( show, self.processConfigCmd, interface )
+        else: 
+            pc = self.point_cloud_overview.getPointCollection()
+            cfgInterface = ConfigurationInterface( metadata=pc.getMetadata(), defvar=pc.var.id, callback=self.processConfigCmd  )
+            cfgInterface.build()
+            cfgInterface.activate()
+            self.processConfigCmd( [ 'CategorySelected', 'Subsets' ] )
         self.start()
 
 
