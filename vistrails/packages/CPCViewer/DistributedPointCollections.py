@@ -631,7 +631,7 @@ class vtkLocalPointCloud( vtkPointCloud ):
 #         self.actor.SetVisibility( True  )
 
     def generateSubset(self, **args ):
-        print " ++++++++++++++++++++++ vtkLocalPointCloud[%d].generateSubset: current_subset_specs: %s (%s) " % ( self.pcIndex, self.current_subset_specs, str(args) )
+#        print " ++++++++++++++++++++++ vtkLocalPointCloud[%d].generateSubset: current_subset_specs: %s (%s) " % ( self.pcIndex, self.current_subset_specs, str(args) )
         self.current_subset_specs = args.get('spec', self.current_subset_specs)
 #         if self.current_subset_specs[0] == 'Z3':
 #             print " vtkLocalPointCloud[%d]: current_subset_specs: %s (%s) " % ( self.pcIndex, self.current_subset_specs, str(args) )
@@ -707,6 +707,10 @@ class vtkPartitionedPointCloud:
         self.interactor.SetTimerEventId(self.CheckProcQueueEventId)
         self.interactor.SetTimerEventType( self.TimerType )
         self.timerId = self.interactor.CreateRepeatingTimer( 100 )
+        
+        self.interactor.SetTimerEventId(11)
+        self.interactor.SetTimerEventType(11)
+        self.timerId1 = self.interactor.CreateRepeatingTimer( 1000 )
     
     def refresh( self, force = False ): 
         for pc in self.point_clouds.values():

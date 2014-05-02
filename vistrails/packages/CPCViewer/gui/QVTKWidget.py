@@ -183,6 +183,7 @@ class QVTKWidget(QtGui.QWidget):
                 iStyleInstance = vtk.vtkInteractorStyleTrackballCamera()
             else:
                 iStyleInstance = iStyle.vtkInstance
+#            print "!!!!!!!!!!!!!!!!!!!!!!! QVTKWidget: SetInteractorStyle !!!!!!!!!!!!!!!!!!!!!!! "
             iren.SetInteractorStyle(iStyleInstance)
         self.addObserversToInteractorStyle()
         

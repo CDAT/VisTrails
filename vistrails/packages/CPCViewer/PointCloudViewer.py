@@ -186,6 +186,8 @@ class CPCPlot( DV3DPlot ):
         etype = caller.GetTimerEventType()
         if etype == vtkPartitionedPointCloud.TimerType:
             self.partitioned_point_cloud.processTimerEvent(eid)
+#         if etype == 11:
+#             self.printInteractionStyle('processTimerEvent')
 
     def planeWidgetOn(self):
         if self.sliceAxisIndex   == 0:
@@ -231,7 +233,6 @@ class CPCPlot( DV3DPlot ):
             self.planeWidget.DrawPlaneOff()
             self.planeWidget.TubingOff() 
             self.planeWidget.GetNormalProperty().SetOpacity(0.0)
-#            self.planeWidget.SetInteractor( self.renderWindowInteractor )
             self.planeWidget.KeyPressActivationOff()
             self.widget_bounds = bounds 
             self.planeWidget.PlaceWidget( self.widget_bounds )
@@ -529,9 +530,11 @@ class CPCPlot( DV3DPlot ):
                 self.update_subset_specs(  self.partitioned_point_cloud.getSubsetSpecs()  )            
                 self.point_cloud_overview.generateSubset( spec=self.current_subset_specs ) 
                 self.configDialog.newSubset( self.point_cloud_overview.getCellData() )       
+            self.printInteractionStyle( 'processSlicePlaneCommand.StartConfig')
         elif args and args[0] == "EndConfig":
             self.setRenderMode( ProcessMode.HighRes )                 
             self.execCurrentSlice()
+            self.printInteractionStyle( 'processSlicePlaneCommand.EndConfig')
         
         elif args and args[0] == "Open":
             self.enableSlicing()
@@ -670,6 +673,7 @@ class CPCPlot( DV3DPlot ):
             slice_bounds.append( (pmin,pmax) )
 #        print " && ExecCurrentSlice, slice properties: %s " % ( str( self.sliceProperties ) ); sys.stdout.flush()
         self.updateSlicing( self.sliceAxisIndex, slice_bounds, **args )
+        self.printInteractionStyle( 'execCurrentSlice')
     
     def pushSlice( self, slice_pos ):
         if ( self.sliceAxisIndex  == 2 ):
@@ -945,6 +949,7 @@ class CPCPlot( DV3DPlot ):
                 self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=False )
 #        self.configDialog.newSubset( self.point_cloud_overview.getCellData() )
         self.render( mode=self.render_mode )
+        self.printInteractionStyle( 'updateSlicing')
 
 #    def updateSlicing1( self, sliceIndex, slice_bounds ):
 #        self.invalidate()
@@ -1089,6 +1094,7 @@ class CPCPlot( DV3DPlot ):
 #        print " start Interaction: %s %s " % ( str(object), str( event ) ); sys.stdout.flush()
         if self.process_mode == ProcessMode.Slicing:
             self.setRenderMode( ProcessMode.LowRes )
+            self.printInteractionStyle( 'processStartInteractionEvent')
 
     def processEndInteractionEvent( self, obj, event ):  
 #        print " end Interaction: %s %s " % ( str(object), str( event ) ); sys.stdout.flush()
@@ -1096,6 +1102,7 @@ class CPCPlot( DV3DPlot ):
             self.setRenderMode( ProcessMode.HighRes )
             self.execCurrentSlice()
             self.setSlicePosition( self.getSlicePosition() )
+            self.printInteractionStyle( 'processEndInteractionEvent')
 #            self.emit(QtCore.SIGNAL("UpdateGui"), ( "SetSlicePosition", self.getSlicePosition() ) ) 
                
                 

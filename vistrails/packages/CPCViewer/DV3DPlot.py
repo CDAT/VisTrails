@@ -123,8 +123,14 @@ class DV3DPlot():
         for configFunct in self.configurableFunctions.values():
             configFunct.applyParameter( **args  )
 
+
+    def displayEventType(self, caller, event):
+        print " --> Event: %s " % event 
+        return 0
+        
     def processTimerEvent(self, caller, event):
         id0 = caller.GetTimerEventId ()
+        return 0
 #         id1 = caller.GetTimerEventType ()
 #         id2 = caller.GetTimerEventPlatformId ()
 #        print "TimerEvent: %d %d %d " % (  id0, id1, id2 )
@@ -140,6 +146,7 @@ class DV3DPlot():
         else: 
             print " ------------------------------------------ setInteractionState, key=%s, keysym=%s, shift = %s, isAltMode = %s    ------------------------------------------ " % (str(key), str(keysym), str(shift), str(self.isAltMode) )
             self.processKeyEvent( key, caller, event )
+        return 0
 
     def processKeyEvent( self, key, caller=None, event=None ):
 #        print "process Key Event, key = %s" % ( key )
@@ -158,6 +165,7 @@ class DV3DPlot():
             if state <> None: 
                 self.updateInteractionState( state, self.isAltMode  )                 
                 self.isAltMode = False 
+        return 0
 
     def onLeftButtonPress( self, caller, event ):
 #        istyle = self.renderWindowInteractor.GetInteractorStyle()
@@ -222,10 +230,12 @@ class DV3DPlot():
         pass
 
     def haltNavigationInteraction(self):
+        print " ---------------------- haltNavigationInteraction -------------------------- "
         if self.renderWindowInteractor:
             self.renderWindowInteractor.SetInteractorStyle( self.configurationInteractorStyle )  
     
     def resetNavigation(self):
+        print " ---------------------- resetNavigation -------------------------- "
         if self.renderWindowInteractor:
             self.renderWindowInteractor.SetInteractorStyle( self.navigationInteractorStyle )
             self.enableVisualizationInteraction()
@@ -272,6 +282,9 @@ class DV3DPlot():
 
     def disableVisualizationInteraction(self):
         pass
+    
+    def printInteractionStyle(self, msg ):
+        print "%s: InteractionStyle = %s " % ( msg,  self.renderWindow.GetInteractor().GetInteractorStyle().__class__.__name__ ) 
     
     def getLut( self, cmap_index=0  ):
         colormapManager = self.getColormapManager( index=cmap_index )
@@ -329,6 +342,7 @@ class DV3DPlot():
     
     def activateEvent( self, caller, event ):
         if not self.activated:
+#            self.addObserver( self.renderWindowInteractor, 'InteractorEvent', self.displayEventType )                   
             self.addObserver( self.renderWindowInteractor, 'CharEvent', self.setInteractionState )                   
             self.addObserver( self.renderWindowInteractor, 'TimerEvent', self.processTimerEvent )                   
             self.addObserver( self.renderWindowInteractor, 'MouseMoveEvent', self.updateLevelingEvent )
