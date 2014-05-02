@@ -125,6 +125,7 @@ class DV3DPlot(QtCore.QObject):
     LEFT_BUTTON = 0
     RIGHT_BUTTON = 1
 
+    sliceAxes = [ 'x', 'y', 'z' ]       
 
     def __init__( self,  **args ):
         QtCore.QObject.__init__( self )
@@ -455,6 +456,7 @@ class DV3DPlot(QtCore.QObject):
         pass
 
     def haltNavigationInteraction(self):
+        print "---------------------- haltNavigationInteraction -------------------------- "
         if self.renderWindowInteractor:
             istyle = self.renderWindowInteractor.GetInteractorStyle()  
             if self.navigationInteractorStyle == None:
@@ -463,6 +465,7 @@ class DV3DPlot(QtCore.QObject):
 #            print "\n ---------------------- [%s] halt Navigation: nis = %s, is = %s  ----------------------  \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle)  ) 
     
     def resetNavigation(self):
+        print "---------------------- resetNavigation -------------------------- "
         if self.renderWindowInteractor:
             if self.navigationInteractorStyle <> None: 
                 self.renderWindowInteractor.SetInteractorStyle( self.navigationInteractorStyle )
@@ -542,8 +545,8 @@ class DV3DPlot(QtCore.QObject):
         return ispec.scaleToImage( data_value )  
 
     def finalizeLeveling( self, cmap_index=0 ):
-        ispec = self.inputSpecs[ cmap_index ] 
-        ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
+#        ispec = self.inputSpecs[ cmap_index ] 
+#        ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
         if self.configuring: 
             self.finalizeConfigurationObserver( self.InteractionState )            
             self.resetNavigation()

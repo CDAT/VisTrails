@@ -40,7 +40,6 @@ from packages.CPCViewer.ConfigFunctions import *
 
 class SlicePlot(StructuredGridPlot): 
 
-    sliceAxes = [ 'x', 'y', 'z' ]       
     global_coords = [-1, -1, -1]
     
     def __init__( self, **args ):

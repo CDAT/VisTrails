@@ -655,7 +655,7 @@ class GraphWidget(QtGui.QGraphicsView):
             node.setMovable( nodeData.free )                
             node.setPos ( nodeData.getScenePosition() ) 
             node.setVisible ( True )
-            node.setXBounded( nodeData.xbound ) 
+#            node.setXBounded( nodeData.xbound ) 
 #            bnds = nodeData.getBounds()
 #            if bnds:
 #                sbnds0 = self.getScenePoint( bnds[0:2] )

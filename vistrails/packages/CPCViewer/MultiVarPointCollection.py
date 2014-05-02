@@ -438,7 +438,7 @@ class MultiVarPointCollection():
 
     def initialize( self, args, **cfg_args ): 
         self.configure( **cfg_args )
-        ( grid_file, data_file, interface, grd_varname, grd_coords, var_proc_op, ROI ) = args
+        ( grid_file, data_file, interface, grd_varname, grd_coords, var_proc_op, ROI, subspace ) = args
         self.interface = interface
         self.roi = ROI
         self.gf = cdms2.open( grid_file ) if grid_file else None
@@ -574,7 +574,7 @@ class MultiVarPointCollection():
                 var_data, vmin, vmax = self.computeThresholdRange( var_op )               
                 if not isNone(var_data):
                     var_mask = numpy.logical_and( numpy.greater_equal( var_data, vmin ), numpy.less_equal( var_data, vmax ) )  
-                    print "MultiVarPointCollection.execute: %s, mask range = %s  " % ( str( args ), str( (vmin, vmax) ) ); sys.stdout.flush()
+#                    print "MultiVarPointCollection.execute: %s, mask range = %s  " % ( str( args ), str( (vmin, vmax) ) ); sys.stdout.flush()
                     if isNone(threshold_mask):                       
                         self.thresholdTargetType = 'coords' if var_op[0] in [ 'lat', 'lon', 'lev', 'x', 'y', 'z' ] else 'vardata' 
                         threshold_mask = var_mask

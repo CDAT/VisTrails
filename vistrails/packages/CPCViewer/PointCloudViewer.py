@@ -63,7 +63,7 @@ from packages.CPCViewer.QtConfigGui import CPCConfigGui
 from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.MapManager import MapManager
 from packages.CPCViewer.MultiVarPointCollection import InterfaceType, PlotType
-from packages.CPCViewer.StructuredGridPlot import StructuredGridPlot
+from packages.CPCViewer.DV3DPlot import DV3DPlot
 
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
@@ -202,11 +202,11 @@ class Counter():
         return False
     
     
-class CPCPlot(StructuredGridPlot):  
+class CPCPlot(DV3DPlot):  
     
 
     def __init__( self, **args ):
-        StructuredGridPlot.__init__( self, **args  )
+        DV3DPlot.__init__( self, **args  )
         self.sliceAxisIndex = 0
         self.partitioned_point_cloud = None
         self.point_cloud_overview = None
