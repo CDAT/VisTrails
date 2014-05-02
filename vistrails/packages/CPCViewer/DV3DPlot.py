@@ -85,8 +85,8 @@ class DV3DPlot():
         self.useGui = args.get( 'gui', True )
         self.renderWindow = args.get( 'renwin', self.createRenderWindow() )
         self.renderWindowInteractor = self.renderWindow.GetInteractor()
-        style = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
-        self.renderWindowInteractor.SetInteractorStyle( style )
+        self.navigationInteractorStyle = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
+        self.renderWindowInteractor.SetInteractorStyle( self.navigationInteractorStyle )
         self.maxStageHeight = 100.0
         self.observerTargets = set()
         self.enableClip = False
@@ -99,7 +99,6 @@ class DV3DPlot():
         self.configuring = False
         self.configurableFunctions = {}
         self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
-        self.navigationInteractorStyle = None
         self.activated = False
 
         self.isAltMode = False
@@ -124,6 +123,12 @@ class DV3DPlot():
         for configFunct in self.configurableFunctions.values():
             configFunct.applyParameter( **args  )
 
+    def processTimerEvent(self, caller, event):
+        id0 = caller.GetTimerEventId ()
+#         id1 = caller.GetTimerEventType ()
+#         id2 = caller.GetTimerEventPlatformId ()
+#        print "TimerEvent: %d %d %d " % (  id0, id1, id2 )
+        
     def setInteractionState(self, caller, event):
         key = caller.GetKeyCode() 
         keysym = caller.GetKeySym()
@@ -218,18 +223,11 @@ class DV3DPlot():
 
     def haltNavigationInteraction(self):
         if self.renderWindowInteractor:
-            istyle = self.renderWindowInteractor.GetInteractorStyle()  
-            if self.navigationInteractorStyle == None:
-                self.navigationInteractorStyle = istyle    
             self.renderWindowInteractor.SetInteractorStyle( self.configurationInteractorStyle )  
-#            print "\n ---------------------- [%s] halt Navigation: nis = %s, is = %s  ----------------------  \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle)  ) 
     
     def resetNavigation(self):
         if self.renderWindowInteractor:
-            if self.navigationInteractorStyle <> None: 
-                self.renderWindowInteractor.SetInteractorStyle( self.navigationInteractorStyle )
-            istyle = self.renderWindowInteractor.GetInteractorStyle()  
-#            print "\n ---------------------- [%s] reset Navigation: nis = %s, is = %s  ---------------------- \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle) )        
+            self.renderWindowInteractor.SetInteractorStyle( self.navigationInteractorStyle )
             self.enableVisualizationInteraction()
 
     def getInteractionState( self, key ):
@@ -332,6 +330,7 @@ class DV3DPlot():
     def activateEvent( self, caller, event ):
         if not self.activated:
             self.addObserver( self.renderWindowInteractor, 'CharEvent', self.setInteractionState )                   
+            self.addObserver( self.renderWindowInteractor, 'TimerEvent', self.processTimerEvent )                   
             self.addObserver( self.renderWindowInteractor, 'MouseMoveEvent', self.updateLevelingEvent )
             self.addObserver( self.renderWindowInteractor, 'KeyReleaseEvent', self.onKeyRelease )
             self.addObserver( self.renderWindowInteractor, 'LeftButtonPressEvent', self.onLeftButtonPress )            

@@ -7,7 +7,7 @@ Created on Sep 18, 2013
 import sys, os
 import numpy
 from cdms2.error import CDMSError
-import vtk,  time,  math
+import vtk,  time,  math, threading
 from vtk.util import numpy_support
 from packages.CPCViewer.MultiVarPointCollection import MultiVarPointCollection, PlotType, isNone
 from packages.CPCViewer.PointCollection import PointCollection
@@ -681,14 +681,18 @@ class vtkLocalPointCloud( vtkPointCloud ):
                   
 class vtkPartitionedPointCloud:
     NewDataAvailable = SIGNAL('newDataAvailable')
+    TimerType = 10
+    CheckProcQueueEventId = 10
     
     def __init__( self, nPartitions, init_args, **args  ):
         self.point_clouds = {}
         self.point_cloud_map = {}
+        self.interactor = args.get( 'interactor', None )
         self.nPartitions = int( round( nPartitions ) )
         self.nActiveCollections =  self.nPartitions 
         self.current_spec = {}
-        self.timerId = 0
+        self.timerId = -1
+#        self.proc_timer = threading.Timer( 0.1, self.processProcQueue )
         for pcIndex in range( self.nPartitions ):
             pc = vtkSubProcPointCloud( pcIndex, nPartitions )
             pc.start_subprocess( init_args )
@@ -698,23 +702,30 @@ class vtkPartitionedPointCloud:
             pc.updateScalars()
             self.point_cloud_map[ pc.actor ] = pc
 #        self.scalingTimer = self.startTimer(1000)
-           
-    def startCheckingProcQueues(self):
-        self.dataQueueTimer = self.startTimer(100)
+     
+    def startCheckingProcQueues( self ):
+        self.interactor.SetTimerEventId(self.CheckProcQueueEventId)
+        self.interactor.SetTimerEventType( self.TimerType )
+        self.timerId = self.interactor.CreateRepeatingTimer( 100 )
     
     def refresh( self, force = False ): 
         for pc in self.point_clouds.values():
             pc.refresh( force )
+            
+    def processTimerEvent( self, event_id ):
+        if event_id == self.CheckProcQueueEventId: 
+            self.checkProcQueues()
 
     def setROI( self, ROI ): 
         for pc in self.point_clouds.values():
             pc.setROI( ROI )
 
     def stopCheckingProcQueues(self):
-        if self.timerId: self.killTimer( self.dataQueueTimer )
+        self.interactor.DestroyTimer( self.timerId )
+        self.timerId = -1
         
-    def timerEvent( self, event ):
-        if event.timerId() == self.dataQueueTimer: self.checkProcQueues()
+#     def timerEvent( self, event ):
+#         if event.timerId() == self.dataQueueTimer: self.checkProcQueues()
         
     def processProcQueue(self):
         for pc_item in self.point_clouds.items():

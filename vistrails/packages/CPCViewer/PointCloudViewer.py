@@ -180,6 +180,13 @@ class CPCPlot( DV3DPlot ):
         self.scalarRange = None
         self.sphere_source = None
 
+    def processTimerEvent(self, caller, event):
+        DV3DPlot.processTimerEvent(self, caller, event)
+        eid = caller.GetTimerEventId ()
+        etype = caller.GetTimerEventType()
+        if etype == vtkPartitionedPointCloud.TimerType:
+            self.partitioned_point_cloud.processTimerEvent(eid)
+
     def planeWidgetOn(self):
         if self.sliceAxisIndex   == 0:
             self.planeWidget.SetNormal( 1.0, 0.0, 0.0 )
@@ -936,7 +943,7 @@ class CPCPlot( DV3DPlot ):
             self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
             if self.partitioned_point_cloud:
                 self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=False )
-        self.configDialog.newSubset( self.point_cloud_overview.getCellData() )
+#        self.configDialog.newSubset( self.point_cloud_overview.getCellData() )
         self.render( mode=self.render_mode )
 
 #    def updateSlicing1( self, sliceIndex, slice_bounds ):
@@ -1094,6 +1101,7 @@ class CPCPlot( DV3DPlot ):
                 
     def initCollections( self, nCollections, init_args, **args ):
         if nCollections > 0:
+            args[ 'interactor' ] = self.renderWindowInteractor 
             self.partitioned_point_cloud = vtkPartitionedPointCloud( nCollections, init_args, **args )
             self.partitioned_point_cloud.NewDataAvailable.connect( self.newDataAvailable )
         else:
