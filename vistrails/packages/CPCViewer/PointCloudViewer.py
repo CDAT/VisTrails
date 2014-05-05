@@ -253,6 +253,7 @@ class CPCPlot( DV3DPlot ):
 
     @current_subset_specs.setter
     def current_subset_specs(self, value):
+        print "Setting current_subset_specs: ", str( value )
         self._current_subset_specs = value
                 
         
@@ -449,10 +450,11 @@ class CPCPlot( DV3DPlot ):
                 self.sliceAxisIndex =  ( self.sliceAxisIndex + 1 ) % 3 
             self.enableSlicing()  
         elif keysym == "v":
-            self.updateTextDisplay( "Mode: Thresholding", True )
-            self.process_mode = ProcessMode.Thresholding 
-            self.planeWidgetOff()
-            self.shiftThresholding( 0, 0 )  
+            self.enableThresholding()
+#             self.updateTextDisplay( "Mode: Thresholding", True )
+#             self.process_mode = ProcessMode.Thresholding 
+#             self.planeWidgetOff()
+#             self.shiftThresholding( 0, 0 )  
         elif keysym == "i":  self.setPointIndexBounds( 5000, 7000 )
         elif keysym == "x":  self.toggleSlicePlaneInteraction()
         else: return False
