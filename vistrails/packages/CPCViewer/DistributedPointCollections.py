@@ -707,11 +707,7 @@ class vtkPartitionedPointCloud:
         self.interactor.SetTimerEventId(self.CheckProcQueueEventId)
         self.interactor.SetTimerEventType( self.TimerType )
         self.timerId = self.interactor.CreateRepeatingTimer( 100 )
-        
-        self.interactor.SetTimerEventId(11)
-        self.interactor.SetTimerEventType(11)
-        self.timerId1 = self.interactor.CreateRepeatingTimer( 1000 )
-    
+            
     def refresh( self, force = False ): 
         for pc in self.point_clouds.values():
             pc.refresh( force )
@@ -727,6 +723,8 @@ class vtkPartitionedPointCloud:
     def stopCheckingProcQueues(self):
         self.interactor.DestroyTimer( self.timerId )
         self.timerId = -1
+#         print "stopCheckingProcQueues: InteractionStyle = %s " % (  self.interactor.GetInteractorStyle().__class__.__name__ ) 
+#         self.interactor.SetInteractorStyle( vtk.vtkInteractorStyleTrackballCamera() )
         
 #     def timerEvent( self, event ):
 #         if event.timerId() == self.dataQueueTimer: self.checkProcQueues()
@@ -745,6 +743,7 @@ class vtkPartitionedPointCloud:
     def checkProcQueues(self):
         pc_item, rv = self.processProcQueue()
         if rv:
+            print " *** Check Proc Queue: New Data Available! *** "
             self.NewDataAvailable( pc_item[0], rv )
             self.stopCheckingProcQueues()
             pc_item[1].show()
@@ -880,7 +879,8 @@ class vtkPartitionedPointCloud:
         return pts
 
     def postDataQueueEvent( self ):
-        pass
+        self.startCheckingProcQueues()
+#        pass
 #        QtCore.QCoreApplication.postEvent( self, QtCore.QTimerEvent( self.dataQueueTimer ) ) 
     
 

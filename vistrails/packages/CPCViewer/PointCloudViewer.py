@@ -180,6 +180,16 @@ class CPCPlot( DV3DPlot ):
         self.scalarRange = None
         self.sphere_source = None
 
+    def processKeyEvent( self, key, caller=None, event=None ):
+        keysym = caller.GetKeySym()
+        if self.onKeyEvent( [ key, keysym ] ):
+            pass
+        else:
+            DV3DPlot.processKeyEvent( self, key, caller, event )
+#         if (  key == 't'  ): self.toggleTopo()             
+#         return 0
+
+
     def processTimerEvent(self, caller, event):
         DV3DPlot.processTimerEvent(self, caller, event)
         eid = caller.GetTimerEventId ()
@@ -445,6 +455,8 @@ class CPCPlot( DV3DPlot ):
             self.shiftThresholding( 0, 0 )  
         elif keysym == "i":  self.setPointIndexBounds( 5000, 7000 )
         elif keysym == "x":  self.toggleSlicePlaneInteraction()
+        else: return False
+        return True
         
     def toggleSlicePlaneInteraction(self):
         if self.planeWidget <> None:
@@ -1103,6 +1115,7 @@ class CPCPlot( DV3DPlot ):
             self.execCurrentSlice()
             self.setSlicePosition( self.getSlicePosition() )
             self.printInteractionStyle( 'processEndInteractionEvent')
+#            self.renderWindow.GetInteractor().SetInteractorStyle( self.navigationInteractorStyle )
 #            self.emit(QtCore.SIGNAL("UpdateGui"), ( "SetSlicePosition", self.getSlicePosition() ) ) 
                
                 
@@ -1168,9 +1181,10 @@ class CPCPlot( DV3DPlot ):
                 text = ' '.join( [ "%s: (%f, %f )" % (rng_val[0], rng_val[1], rng_val[2] )  for rng_val in trngs.values() ] )
 #                text = " Thresholding Range[%d]: ( %.3f, %.3f )\n Colormap Range: %s " % ( pcIndex, trng[0], trng[1], str( self.scalarRange.getRange() ) )
                 self.updateTextDisplay( text )
-    #        print " Subproc[%d]--> new Thresholding Data Available: %s " % ( pcIndex, str( pc.getThresholdingRange() ) ); sys.stdout.flush()
+#            print " Subproc[%d]--> new Thresholding Data Available: %s " % ( pcIndex, str( pc.getThresholdingRange() ) ); sys.stdout.flush()
     #        self.reset( ) # pcIndex )
             self.render() 
+            self.printInteractionStyle( 'NewDataAvailable')
                           
     def generateSubset(self, **args ):
 #        self.pointPicker.GetPickList().RemoveAllItems() 

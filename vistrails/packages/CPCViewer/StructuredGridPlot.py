@@ -21,7 +21,6 @@ class StructuredGridPlot(DV3DPlot):
         self.metadata = {}
 
         self.isValid = True
-        self.cameraOrientation = {}
         self.labelBuff = ""
         self.configDialog = None
         self.stereoEnabled = 0
@@ -35,6 +34,21 @@ class StructuredGridPlot(DV3DPlot):
         self.roi = None
         self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ], group=ConfigGroup.Display )
         self.addConfigurableLevelingFunction( 'map_opacity', 'M', label='Base Map Opacity', rangeBounds=[ 0.0, 1.0 ],  setLevel=self.setMapOpacity, activeBound='min',  getLevel=self.getMapOpacity, isDataValue=False, layerDependent=True, group=ConfigGroup.BaseMap, bound = False )
+
+    def processKeyEvent( self, key, caller=None, event=None ):
+#        print "process Key Event, key = %s" % ( key )
+        md = self.getInputSpec().getMetadata()
+        if ( self.createColormap and ( key == 'l' ) ): 
+            self.toggleColormapVisibility()                       
+            self.render() 
+        elif (  key == 'r'  ):
+            self.resetCamera()              
+        elif ( md and ( md.get('plotType','')=='xyz' ) and ( key == 't' )  ):
+            self.showInteractiveLens = not self.showInteractiveLens 
+            self.render() 
+        else:
+            DV3DPlot.processKeyEvent( self, key, caller, event )
+        return 0
 
     def getRangeBounds( self, input_index = 0 ):
         ispec = self.inputSpecs[ input_index ] 

@@ -87,6 +87,7 @@ class DV3DPlot():
         self.renderWindowInteractor = self.renderWindow.GetInteractor()
         self.navigationInteractorStyle = args.get( 'istyle', vtk.vtkInteractorStyleTrackballCamera() )  
         self.renderWindowInteractor.SetInteractorStyle( self.navigationInteractorStyle )
+        self.cameraOrientation = {}
         self.maxStageHeight = 100.0
         self.observerTargets = set()
         self.enableClip = False
@@ -149,22 +150,11 @@ class DV3DPlot():
         return 0
 
     def processKeyEvent( self, key, caller=None, event=None ):
-#        print "process Key Event, key = %s" % ( key )
-        md = self.getInputSpec().getMetadata()
-        if ( self.createColormap and ( key == 'l' ) ): 
-            self.toggleColormapVisibility()                       
-            self.render() 
-        elif (  key == 'r'  ):
-            self.resetCamera()              
-        elif ( md and ( md.get('plotType','')=='xyz' ) and ( key == 't' )  ):
-            self.showInteractiveLens = not self.showInteractiveLens 
-            self.render() 
-        else:
-            ( state, persisted ) =  self.getInteractionState( key )
+        ( state, persisted ) =  self.getInteractionState( key )
 #            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
-            if state <> None: 
-                self.updateInteractionState( state, self.isAltMode  )                 
-                self.isAltMode = False 
+        if state <> None: 
+            self.updateInteractionState( state, self.isAltMode  )                 
+            self.isAltMode = False 
         return 0
 
     def onLeftButtonPress( self, caller, event ):
@@ -230,12 +220,14 @@ class DV3DPlot():
         pass
 
     def haltNavigationInteraction(self):
-        print " ---------------------- haltNavigationInteraction -------------------------- "
+        pass
+#        print " ---------------------- haltNavigationInteraction -------------------------- "
         if self.renderWindowInteractor:
             self.renderWindowInteractor.SetInteractorStyle( self.configurationInteractorStyle )  
     
     def resetNavigation(self):
-        print " ---------------------- resetNavigation -------------------------- "
+        pass
+#         print " ---------------------- resetNavigation -------------------------- "
         if self.renderWindowInteractor:
             self.renderWindowInteractor.SetInteractorStyle( self.navigationInteractorStyle )
             self.enableVisualizationInteraction()
