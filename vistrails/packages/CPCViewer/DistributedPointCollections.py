@@ -229,11 +229,10 @@ class vtkPointCloud():
         self.vtk_cell_data = numpy_support.numpy_to_vtkIdTypeArray( self.np_cell_data ) 
         self.vertices.SetCells( cell_sizes.size, self.vtk_cell_data )     
         self.polydata.SetVerts(self.vertices)
-        self.polydata.Modified()
-        self.mapper.Modified()
-        self.actor.Modified()
-        self.actor.SetVisibility( True  )
-#        self.emit( "NewSubset", self.pcIndex )
+#        self.polydata.Modified()
+#        self.mapper.Modified()
+#        self.actor.Modified()
+#        self.actor.SetVisibility( True  )
         
     def getPolydata(self):
         return self.polydata
@@ -704,9 +703,10 @@ class vtkPartitionedPointCloud:
 #        self.scalingTimer = self.startTimer(1000)
      
     def startCheckingProcQueues( self ):
-        self.interactor.SetTimerEventId(self.CheckProcQueueEventId)
-        self.interactor.SetTimerEventType( self.TimerType )
-        self.timerId = self.interactor.CreateRepeatingTimer( 100 )
+        if self.timerId == -1:
+            self.interactor.SetTimerEventId(self.CheckProcQueueEventId)
+            self.interactor.SetTimerEventType( self.TimerType )
+            self.timerId = self.interactor.CreateRepeatingTimer( 100 )
             
     def refresh( self, force = False ): 
         for pc in self.point_clouds.values():
@@ -721,8 +721,9 @@ class vtkPartitionedPointCloud:
             pc.setROI( ROI )
 
     def stopCheckingProcQueues(self):
-        self.interactor.DestroyTimer( self.timerId )
-        self.timerId = -1
+        if self.timerId <> -1:
+            self.interactor.DestroyTimer( self.timerId )
+            self.timerId = -1
 #         print "stopCheckingProcQueues: InteractionStyle = %s " % (  self.interactor.GetInteractorStyle().__class__.__name__ ) 
 #         self.interactor.SetInteractorStyle( vtk.vtkInteractorStyleTrackballCamera() )
         
@@ -743,7 +744,6 @@ class vtkPartitionedPointCloud:
     def checkProcQueues(self):
         pc_item, rv = self.processProcQueue()
         if rv:
-            print " *** Check Proc Queue: New Data Available! *** "
             self.NewDataAvailable( pc_item[0], rv )
             self.stopCheckingProcQueues()
             pc_item[1].show()

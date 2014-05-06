@@ -171,7 +171,7 @@ class CPCPlot( DV3DPlot ):
         self.slicePositionSensitivity = [ 0.025, 0.025, 0.025 ]
         self.nlevels = None
         self.render_mode = ProcessMode.HighRes
-        self.planeWidget = None
+        self.sliderWidget = None
         self.colorRange = 0 
         self.thresholdCmdIndex = 0
         self.thresholdingSkipFactor = 3
@@ -179,6 +179,11 @@ class CPCPlot( DV3DPlot ):
         self._current_subset_specs = {}
         self.scalarRange = None
         self.sphere_source = None
+#        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ], group=ConfigGroup.Display )
+#        self.addConfigurableLevelingFunction( 'map_opacity', 'M', label='Base Map Opacity', rangeBounds=[ 0.0, 1.0 ],  setLevel=self.setMapOpacity, activeBound='min',  getLevel=self.getMapOpacity, isDataValue=False, layerDependent=True, group=ConfigGroup.BaseMap, bound = False )
+
+    def getScaleBounds(self):
+        return [ 0.5, 100.0 ]
 
     def processKeyEvent( self, key, caller=None, event=None ):
         keysym = caller.GetKeySym()
@@ -199,53 +204,55 @@ class CPCPlot( DV3DPlot ):
 #         if etype == 11:
 #             self.printInteractionStyle('processTimerEvent')
 
-    def planeWidgetOn(self):
-        if self.sliceAxisIndex   == 0:
-            self.planeWidget.SetNormal( 1.0, 0.0, 0.0 )
-            self.planeWidget.NormalToXAxisOn()
-        elif self.sliceAxisIndex == 1: 
-            self.planeWidget.SetNormal( 0.0, 1.0, 0.0 )
-            self.planeWidget.NormalToYAxisOn()
-        elif self.sliceAxisIndex == 2: 
-            self.planeWidget.SetNormal( 0.0, 0.0, 1.0 )
-            self.planeWidget.NormalToZAxisOn()  
-        self.updatePlaneWidget()          
-        if not self.planeWidget.GetEnabled( ):
-            self.planeWidget.SetEnabled( 1 )  
+    def sliderWidgetOn(self):
+        self.updateSliderWidget()          
+        if not self.sliderWidget.GetEnabled( ):
+            self.sliderWidget.SetEnabled( 1 )  
             
-    def updatePlaneWidget(self): 
-        o = list( self.planeWidget.GetOrigin() )
+    def updateSliderWidget(self): 
         spos = self.getCurrentSlicePosition()
-        o[ self.sliceAxisIndex ] = spos
-#        print " Update Plane Widget: Set Origin[%d] = %.2f " % ( self.sliceAxisIndex, spos )
-        self.planeWidget.SetOrigin(o) 
+        self.sliderRep.SetValue(spos)
 
-    def planeWidgetOff(self):
-        if self.planeWidget:
-            self.planeWidget.SetEnabled( 0 )   
-                
-    def initPlaneWidget(self, input, bounds ):
-        if self.planeWidget == None:
-            self.planeWidget = vtk.vtkImplicitPlaneWidget()
-            self.planeWidget.SetInteractor( self.renderWindowInteractor )
-            self.planeWidget.SetPlaceFactor( 1.5 )
-            if vtk.VTK_MAJOR_VERSION <= 5:  self.planeWidget.SetInput( input )
-            else:                           self.planeWidget.SetInputData( input )        
-            self.planeWidget.AddObserver("StartInteractionEvent", self.processStartInteractionEvent )
-            self.planeWidget.AddObserver("EndInteractionEvent", self.processEndInteractionEvent )
-            self.planeWidget.AddObserver("InteractionEvent", self.processInteractionEvent )
-            self.planeWidget.KeyPressActivationOff()
-            self.planeWidget.OutlineTranslationOff()
-            self.planeWidget.ScaleEnabledOff()
-            self.planeWidget.OutsideBoundsOn() 
-            self.planeWidget.OriginTranslationOff()
-            self.planeWidget.SetDiagonalRatio( 0.0 )                         
-            self.planeWidget.DrawPlaneOff()
-            self.planeWidget.TubingOff() 
-            self.planeWidget.GetNormalProperty().SetOpacity(0.0)
-            self.planeWidget.KeyPressActivationOff()
-            self.widget_bounds = bounds 
-            self.planeWidget.PlaceWidget( self.widget_bounds )
+    def sliderWidgetOff(self):
+        if self.sliderWidget:
+            self.sliderWidget.SetEnabled( 0 )  
+            
+    def initSliderWidget(self,  bounds ):
+        if self.sliderWidget == None:
+            self.sliderRep = vtk.vtkSliderRepresentation2D()
+            self.sliderRep.SetMinimumValue(0.0)
+            self.sliderRep.SetMaximumValue(365.0)
+            self.sliderRep.SetValue(180.0)
+            self.sliderRep.SetTitleText("Slice Position")
+            self.sliderRep.GetPoint1Coordinate().SetCoordinateSystemToNormalizedDisplay ()
+            self.sliderRep.GetPoint1Coordinate().SetValue(0.1,0.1,0)
+            self.sliderRep.GetPoint2Coordinate().SetCoordinateSystemToNormalizedDisplay ()
+            self.sliderRep.GetPoint2Coordinate().SetValue(0.9,0.1,0)
+            prop = self.sliderRep.GetSliderProperty()
+            prop.SetColor( 1.0, 0.0, 0.0 )
+            prop.SetOpacity( 0.5 )
+            sprop = self.sliderRep.GetSelectedProperty()
+            prop.SetOpacity( 0.8 )           
+            tprop = self.sliderRep.GetTubeProperty()
+            tprop.SetColor( 0.5, 0.5, 0.5 )
+            tprop.SetOpacity( 0.5 )
+            cprop = self.sliderRep.GetCapProperty()
+            cprop.SetColor( 0.0, 0.0, 1.0 )
+            cprop.SetOpacity( 0.5 )
+#            self.sliderRep.PlaceWidget(  bounds   )  
+            self.widget_bounds = bounds   
+            self.sliderRep.SetSliderLength(0.075)
+            self.sliderRep.SetSliderWidth(0.05)
+            self.sliderRep.SetEndCapLength(0.05)
+            self.sliderWidget = vtk.vtkSliderWidget()
+            self.sliderWidget.SetInteractor(self.renderWindowInteractor)
+            self.sliderWidget.SetRepresentation(self.sliderRep)
+            self.sliderWidget.SetAnimationModeToAnimate()
+            self.sliderWidget.EnabledOn()
+            self.sliderWidget.AddObserver("StartInteractionEvent", self.processStartInteractionEvent )
+            self.sliderWidget.AddObserver("EndInteractionEvent", self.processEndInteractionEvent )
+            self.sliderWidget.AddObserver("InteractionEvent", self.processInteractionEvent )
+            self.sliderWidget.KeyPressActivationOff()
             
     @property
     def current_subset_specs(self):
@@ -396,11 +403,11 @@ class CPCPlot( DV3DPlot ):
             self.resetCamera( pts[self.render_mode] )
             self.renderer.ResetCameraClippingRange()   
         if ( self.topo == PlotType.Spherical ):             
-            self.planeWidgetOff()
+            self.sliderWidgetOff()
             self.setFocalPoint( [0,0,0] )
         elif self.process_mode == ProcessMode.Slicing:  
 #            self.initPlaneWidget( self.point_cloud_overview.getPolydata(), self.point_cloud_overview.getBounds() )                      
-            self.planeWidgetOn()
+            self.sliderWidgetOn()
         self.mapManager.setMapVisibility( self.topo )
         self.render()
         
@@ -461,10 +468,10 @@ class CPCPlot( DV3DPlot ):
         return True
         
     def toggleSlicePlaneInteraction(self):
-        if self.planeWidget <> None:
-            enabled = bool( self.planeWidget.GetEnabled() )
+        if self.sliderWidget <> None:
+            enabled = bool( self.sliderWidget.GetEnabled() )
             enabled = int( not enabled )
-            self.planeWidget.SetEnabled( enabled )
+            self.sliderWidget.SetEnabled( enabled )
             print "Toggle Slice Plane Interaction: %d" % (enabled); sys.stdout.flush()
         
     def enableSlicing( self ):
@@ -472,8 +479,8 @@ class CPCPlot( DV3DPlot ):
         if self.render_mode ==  ProcessMode.LowRes:
             self.setRenderMode( ProcessMode.HighRes )  
         if self.topo == PlotType.Planar: 
-            self.initPlaneWidget( self.point_cloud_overview.getPolydata(), self.point_cloud_overview.getBounds() )                      
-            self.planeWidgetOn(  )
+            self.initSliderWidget( self.point_cloud_overview.getBounds() )                      
+            self.sliderWidgetOn(  )
         self.updateTextDisplay( "Mode: Slicing", True )
         self.execCurrentSlice()
         
@@ -568,7 +575,7 @@ class CPCPlot( DV3DPlot ):
             self.enableSlicing()  
             
     def processVariableCommand( self, args = None ):
-        print " -------------------->>> Process Variable Command: ", str( args ) 
+        print " -------------------.>> Process Variable Command: ", str( args ) 
         self.processThresholdRangeCommand( args ) 
 
     @property
@@ -611,7 +618,7 @@ class CPCPlot( DV3DPlot ):
         self.thresholdCmdIndex = 0
         self.clearSubsetting()
         self.process_mode = ProcessMode.Thresholding 
-        self.planeWidgetOff()
+        self.sliderWidgetOff()
         if self.render_mode ==  ProcessMode.LowRes:
             self.setRenderMode( ProcessMode.HighRes, True )
         if self.scalarRange <> None:
@@ -687,7 +694,6 @@ class CPCPlot( DV3DPlot ):
             slice_bounds.append( (pmin,pmax) )
 #        print " && ExecCurrentSlice, slice properties: %s " % ( str( self.sliceProperties ) ); sys.stdout.flush()
         self.updateSlicing( self.sliceAxisIndex, slice_bounds, **args )
-        self.printInteractionStyle( 'execCurrentSlice')
     
     def pushSlice( self, slice_pos ):
         if ( self.sliceAxisIndex  == 2 ):
@@ -809,7 +815,7 @@ class CPCPlot( DV3DPlot ):
             self.setRenderMode( ProcessMode.LowRes )                 
             self.execCurrentSlice()
         elif op in POS_VECTOR_COMP: 
-            self.updatePlaneWidget()          
+            self.updateSliderWidget()          
             self.execCurrentSlice()   
             
     def setColorbarRange( self, cbar_range, cmap_index=0 ):
@@ -896,6 +902,9 @@ class CPCPlot( DV3DPlot ):
         colormapManager = self.getColormapManager()
         colormapManager.setAlphaGraph( args[0] )
         self.render()
+
+    def setZScale( self, zscale_data, **args ):
+        pass
                 
     def processVerticalScalingCommand(self, args=None ):
         if args and args[0] == "StartConfig":
@@ -916,7 +925,7 @@ class CPCPlot( DV3DPlot ):
             self.point_cloud_overview.generateZScaling( spec=scaling_spec )
             pcbounds = self.point_cloud_overview.getBounds()
             self.widget_bounds[4:6] = pcbounds[4:6]
-            self.planeWidget.PlaceWidget( self.widget_bounds )
+#            self.planeWidget.PlaceWidget( self.widget_bounds )
 #            vis = self.low_res_actor.GetVisibility()
             self.render()
                         
@@ -959,11 +968,10 @@ class CPCPlot( DV3DPlot ):
             self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=True )
         else:
             self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
-            if self.partitioned_point_cloud:
-                self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=False )
+#            if self.partitioned_point_cloud:
+#                self.partitioned_point_cloud.generateSubset( spec=self.current_subset_specs, allow_processing=False )
 #        self.configDialog.newSubset( self.point_cloud_overview.getCellData() )
         self.render( mode=self.render_mode )
-        self.printInteractionStyle( 'updateSlicing')
 
 #    def updateSlicing1( self, sliceIndex, slice_bounds ):
 #        self.invalidate()
@@ -1099,8 +1107,7 @@ class CPCPlot( DV3DPlot ):
  
     def processInteractionEvent( self, obj=None, event=None ): 
         if self.process_mode == ProcessMode.Slicing:
-            o = list( self.planeWidget.GetOrigin() )
-            slice_pos = o[ self.sliceAxisIndex ]
+            slice_pos = self.sliderRep.GetValue()
             self.pushSlice( slice_pos )         
 #        print " Interaction Event: %s %s " % ( str(object), str( event ) ); sys.stdout.flush()
 
@@ -1111,12 +1118,12 @@ class CPCPlot( DV3DPlot ):
             self.printInteractionStyle( 'processStartInteractionEvent')
 
     def processEndInteractionEvent( self, obj, event ):  
-#        print " end Interaction: %s %s " % ( str(object), str( event ) ); sys.stdout.flush()
+#        print " End Interaction: %s %s " % ( str(object), str( event ) ); sys.stdout.flush()
         if self.process_mode == ProcessMode.Slicing:
             self.setRenderMode( ProcessMode.HighRes )
             self.execCurrentSlice()
-            self.setSlicePosition( self.getSlicePosition() )
-            self.printInteractionStyle( 'processEndInteractionEvent')
+#            self.setSlicePosition( self.getSlicePosition() )
+#            self.printInteractionStyle( 'processEndInteractionEvent')
 #            self.renderWindow.GetInteractor().SetInteractorStyle( self.navigationInteractorStyle )
 #            self.emit(QtCore.SIGNAL("UpdateGui"), ( "SetSlicePosition", self.getSlicePosition() ) ) 
                
@@ -1183,10 +1190,9 @@ class CPCPlot( DV3DPlot ):
                 text = ' '.join( [ "%s: (%f, %f )" % (rng_val[0], rng_val[1], rng_val[2] )  for rng_val in trngs.values() ] )
 #                text = " Thresholding Range[%d]: ( %.3f, %.3f )\n Colormap Range: %s " % ( pcIndex, trng[0], trng[1], str( self.scalarRange.getRange() ) )
                 self.updateTextDisplay( text )
-#            print " Subproc[%d]--> new Thresholding Data Available: %s " % ( pcIndex, str( pc.getThresholdingRange() ) ); sys.stdout.flush()
+#            print " Subproc[%d]-. new Thresholding Data Available: %s " % ( pcIndex, str( pc.getThresholdingRange() ) ); sys.stdout.flush()
     #        self.reset( ) # pcIndex )
             self.render() 
-            self.printInteractionStyle( 'NewDataAvailable')
                           
     def generateSubset(self, **args ):
 #        self.pointPicker.GetPickList().RemoveAllItems() 

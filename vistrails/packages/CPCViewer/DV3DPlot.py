@@ -5,10 +5,10 @@ Created on Apr 30, 2014
 '''
 from packages.CPCViewer.ColorMapManager import *
 from packages.CPCViewer.ConfigFunctions import *
-import sys
-import vtk, os, sys
+import vtk, traceback
 MIN_LINE_LEN = 50
 VTK_NOTATION_SIZE = 14
+
 
 class TextDisplayMgr:
     
@@ -324,6 +324,7 @@ class DV3DPlot():
         return 0
         
     def onModified(self, caller, event):
+#        print " --- Modified Event --- "
         return 0
     
     def onRender(self, caller, event):

@@ -7,7 +7,7 @@ Created on Feb 4, 2014
 import os, os.path, sys, argparse, time, multiprocessing
 from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
 from packages.CPCViewer.PointCloudViewer import CPCPlot
-from packages.CPCViewer.SliceViewer import SlicePlot
+#from packages.CPCViewer.SliceViewer import SlicePlot
 from packages.CPCViewer.VolumeViewer import VolumePlot
 from packages.CPCViewer.MultiVarPointCollection import InterfaceType
 
