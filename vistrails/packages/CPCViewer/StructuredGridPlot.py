@@ -266,8 +266,8 @@ class StructuredGridPlot(DV3DPlot):
 
     def initializeConfiguration( self, cmap_index=0, **args ):
         ispec = self.inputSpecs[ cmap_index ] 
-        for configFunct in self.configurableFunctions.values():
-            configFunct.init( ispec, **args )
+        args['units'] = ispec.units
+        DV3DPlot.initializeConfiguration( self, cmap_index, **args )
         ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
 #        self.updateSliceOutput()
 

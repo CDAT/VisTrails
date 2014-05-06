@@ -179,7 +179,7 @@ class CPCPlot( DV3DPlot ):
         self._current_subset_specs = {}
         self.scalarRange = None
         self.sphere_source = None
-#        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ], group=ConfigGroup.Display )
+        self.addConfigurableLevelingFunction( 'zScale', 'z', label='Vertical Scale', setLevel=self.setZScale, activeBound='max', getLevel=self.getScaleBounds, windowing=False, sensitivity=(10.0,10.0), initRange=[ 2.0, 2.0, 1 ], group=ConfigGroup.Display )
 #        self.addConfigurableLevelingFunction( 'map_opacity', 'M', label='Base Map Opacity', rangeBounds=[ 0.0, 1.0 ],  setLevel=self.setMapOpacity, activeBound='min',  getLevel=self.getMapOpacity, isDataValue=False, layerDependent=True, group=ConfigGroup.BaseMap, bound = False )
 
     def getScaleBounds(self):
@@ -217,17 +217,14 @@ class CPCPlot( DV3DPlot ):
         if self.sliderWidget:
             self.sliderWidget.SetEnabled( 0 )  
             
-    def initSliderWidget(self,  bounds ):
+    def initSliderWidget(self,  bounds, label = "Slice Position"  ):
         if self.sliderWidget == None:
             self.sliderRep = vtk.vtkSliderRepresentation2D()
-            self.sliderRep.SetMinimumValue(0.0)
-            self.sliderRep.SetMaximumValue(365.0)
-            self.sliderRep.SetValue(180.0)
-            self.sliderRep.SetTitleText("Slice Position")
+            
             self.sliderRep.GetPoint1Coordinate().SetCoordinateSystemToNormalizedDisplay ()
-            self.sliderRep.GetPoint1Coordinate().SetValue(0.1,0.1,0)
+            self.sliderRep.GetPoint1Coordinate().SetValue(0.01,0.06,0)
             self.sliderRep.GetPoint2Coordinate().SetCoordinateSystemToNormalizedDisplay ()
-            self.sliderRep.GetPoint2Coordinate().SetValue(0.9,0.1,0)
+            self.sliderRep.GetPoint2Coordinate().SetValue(0.5,0.06,0)
             prop = self.sliderRep.GetSliderProperty()
             prop.SetColor( 1.0, 0.0, 0.0 )
             prop.SetOpacity( 0.5 )
@@ -241,9 +238,12 @@ class CPCPlot( DV3DPlot ):
             cprop.SetOpacity( 0.5 )
 #            self.sliderRep.PlaceWidget(  bounds   )  
             self.widget_bounds = bounds   
-            self.sliderRep.SetSliderLength(0.075)
-            self.sliderRep.SetSliderWidth(0.05)
-            self.sliderRep.SetEndCapLength(0.05)
+            self.sliderRep.SetSliderLength(0.05)
+            self.sliderRep.SetSliderWidth(0.02)
+            self.sliderRep.SetTubeWidth(0.01)
+            self.sliderRep.SetEndCapLength(0.02)
+            self.sliderRep.SetEndCapWidth(0.02)
+            self.sliderRep.SetTitleHeight( 0.02 )    
             self.sliderWidget = vtk.vtkSliderWidget()
             self.sliderWidget.SetInteractor(self.renderWindowInteractor)
             self.sliderWidget.SetRepresentation(self.sliderRep)
@@ -253,6 +253,12 @@ class CPCPlot( DV3DPlot ):
             self.sliderWidget.AddObserver("EndInteractionEvent", self.processEndInteractionEvent )
             self.sliderWidget.AddObserver("InteractionEvent", self.processInteractionEvent )
             self.sliderWidget.KeyPressActivationOff()
+        
+        self.sliderRep.SetTitleText( label )    
+        self.sliderRep.SetMinimumValue( bounds[ 2*self.sliceAxisIndex ] )
+        self.sliderRep.SetMaximumValue (bounds[ 2*self.sliceAxisIndex+1 ]  )
+        spos = self.getCurrentSlicePosition()
+        self.sliderRep.SetValue(spos)
             
     @property
     def current_subset_specs(self):
@@ -538,6 +544,7 @@ class CPCPlot( DV3DPlot ):
     def update_subset_specs(self, new_specs ):
         print " $$$$$$ update_subset_specs: %s " % str( new_specs )
         self.current_subset_specs.update( new_specs )
+
             
     def processSlicePlaneCommand( self, args ):
 #        print " processSlicePlaneCommand: %s " % str( args )
@@ -551,7 +558,6 @@ class CPCPlot( DV3DPlot ):
                 self.update_subset_specs(  self.partitioned_point_cloud.getSubsetSpecs()  )            
                 self.point_cloud_overview.generateSubset( spec=self.current_subset_specs ) 
                 self.configDialog.newSubset( self.point_cloud_overview.getCellData() )       
-            self.printInteractionStyle( 'processSlicePlaneCommand.StartConfig')
         elif args and args[0] == "EndConfig":
             self.setRenderMode( ProcessMode.HighRes )                 
             self.execCurrentSlice()
@@ -904,8 +910,15 @@ class CPCPlot( DV3DPlot ):
         self.render()
 
     def setZScale( self, zscale_data, **args ):
-        pass
-                
+        print "setZScale: ", str( zscale_data )
+        self.vscale.setValue( 'value', zscale_data[1] )
+        self.processVerticalScalingCommand( [ "UpdateConfig" ] )
+
+    def startConfiguration( self, x, y, config_types ):
+        DV3DPlot.startConfiguration( self, x, y, config_types ) 
+        if (self.InteractionState == 'zScale') and not self.configuring:
+            self.processVerticalScalingCommand( [ "StartConfig" ] )
+                            
     def processVerticalScalingCommand(self, args=None ):
         if args and args[0] == "StartConfig":
             if self.render_mode ==  ProcessMode.HighRes:
@@ -1230,6 +1243,8 @@ class CPCPlot( DV3DPlot ):
             cfgInterface.build()
             cfgInterface.activate()
             self.processConfigCmd( [ 'CategorySelected', 'Subsets' ] )
+            
+        self.initializeConfiguration( mid=id(self) )  
         self.start()
 
 

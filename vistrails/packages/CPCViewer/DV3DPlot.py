@@ -544,5 +544,5 @@ class DV3DPlot():
         self.enableVisualizationInteraction()
         
     def initializeConfiguration( self, cmap_index=0, **args ):
-        pass
-
+        for configFunct in self.configurableFunctions.values():
+            configFunct.init( **args )

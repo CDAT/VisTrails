@@ -658,10 +658,10 @@ class ConfigurableFunction:
     def applyParameter( self, **args ):
         pass
 
-    def init( self, ispec, **args ):
+    def init( self, **args ):
         self.moduleID = args.get( 'mid', 0 )
         if self.units == 'data': 
-            self.units = ispec.units
+            self.units = args.get( 'units', '' )
             self.matchUnits = True             
         if ( self.initHandler != None ):
             self.initHandler( **self.kwargs ) 
@@ -959,7 +959,7 @@ class WindowLevelingConfigurableFunction( ConfigurableFunction ):
         self.updateActiveFunctionList()
         self.adjustRangeInput = -1
         self.StartLevelingSignal()
-        print "startLeveling: %s " % str( self.range )
+#        print "startLeveling: %s " % str( self.range )
 
     def getTextDisplay(self, **args ):
         try:
