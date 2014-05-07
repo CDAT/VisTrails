@@ -241,6 +241,7 @@ class MultiVarPointCollection():
             self.data_height = args.get( 'data_height', None )
             ascending = self.levelsAreAscending()
             stage_height = ( self.maxStageHeight * z_scaling )
+            print "setPointHeights: z_scaling=%.2f, stage_height=%.2f" % ( z_scaling, stage_height )
             
             nz = len( self.lev ) if self.lev else 1
             if height_varname and (height_varname <> self.hgt_var) and (height_varname <> 'Levels' ):

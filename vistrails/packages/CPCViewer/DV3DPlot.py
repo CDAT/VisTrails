@@ -114,6 +114,9 @@ class DV3DPlot():
     def addConfigurableLevelingFunction(self, name, key, **args):
         self.configurableFunctions[name] = WindowLevelingConfigurableFunction( name, key, **args )
 
+    def addConfigurableSliderFunction(self, name, key, **args):
+        self.configurableFunctions[name] = ConfigurableSliderFunction( name, key, **args )
+
     def getConfigFunction( self, name ):
         return self.configurableFunctions.get(name,None)
 
@@ -237,7 +240,7 @@ class DV3DPlot():
             if configFunct.matches( key ): return ( configFunct.name, configFunct.persisted )
         return ( None, None )    
 
-    def updateInteractionState( self, state, altMode ): 
+    def updateInteractionState( self, state, altMode ):    
         rcf = None
         if state == None: 
             self.finalizeLeveling()
@@ -530,7 +533,8 @@ class DV3DPlot():
 #            self.updateSliceOutput()
 
     def finalizeConfigurationObserver( self, parameter_name, **args ):
-        self.finalizeParameter( parameter_name, **args )    
+        self.finalizeParameter( parameter_name, **args )
+        self.endConfiguration()    
 #        for parameter_name in self.getModuleParameters(): self.finalizeParameter( parameter_name, *args ) 
         self.endInteraction( **args ) 
 
@@ -542,7 +546,10 @@ class DV3DPlot():
         self.configuring = False
         self.InteractionState = None
         self.enableVisualizationInteraction()
-        
+
+    def endConfiguration( self ):
+        pass
+           
     def initializeConfiguration( self, cmap_index=0, **args ):
         for configFunct in self.configurableFunctions.values():
             configFunct.init( **args )

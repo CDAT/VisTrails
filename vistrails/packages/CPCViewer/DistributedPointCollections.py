@@ -287,8 +287,9 @@ class vtkPointCloud():
                 self.np_points_data[2::3] =  ptheights
                 vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data ) 
                 vtk_points_data.SetNumberOfComponents( 3 )
-                vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 )  
+                vtk_points_data.SetNumberOfTuples( len( self.np_points_data ) / 3 ) 
                 self.vtk_planar_points.SetData( vtk_points_data )
+                self.polydata.SetPoints( self.vtk_planar_points )  
                 self.vtk_planar_points.Modified()
             elif self.topo == PlotType.Spherical:
                 self.np_sp_grid_data[0::3] =  self.spherical_scaling * ptheights + self.earth_radius
@@ -300,7 +301,7 @@ class vtkPointCloud():
                 vtk_sp_grid_points.SetData( vtk_sp_grid_data )
                 self.vtk_spherical_points = vtk.vtkPoints()
                 self.shperical_to_xyz_trans.TransformPoints( vtk_sp_grid_points, self.vtk_spherical_points ) 
-                pt0 = self.vtk_spherical_points.GetPoint(0)
+#                pt0 = self.vtk_spherical_points.GetPoint(0)
     #            print "VTK Set point Heights, samples: %s %s %s " % ( str( ptheights[0] ), str( self.np_sp_grid_data[0] ), str( pt0 ) )
                 self.polydata.SetPoints( self.vtk_spherical_points ) 
                 self.vtk_spherical_points.Modified()
@@ -624,10 +625,10 @@ class vtkLocalPointCloud( vtkPointCloud ):
         self.setPointHeights( self.point_collection.getPointHeights()  )   
         self.grid_bounds = self.point_collection.getBounds()
 #        print "generateZScaling: Set grid bounds: %s " % str( self.grid_bounds )
-#         self.polydata.Modified()
-#         self.mapper.Modified()
-#         self.actor.Modified()
-#         self.actor.SetVisibility( True  )
+        self.polydata.Modified()
+        self.mapper.Modified()
+        self.actor.Modified()
+        self.actor.SetVisibility( True  )
 
     def generateSubset(self, **args ):
 #        print " ++++++++++++++++++++++ vtkLocalPointCloud[%d].generateSubset: current_subset_specs: %s (%s) " % ( self.pcIndex, self.current_subset_specs, str(args) )
@@ -679,11 +680,11 @@ class vtkLocalPointCloud( vtkPointCloud ):
             self.updateScalars() 
                   
 class vtkPartitionedPointCloud:
-    NewDataAvailable = SIGNAL('newDataAvailable')
     TimerType = 10
     CheckProcQueueEventId = 10
     
     def __init__( self, nPartitions, init_args, **args  ):
+        self.NewDataAvailable = SIGNAL('newDataAvailable')
         self.point_clouds = {}
         self.point_cloud_map = {}
         self.interactor = args.get( 'interactor', None )

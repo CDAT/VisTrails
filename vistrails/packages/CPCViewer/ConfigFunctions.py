@@ -80,10 +80,10 @@ def get_value_decl( val ):
 
 class ConfigurationInterface:
     
-    ConfigCmd = SIGNAL("ConfigCmd")
-    GuiCmd = SIGNAL("GuiCmd")
 
     def __init__(self, **args ):    
+        self.ConfigCmd = SIGNAL("ConfigCmd")
+        self.GuiCmd = SIGNAL("GuiCmd")
         self.metadata = args.get( 'metadata', {} )
         defvar = args.get( 'defvar', {} )
         self.cfgManager = ConfigManager( defvar=defvar ) 
@@ -130,9 +130,9 @@ class ConfigurationInterface:
         return self.cfgManager.addCategory( cat_name )
 
 class ConfigManager:
-    ConfigCmd = SIGNAL("ConfigCmd")
     
     def __init__( self, controller=None, **args ): 
+        self.ConfigCmd = SIGNAL("ConfigCmd")
         self.cfgFile = None
         self.cfgDir = None
         self.controller = controller
@@ -221,7 +221,6 @@ class ConfigManager:
        
 class ConfigParameter:
     
-    ValueChanged = SIGNAL( 'ValueChanged' )
     
     @staticmethod
     def getParameter( config_name, **args ):
@@ -234,6 +233,7 @@ class ConfigParameter:
 
     def __init__(self, name, **args ):
         self.name = name 
+        self.ValueChanged = SIGNAL( 'ValueChanged' )
         self.varname = args.get( 'varname', name ) 
         self.ptype = args.get( 'ptype', name ) 
         self.values = args
@@ -730,13 +730,13 @@ class ConfigurableBooleanFunction( ConfigurableFunction ):
 
 class QtWindowLeveler:
     
-    UpdateRangeSignal = SIGNAL('updateRange')
     
     WindowRelative = 0
     BoundsRelative = 1
     Absolute = 2
    
     def __init__( self, **args ):
+        self.UpdateRangeSignal = SIGNAL('updateRange')
         self.OriginalWindow           = 1.0
         self.OriginalLevel            = 0.5
         self.CurrentWindow            = 1.0
@@ -869,12 +869,111 @@ class WindowRefinementGenerator():
             if newRefinement[iR] > self.range[1]: newRefinement[iR] = self.range[1]
         return newRefinement
 
+class ConfigurableSliderFunction( ConfigurableFunction ):
+
+    def __init__( self, name, key, **args ):
+        ConfigurableFunction.__init__( self, name, key, **args  )
+        self.StartSlidingSignal =SIGNAL('startSliding')
+        self.UpdateSlidingSignal =SIGNAL('updateSliding')
+        self.type = 'slider'
+        self.initial_value = args.get( 'initValue', None )
+        self.range_bounds = args.get( 'range_bounds', True )
+
+#        self.widget = args.get( 'gui', None )
+
+ 
+#     def initSliding( self, **args ):
+#         initRange = args.get( 'initRange', True )
+#         if self.range_bounds == None:
+#             self.range_bounds =   args.get( 'rangeBounds', None )
+#         if initRange:
+#             if self.initial_range == None:
+#                 self.initial_range =  None if ( self.getSliderDataHandler == None ) else self.getSliderDataHandler()
+#             if self.range_bounds == None:
+#                 self.range_bounds = self.initial_range if ( self.getSliderDataHandler == None ) else self.getSliderDataHandler()
+#             if self.initial_range == None: self.initial_range =  [ 0.0, 1.0, 1 ]
+#             if self.range_bounds == None: self.range_bounds =  self.initial_range
+#             self.range = list( self.initial_range  ) # if not self.module.newDataset else self.initial_range
+#             if len( self.range ) == 3: 
+#                 for iR in range(2): self.range.append( self.initRefinement[iR] )
+#         self.setSliderDataHandler( self.range )
+#         if self.widget: 
+#             self.widget.initLeveling( self.range )
+#             self.widget.UpdateSignal.connect( self.broadcastLevelingData ) # self.connect( self.widget, QSIGNAL('update(QString)'), self.broadcastLevelingData )
+ 
+#        print "    ***** Init Leveling Parameter: %s, initial range = %s" % ( self.name, str(self.range) )
+#         
+#     def startSliding( self, x, y ):
+# #        if self.altMode:    self.windowRefiner.initRefinement( [ x, y ], self.range[3:5] )   
+# #        else:               
+#         self.updateActiveFunctionList()
+#         self.adjustRangeInput = -1
+#         self.StartSlidingSignal()
+# #        print "startLeveling: %s " % str( self.range )
+# 
+#     def getTextDisplay(self, **args ):
+#         try:
+#             mod = self.module
+#             rmin = self.range[0] # if not self.isDataValue else self.module.getDataValue( self.range[0] )
+#             rmax = self.range[1] # if not self.isDataValue else self.module.getDataValue( self.range[1] )
+#             units = mod.units if ( mod and hasattr(mod,'units') )  else None
+#             if units: textDisplay = " Range: %.4G, %.4G %s . " % ( rmin, rmax, units )
+#             else: textDisplay = " Range: %.4G, %.4G . " % ( rmin, rmax )
+#             return textDisplay
+#         except:
+#             return None
+#                 
+#     def updateSliding( self, x, y, wsize ):
+#         leveling_range = self.windowLeveler.windowLevel( x, y, wsize )
+#         for iR in [ 0, 1 ]: self.range[iR] = bound( leveling_range[iR], self.range_bounds ) if self.boundByRange else leveling_range[iR]
+#         self.UpdateSlidingSignal()
+#         rv = self.broadcastLevelingData( )
+#         return rv
+# #        print "updateLeveling: %s " % str( self.range )
+# 
+#     def setDataRange(  self, data_range, isManual = False  ):
+#         self.range[0:2] = data_range[0:2]
+#         if isManual: self.manuallyAdjusted = True
+# #        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
+#         self.setSliderDataHandler( self.range )
+#         self.persisted = False
+# 
+#     def setScaledDataRange(  self, scaled_data_range, isManual = False  ):
+#         dr = (self.range_bounds[1]-self.range_bounds[0])
+#         self.range[0] = self.range_bounds[0] + scaled_data_range[0] * dr
+#         self.range[1] = self.range_bounds[0] + scaled_data_range[1] * dr
+#         if isManual: self.manuallyAdjusted = True
+# #        print " setImageDataRange, imageRange=%s, dataRange=%s " % ( str(imageRange), str(data_range) )
+#         self.setSliderDataHandler( self.range )
+#         self.persisted = False
+# 
+#     def getScaledDataRange(  self  ):
+#         dr = (self.range_bounds[1]-self.range_bounds[0])
+#         scaled_range = [ ( self.range[0] - self.range_bounds[0] ) / dr, ( self.range[1] - self.range_bounds[0] ) / dr ]
+#         return scaled_range
+#         
+#     def broadcastLevelingData(  self, range = None, **args  ):
+#         if range: self.range = range
+# #        print " ** Broadcast Leveling: altMode = %s, range = %s, refine = %s, Modules: " % ( str( self.altMode ) , str( self.range[0:2] ), str( self.range[3:5] )  )
+#         active_module_list = args.get( 'active_modules', None )
+#         if (active_module_list == None) or (self.moduleID in active_module_list):
+#             self.setSliderDataHandler( self.range )
+#             self.persisted = False
+#             self.manuallyAdjusted = True
+#         for cfgFunction in self.activeFunctionList:
+#             if (active_module_list == None) or (cfgFunction.moduleID in active_module_list):
+#                 if( cfgFunction.units == self.units ):
+#                     cfgFunction.setDataRange( self.range, True )
+#                 else:
+#                     cfgFunction.setScaledDataRange( self.getScaledDataRange(), True )
+#         return self.range 
+
 class WindowLevelingConfigurableFunction( ConfigurableFunction ):
-    StartLevelingSignal =SIGNAL('startLeveling')
-    UpdateLevelingSignal =SIGNAL('updateLeveling')
     
     def __init__( self, name, key, **args ):
         ConfigurableFunction.__init__( self, name, key, **args  )
+        self.StartLevelingSignal =SIGNAL('startLeveling')
+        self.UpdateLevelingSignal =SIGNAL('updateLeveling')
         self.type = 'leveling'
         self.manuallyAdjusted = False
         self.windowLeveler = QtWindowLeveler( **args )
