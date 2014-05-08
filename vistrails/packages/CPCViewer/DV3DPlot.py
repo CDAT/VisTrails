@@ -82,6 +82,8 @@ class DV3DPlot():
     sliceAxes = [ 'x', 'y', 'z' ]       
  
     def __init__( self,  **args ):
+        self.labelBuff = ""
+        self.textDisplayMgr = None
         self.useGui = args.get( 'gui', True )
         self.renderWindow = args.get( 'renwin', self.createRenderWindow() )
         self.renderWindowInteractor = self.renderWindow.GetInteractor()
@@ -214,7 +216,14 @@ class DV3DPlot():
                     self.render()
 
     def updateTextDisplay( self, text, render=False ):
-        pass 
+        if text <> None:
+            self.labelBuff = "%s" % str(text) 
+        label_actor = self.getLabelActor()
+        if label_actor: label_actor.VisibilityOn() 
+        if render: self.render()     
+
+    def getLabelActor(self):
+        return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .90), size = VTK_NOTATION_SIZE, bold = True  ) if self.textDisplayMgr else None
     
     def UpdateCamera(self):
         pass

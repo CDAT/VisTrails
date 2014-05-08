@@ -53,6 +53,15 @@ POS_VECTOR_COMP = [ 'xpos', 'ypos', 'zpos' ]
 SLICE_WIDTH_LR_COMP = [ 'xlrwidth', 'ylrwidth', 'zlrwidth' ]
 SLICE_WIDTH_HR_COMP = [ 'xhrwidth', 'yhrwidth', 'zhrwidth' ]
 
+def makeList( obj, minSize = 1 ):
+    if obj == None: return None
+    if isinstance( obj, tuple ): obj = list( obj ) 
+    if not isinstance( obj, list ): obj = [ obj ]
+    if ( len( obj ) == 1 ) and minSize > 1:
+        obj = obj*minSize
+#    assert len(obj) == minSize, "Wrong number of elements in list" 
+    return obj
+    
 def extract_arg( args, argname, **kwargs ):
     target = kwargs.get( 'defval', None )
     offset = kwargs.get( 'offset', 0 )
@@ -399,7 +408,7 @@ class LevelingConfigParameter( ConfigParameter ):
         self( wpos = wpos, wsize = wwidth, name=self.varname ) # min( max( wpos, 0.0 ), 1.0 ), wsize = max( min( wwidth, 1.0 ), 0.0 ) )
         
     def getScaledRange(self):
-        if self.scaling_bounds:
+        if self.scaling_bounds and self.normalized:
             ds = self.scaling_bounds[1] - self.scaling_bounds[0]
             return ( self.scaling_bounds[0] + self.rmin * ds, self.scaling_bounds[0] + self.rmax * ds )
         else:
@@ -563,7 +572,7 @@ class ConfigurableFunction:
         self.functionID = -1 
         self.isLayerDependent = args.get( 'layerDependent', False )
         self.activeBound = args.get( 'activeBound', 'both' )
-        self.sliderLabels = args.get( 'sliderLabels', [ 'Range Min', 'Range Max' ] )
+        self.sliderLabels = makeList( args.get( 'sliderLabels', [ 'Range Min', 'Range Max' ] ) )
         self.active = args.get( 'active', True )
         self.activeFunctionList = []
         self.moduleID = None
@@ -876,8 +885,15 @@ class ConfigurableSliderFunction( ConfigurableFunction ):
         self.StartSlidingSignal =SIGNAL('startSliding')
         self.UpdateSlidingSignal =SIGNAL('updateSliding')
         self.type = 'slider'
-        self.initial_value = args.get( 'initValue', None )
-        self.range_bounds = args.get( 'range_bounds', True )
+        self.label = self.label
+        self.initial_value = makeList( args.get( 'initValue', None ), len( self.sliderLabels ) )
+        self.range_bounds = args.get( 'range_bounds', None )
+        self.interactionHandler = args.get( 'interactionHandler', None )
+        
+    def processInteractionEvent( self, args ):
+        if self.interactionHandler:
+            self.interactionHandler( args, self )
+        
 
 #        self.widget = args.get( 'gui', None )
 

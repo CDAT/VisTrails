@@ -16,12 +16,10 @@ class StructuredGridPlot(DV3DPlot):
         DV3DPlot.__init__( self,  **args )
         self.iOrientation = 0
 
-        self.textDisplayMgr = None
         self.variables = {}
         self.metadata = {}
 
         self.isValid = True
-        self.labelBuff = ""
         self.configDialog = None
         self.stereoEnabled = 0
         self.inputSpecs = {}
@@ -515,10 +513,6 @@ class StructuredGridPlot(DV3DPlot):
         self.execute( )
         self.start()
         if self.useGui: self.createConfigDialog( show, self.processConfigCmd, interface )
-
-
-    def getLabelActor(self):
-        return self.textDisplayMgr.getTextActor( 'label', self.labelBuff, (.01, .90), size = VTK_NOTATION_SIZE, bold = True  ) if self.textDisplayMgr else None
 
     def onResizeEvent(self):
         self.updateTextDisplay( None, True )

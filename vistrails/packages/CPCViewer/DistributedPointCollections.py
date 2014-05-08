@@ -244,10 +244,11 @@ class vtkPointCloud():
     def setScalarRange( self, scalar_range=None ):
         if scalar_range: self.current_scalar_range = scalar_range
         self.mapper.SetScalarRange( self.current_scalar_range[0], self.current_scalar_range[1] )
-#        self.printLogMessage(  " Set Scalar Range: %s " % str( self.current_scalar_range ) )
+#        print " ------------------------->>>>>>>>>>>>>>>>>>>> PointCloud: Set Scalar Range: %s " % str( self.current_scalar_range ) 
         self.mapper.Modified()
         self.actor.Modified()
-        
+        self.actor.SetVisibility( True  )
+       
     def getScalarRange( self ):
         return self.current_scalar_range
     
