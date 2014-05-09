@@ -716,7 +716,8 @@ class vtkPartitionedPointCloud:
             
     def processTimerEvent( self, event_id ):
         if event_id == self.CheckProcQueueEventId: 
-            self.checkProcQueues()
+            return self.checkProcQueues()
+        return False
 
     def setROI( self, ROI ): 
         for pc in self.point_clouds.values():
@@ -749,6 +750,8 @@ class vtkPartitionedPointCloud:
             self.NewDataAvailable( pc_item[0], rv )
             self.stopCheckingProcQueues()
             pc_item[1].show()
+            return True
+        return False
             
     def updateNumActiveCollections( self, ncollections_inc ):
         self.nActiveCollections = max( self.nActiveCollections + ncollections_inc, 1 )

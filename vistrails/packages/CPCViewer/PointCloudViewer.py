@@ -182,6 +182,7 @@ class CPCPlot( DV3DPlot ):
         self.colorRange = 0 
         self.thresholdCmdIndex = 0
         self.thresholdingSkipFactor = 3
+        self.deactivate_low_res_actor = False
 #        self.resolutionCounter = Counter()
         self._current_subset_specs = {}
         self.scalarRange = None
@@ -220,7 +221,11 @@ class CPCPlot( DV3DPlot ):
         eid = caller.GetTimerEventId ()
         etype = caller.GetTimerEventType()
         if etype == vtkPartitionedPointCloud.TimerType:
-            self.partitioned_point_cloud.processTimerEvent(eid)
+            if self.partitioned_point_cloud.processTimerEvent(eid):
+                if self.deactivate_low_res_actor:
+                    self.low_res_actor.VisibilityOff()
+                    self.deactivate_low_res_actor = True
+
 #         if etype == 11:
 #             self.printInteractionStyle('processTimerEvent')
             
@@ -328,7 +333,7 @@ class CPCPlot( DV3DPlot ):
         self.render_mode = render_mode    
 #        self.setScalarRange()   
         if render_mode ==  ProcessMode.HighRes:
-            self.low_res_actor.VisibilityOff()
+            self.deactivate_low_res_actor = True
         else: 
             if self.partitioned_point_cloud: 
                 self.partitioned_point_cloud.clear()
@@ -498,6 +503,8 @@ class CPCPlot( DV3DPlot ):
         return True
                 
     def enableSlicing( self ):
+        self.clearSubsetting()
+        self.clearInteractions()
         self.process_mode = ProcessMode.Slicing
         if self.render_mode ==  ProcessMode.LowRes:
             self.setRenderMode( ProcessMode.HighRes ) 
@@ -604,17 +611,19 @@ class CPCPlot( DV3DPlot ):
     
     def processThresholdRangeCommand( self, args, config_function = None ):
         if args and args[0] == "StartConfig":
+            print " ---->>  processThresholdRangeCommand: StartConfig "
             if self.render_mode ==  ProcessMode.HighRes:
                 self.setRenderMode( ProcessMode.LowRes )
 #            self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )               
             if self.partitioned_point_cloud:
 #                self.update_subset_specs(  self.partitioned_point_cloud.getSubsetSpecs()  )           
                 self.point_cloud_overview.generateSubset( spec=self.current_subset_specs )
-                self.configDialog.newSubset( self.point_cloud_overview.getCellData() )
+#                self.configDialog.newSubset( self.point_cloud_overview.getCellData() )
             if self.process_mode <> ProcessMode.Thresholding:
                 self.enableThresholding()
         
         elif args and args[0] == "EndConfig":
+            print " ---->>  processThresholdRangeCommand: EndConfig "
             self.setRenderMode( ProcessMode.HighRes )                
 #            self.partitioned_point_cloud.setScalarRange( self.scalarRange.getScaledRange() )  
             self.updateThresholding()        
@@ -632,6 +641,7 @@ class CPCPlot( DV3DPlot ):
             if isOK: self.updateThresholding( self.defvar, self.volumeThresholdRange[self.defvar].getRange() )                
             self.render()
         elif args and args[0] == "UpdateConfig":
+            print " ---->>  processThresholdRangeCommand: UpdateConfig[%d] " % self.thresholdCmdIndex
             if ( self.thresholdCmdIndex % self.thresholdingSkipFactor ) == 0:
                 scaled_range = list( self.volumeThresholdRange[ self.defvar ].getRange() )
                 scaled_range[ args[1] ] = args[2]
@@ -650,8 +660,8 @@ class CPCPlot( DV3DPlot ):
         self.thresholdCmdIndex = 0
         self.clearSubsetting()
         self.process_mode = ProcessMode.Thresholding 
-        if self.render_mode ==  ProcessMode.LowRes:
-            self.setRenderMode( ProcessMode.HighRes )
+#         if self.render_mode ==  ProcessMode.LowRes:
+#             self.setRenderMode( ProcessMode.HighRes )
         if self.scalarRange <> None:
             self.point_cloud_overview.setScalarRange( self.scalarRange.getScaledRange() )
         if self.defvar in self.volumeThresholdRange:
