@@ -119,9 +119,9 @@ class ConfigurationInterface:
         vrange = var_rec[2]
         thresh_cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "Threshold Range", rmin=vrange[0], rmax=vrange[1], ctype = 'Leveling', varname=defvar )        
         roi_cparm = self.cfgManager.addParameter( self.iSubsetCatIndex, "ROI", roi=init_roi  )
-        op_cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Opacity Scale", rmin=0.0, rmax=1.0, ctype = 'Range'  )               
+        op_cparm = self.cfgManager.addParameter( self.iColorCatIndex, "Opacity Scale", rmin=1.0, rmax=1.0, ctype = 'Range'  )               
         self.iPointsCatIndex = self.addCategory( 'Points' )
-        cparm = self.cfgManager.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 10 ), ( "High Res", "# Pixels",  1, 10, 3 ) ] )
+        cparm = self.cfgManager.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 4 ), ( "High Res", "# Pixels",  1, 20, 2 ) ] )
         cparm = self.cfgManager.addParameter( self.iPointsCatIndex, "Max Resolution", value=1.0 )
         self.GeometryCatIndex = self.addCategory( 'Geometry' )
         cparm = self.cfgManager.addParameter( self.GeometryCatIndex, "Projection", choices = [ "Lat/Lon", "Spherical" ], init_index=0 )

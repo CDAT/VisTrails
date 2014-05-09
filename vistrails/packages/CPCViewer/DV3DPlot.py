@@ -150,7 +150,6 @@ class DV3DPlot():
         if alt:
             self.isAltMode = True
         else: 
-            print " ------------------------------------------ setInteractionState, key=%s, keysym=%s, shift = %s, isAltMode = %s    ------------------------------------------ " % (str(key), str(keysym), str(shift), str(self.isAltMode) )
             self.processKeyEvent( key, caller, event )
         return 0
 
@@ -158,6 +157,7 @@ class DV3DPlot():
         ( state, persisted ) =  self.getInteractionState( key )
 #            print " %s Set Interaction State: %s ( currently %s) " % ( str(self.__class__), state, self.InteractionState )
         if state <> None: 
+            print " ------------------------------------------ setInteractionState, key=%s, state = %s    ------------------------------------------ " % (str(key), str(state)  )
             self.updateInteractionState( state, self.isAltMode  )                 
             self.isAltMode = False 
         return 0
