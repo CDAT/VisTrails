@@ -948,6 +948,12 @@ class ConfigurationWidget(QtGui.QWidget):
         self.scrollArea.setSizePolicy( QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding )
         layout.addWidget(self.scrollArea)       
         self.connect( self.configContainer, QtCore.SIGNAL("ConfigCmd"), self.configTriggered )
+        
+    def getPersistentParameterSpecs(self):
+        return self.cfgManager.getPersistentParameterSpecs()
+    
+    def getParameterPersistenceList(self):
+        return self.cfgManager.getParameterPersistenceList()
 
     def addControl( self, iCatIndex, config_ctrl, id = None ):
         config_list = self.configContainer.getCategoryConfigList( iCatIndex )
@@ -1127,7 +1133,78 @@ class ConfigManager(QtCore.QObject):
 #         cparm = self.addParameter( self.GeometryCatIndex, "Vertical Variable", choices = [], init_index=0  )
 #         self.AnalysisCatIndex = self.addCategory( 'Analysis' )
 #         cparm = self.addParameter( self.AnalysisCatIndex, "Animation" )
-               
+
+# class CPCConfigConfigurationWidget( ConfigurationWidget ):
+# 
+#     def __init__(self, parent=None): 
+#         super( CPCConfigConfigurationWidget, self ).__init__( parent )   
+# 
+# #    def externalUpdate( self, args ):   
+# #        if args[0] == "SetSlicePosition":
+# #            slicerCtrl = self.getConfigControl( "SlicerControl" )
+# #            slicerCtrl.setSlicePosition( args[1] )
+# 
+#     def askToSaveChanges(self):
+#         self.emit( QtCore.SIGNAL("Close"), self.getParameterPersistenceList() )
+# #        self.disconnect( self, QtCore.SIGNAL("ConfigCmd") )
+# 
+#     def getParameterPersistenceList(self):
+#         plist = []
+#         for cfg_item in self.config_params.items():
+#             key = cfg_item[0]
+#             cfg_spec = cfg_item[1].pack()
+#             plist.append( ( key, cfg_spec[1] ) )
+#         return plist
+# 
+#     def initialize( self, parm_name, parm_values ):
+#         if not ( isinstance(parm_values,list) or isinstance(parm_values,tuple) ):
+#             parm_values = [ parm_values ]
+#         cfg_parm = self.config_params.get( parm_name, None )
+#         if cfg_parm: cfg_parm.unpack( parm_values )
+# 
+#     def getPersistentParameterSpecs(self):
+#         plist = []
+#         for cfg_item in self.config_params.items():
+#             key = cfg_item[0]
+#             values_decl = cfg_item[1].values_decl()
+#             plist.append( ( key, values_decl ) )
+#         return plist
+#         
+#     def build( self, **args ):
+# 
+#         self.iColorCatIndex = self.addCategory( 'Color' )
+#         cparm = self.addParameter( self.iColorCatIndex, "Color Scale", wpos=0.5, wsize=1.0, ctype = 'Leveling' )
+#         self.addConfigControl( self.iColorCatIndex, ColorScaleControl( cparm ) )       
+#         cparm = self.addParameter( self.iColorCatIndex, "Opacity Scale", rmin=0.0, rmax=1.0, ctype = 'Range'  )
+#         self.addConfigControl( self.iColorCatIndex, RangeSliderControl( cparm ) )       
+#         cparm = self.addParameter( self.iColorCatIndex, "Color Map", Colormap="jet", Invert=1, Stereo=0, Colorbar=0  )
+#         self.addConfigControl( self.iColorCatIndex, ColormapControl( cparm ) )  
+#              
+#         self.iSubsetCatIndex = self.addCategory( 'Subsets' )
+#         cparm = self.addParameter( self.iSubsetCatIndex, "Slice Planes",  xpos=0.5, ypos=0.5, zpos=0.5, xhrwidth=0.0025, xlrwidth=0.005, yhrwidth=0.0025, ylrwidth=0.005 )
+#         self.addConfigControl( self.iSubsetCatIndex, SlicerControl( cparm, wrange=[ 0.0001, 0.02 ] ) ) # , "SlicerControl" )
+#         cparm = self.addParameter( self.iSubsetCatIndex, "Threshold Range", wpos=0.5, wsize=0.2, ctype = 'Leveling' )
+#         self.addConfigControl( self.iSubsetCatIndex, VolumeControl( cparm ) )
+#                 
+#         self.iPointsCatIndex = self.addCategory( 'Points' )
+#         cparm = self.addParameter( self.iPointsCatIndex, "Point Size",  cats = [ ("Low Res", "# Pixels", 1, 20, 10 ), ( "High Res", "# Pixels",  1, 10, 3 ) ] )
+#         self.addConfigControl( self.iPointsCatIndex, PointSizeSliderControl( cparm ) )
+#         cparm = self.addParameter( self.iPointsCatIndex, "Max Resolution", value=1.0 )
+#         self.addConfigControl( self.iPointsCatIndex, SliderControl( cparm ) )
+#         self.GeometryCatIndex = self.addCategory( 'Geometry' )
+#         cparm = self.addParameter( self.GeometryCatIndex, "Projection", choices = [ "Lat/Lon", "Spherical" ], init_index=0 )
+#         self.addConfigControl( self.GeometryCatIndex, RadioButtonSelectionControl( cparm ) )
+#         cparm = self.addParameter( self.GeometryCatIndex, "Vertical Scaling", value=0.5 )
+#         self.addConfigControl( self.GeometryCatIndex, SliderControl( cparm ) )
+#         vertical_vars = args.get( 'vertical_vars', [] )
+#         vertical_vars.insert( 0, "Levels" )
+#         cparm = self.addParameter( self.GeometryCatIndex, "Vertical Variable", choices = vertical_vars, init_index=0  )
+#         self.addConfigControl( self.GeometryCatIndex, RadioButtonSelectionControl( cparm ) )
+# 
+#         self.AnalysisCatIndex = self.addCategory( 'Analysis' )
+#         cparm = self.addParameter( self.AnalysisCatIndex, "Animation" )
+#         self.addConfigControl( self.AnalysisCatIndex, AnimationControl( cparm ) )               
+
 if __name__ == '__main__':
     app = QtGui.QApplication(['CPC Config Dialog'])
     

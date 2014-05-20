@@ -776,6 +776,9 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                 axis = None
                 if iCoord == 0: axis = tvar.getLongitude()
                 if iCoord == 1: axis = tvar.getLatitude()
+                if axis == None:
+                    print>>sys.stderr, "Error, can't find grid metadata in this file!"
+                    return None
                 axisvals = axis.getValue()          
                 if ( len( axisvals.shape) > 1 ):
 #                    displayMessage( "Curvilinear grids not currently supported by DV3D.  Please regrid. ")

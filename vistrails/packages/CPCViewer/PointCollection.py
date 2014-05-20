@@ -154,7 +154,7 @@ class PointCollection():
     def levelsAreAscending(self):
         lev_positive_direction = self.lev.attributes.get('positive','up')
         dlev = ( self.lev[-1] - self.lev[0] )
-        ascending = ( ( dlev > 0.0 ) and ( lev_positive_direction == 'down' ) ) or ( ( dlev < 0.0 ) and ( lev_positive_direction == 'up' ) )
+        ascending = ( ( dlev < 0.0 ) and ( lev_positive_direction == 'down' ) ) or ( ( dlev > 0.0 ) and ( lev_positive_direction == 'up' ) )
         return ascending
     
     def setPointHeights( self, **args ): 

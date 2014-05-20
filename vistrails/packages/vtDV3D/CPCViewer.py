@@ -33,10 +33,11 @@ class PM_CPCViewer(PersistentVisualizationModule):
         self.data_file = None
         self.varname = None
         self.height_varname = None
-        try:
-            self.addConfigurableFunctions()
-        except Exception, err:
-            print str(err)
+        self.addConfigurableFunctions()
+#         try:
+#             self.addConfigurableFunctions()
+#         except Exception, err:
+#             print str(err)
         self.plotter = None
 
     def processKeyEvent( self, key, caller=None, event=None ):
@@ -94,7 +95,7 @@ class PM_CPCViewer(PersistentVisualizationModule):
         
     def addConfigurableFunctions( self ):
         if PM_CPCViewer.PortSpecs == None:
-            config_widget = CPCConfigConfigurationWidget()
+            config_widget = ConfigurationWidget()
             config_widget.build()
             PM_CPCViewer.PortSpecs = config_widget.getPersistentParameterSpecs()
         for port_spec in PM_CPCViewer.PortSpecs:
@@ -104,7 +105,7 @@ class PM_CPCViewer(PersistentVisualizationModule):
             self.configurableFunctions[name] = ConfigurableFunction( name, signature )
                        
     def getConfigWidget( self ):
-        self.config_widget = CPCConfigConfigurationWidget()
+        self.config_widget = ConfigurationWidget()
         self.config_widget.build()
         QObject.connect( self.config_widget, QtCore.SIGNAL("ConfigCmd"), self.plotter.processConfigCmd )
         QObject.connect( self.config_widget, QtCore.SIGNAL("Close"), self.closeCPCWidget )
@@ -140,7 +141,7 @@ class CPCViewerConfigurationWidget(StandardModuleConfigurationWidget):
         self.moduleId = module.id
 #        self.pmod = module.module_descriptor.module.forceGetPersistentModule( module.id ) # self.module_descriptor.module.forceGetPersistentModule( module.id )
         self.getParameters( module )        
-        self.cfg_widget = CPCConfigConfigurationWidget()    
+        self.cfg_widget = ConfigurationWidget()    
         self.setLayout( QVBoxLayout() )
 #        self.layout().setMargin(0)
 #        self.layout().setSpacing(0)
