@@ -297,7 +297,11 @@ class CPCPlot(QtCore.QObject):
         self.point_cloud_overview = None
         self.labelBuff = ""
         self.configDialog = None
-        self.renderWindow = vtk_render_window if ( vtk_render_window <> None ) else self.createRenderWindow()
+        if ( vtk_render_window <> None ):
+            self.renderWindow = vtk_render_window  
+            self.renderWindowInteractor = vtk_render_window.GetInteractor()
+        else:
+            self.createRenderWindow()
         self.process_mode = ProcessMode.Default
         self.config_mode = ConfigMode.Default
         self.xcenter = 100.0

@@ -70,7 +70,7 @@ elif ns.data_type == "GEOD":
     varname = "temperature_ifc" # "vorticity" # 
     var_proc_op = None
     
-g = CPCPlot( gui=False ) 
+g = CPCPlot() 
 g.init( init_args = ( grid_file, data_file, varname, height_varname, var_proc_op ), n_overview_points=n_overview_points, n_cores=1  )
 
 cfgManager = ConfigManager()
