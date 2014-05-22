@@ -5,7 +5,8 @@ try:
 except:
     import pickle
 
-from cdatguiwrap import VCSQtManager
+#from cdatguiwrap import VCSQtManager
+from packages.vtk.vtkcell import QVTKWidget, QVTKWidgetToolBar
 import vcs
 import genutil
 import cdutil
@@ -1112,7 +1113,7 @@ class CDMSCell(SpreadsheetCell):
         input_ports.append(plots)
         self.cellWidget = self.displayAndWait(QCDATWidget, input_ports)
 
-class QCDATWidget(QCellWidget):
+class QCDATWidget(QVTKWidget):
     """ QCDATWidget is the spreadsheet cell widget where the plots are displayed.
     The widget interacts with the underlying C++, VCSQtManager through SIP.
     This enables QCDATWidget to get a reference to the Qt MainWindow that the
@@ -1131,12 +1132,12 @@ class QCDATWidget(QCellWidget):
                     "Postscript file (*.ps)",
                     "SVG file (*.svg)"]
 
-    startIndex = 2 #this should be the current number of canvas objects created 
-    maxIndex = 6
+    #startIndex = 2 #this should be the current number of canvas objects created 
+    #maxIndex = 6
     usedIndexes = []
     
     def __init__(self, parent=None):
-        QCellWidget.__init__(self, parent)
+        QVTKWidget.__init__(self, parent)
         self.toolBarType = QCDATWidgetToolBar
         self.window = None
         self.canvas =  None
@@ -1149,16 +1150,16 @@ class QCDATWidget(QCellWidget):
         while (windowIndex in QCDATWidget.usedIndexes and 
                    windowIndex <= QCDATWidget.maxIndex):
             windowIndex += 1
-        if windowIndex > QCDATWidget.maxIndex:
-            raise ModuleError(self, "Maximum number of vcs.Canvas objects achieved.\
-Please delete unused CDAT Cells in the spreadsheet.")
-        else:
-            if windowIndex > len(vcs.canvaslist):
-                self.canvas = vcs.init()
-            else:
-                self.canvas = vcs.canvaslist[windowIndex-1]
-            self.windowId = windowIndex
-            QCDATWidget.usedIndexes.append(self.windowId)
+        #if windowIndex > QCDATWidget.maxIndex:
+        #    raise ModuleError(self, "Maximum number of vcs.Canvas objects achieved.\
+#Please delete unused CDAT Cells in the spreadsheet.")
+        #else:
+        #    if windowIndex > len(vcs.canvaslist):
+        self.canvas = vcs.init(backend=self.GetRenderWindow())
+#            else:
+#                self.canvas = vcs.canvaslist[windowIndex-1]
+        self.windowId = windowIndex
+        QCDATWidget.usedIndexes.append(self.windowId)
 
     def prepExtraDims(self,var):
         k={}

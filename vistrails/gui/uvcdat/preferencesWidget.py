@@ -386,6 +386,7 @@ class QPreferencesDialog(QtGui.QDialog):
         #fonts.pop(fonts.index("default"))
         font = uvcdatCommons.QFramedWidget("Fonts")
         self.vcsFont = c = font.addLabeledComboBox("Default Font",fonts)
+        print self.root.canvas[0].listelements("font")
         c.setCurrentIndex(fonts.index(self.root.canvas[0].getfontname(1)))
         self.connect(c,QtCore.SIGNAL("currentIndexChanged(int)"),self.newDefaultFont)
 
