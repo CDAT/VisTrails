@@ -6,7 +6,7 @@ except:
     import pickle
 
 #from cdatguiwrap import VCSQtManager
-from packages.vtk.vtkcell import QVTKWidget, QVTKWidgetToolBar
+from packages.vtk.vtkcell import QVTKWidget, QVTKWidgetToolBar, VTKCell
 import vcs
 import genutil
 import cdutil
@@ -1101,7 +1101,7 @@ class CDMSColorMap(Module):
             module.add_function(f)
         return module
      
-class CDMSCell(SpreadsheetCell):
+class CDMSCell(VTKCell):
     _input_ports = expand_port_specs([("plot", "CDMSPlot")])
 
     def compute(self):
@@ -1132,16 +1132,18 @@ class QCDATWidget(QVTKWidget):
                     "Postscript file (*.ps)",
                     "SVG file (*.svg)"]
 
-    #startIndex = 2 #this should be the current number of canvas objects created 
-    #maxIndex = 6
+    startIndex = 2 #this should be the current number of canvas objects created 
+    maxIndex = 9999999999
     usedIndexes = []
     
     def __init__(self, parent=None):
         QVTKWidget.__init__(self, parent)
-        self.toolBarType = QCDATWidgetToolBar
+        #self.toolBarType = QCDATWidgetToolBar
         self.window = None
         self.canvas =  None
         self.windowId = -1
+        self.createCanvas()
+        self.mRenWin = self.canvas.backend.renWin
         layout = QtGui.QVBoxLayout()
         self.setLayout(layout) 
          
@@ -1192,10 +1194,11 @@ class QCDATWidget(QVTKWidget):
             self.window = reparentedVCSWindows[self.windowId]
             del reparentedVCSWindows[self.windowId]
         else:
-            self.window = VCSQtManager.window(self.windowId)
+            #self.window = self.canvas
+            pass
             
-        self.layout().addWidget(self.window)
-        self.window.setVisible(True)    
+        #self.layout().addWidget(self.window)
+        #self.window.setVisible(True)    
         # Place the mainwindow that the plot will be displayed in, into this
         # cell widget's layout
            
@@ -1231,8 +1234,8 @@ class QCDATWidget(QVTKWidget):
                             setattr(cgm,k,eval(getattr(plot,k)))
                         else:
                             if getattr(plot,k)!=getattr(cgm,k):
-                                #print "Setting:",k,getattr(plot,k)
-                                setattr(cgm,k,getattr(plot,k))
+                                print "Setting:",k,getattr(plot,k)
+                                setattr(cgm,k,eval(getattr(plot,k)))
                         #print k, " = ", getattr(cgm,k)
                             
             kwargs = plot.kwargs
@@ -1261,11 +1264,14 @@ class QCDATWidget(QVTKWidget):
                     self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module
                     self.canvas.flush() # update the canvas by processing all the X events
             
-            try:
+            #try:
+            if 1:
+                print "ARGS:",args
+                print "KW:",kwargs
                 self.canvas.plot(cgm,*args,**kwargs)
-            except Exception, e:
-                spreadsheetWindow.setUpdatesEnabled(True)
-                raise e
+            #except Exception, e:
+            #    spreadsheetWindow.setUpdatesEnabled(True)
+            #    raise e
             
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
