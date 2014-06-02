@@ -504,8 +504,8 @@ class CPCPlot(QtCore.QObject):
             var_name = metadata.get( 'var_name', '')
             var_units = metadata.get( 'var_units', '')
             self.labelBuff = "%s (%s)\n%s" % ( var_name, var_units, str(text) )
-        self.getLabelActor().VisibilityOn() 
-        if render: self.render()     
+            self.getLabelActor().VisibilityOn() 
+            if render: self.render()     
     
 #    def recolorPoint3(self, iPtIndex, color ):
 #        if iPtIndex < self.npoints:
