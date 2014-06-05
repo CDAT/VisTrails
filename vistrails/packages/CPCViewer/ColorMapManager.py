@@ -130,7 +130,6 @@ class ColorMapManager():
 
     def setAlphaGraph(self, data ):
         self.alphaManager.setGraphData( data ) 
-
         self.load_lut()
      
     @staticmethod

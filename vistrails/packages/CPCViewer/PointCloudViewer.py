@@ -1271,7 +1271,6 @@ class QPointCollectionMgrThread( QtCore.QThread ):
             time.sleep( self.delayTime )
         self.exit(0)       
                              
-
 # if __name__ == '__main__':
 #     import argparse
 #     parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
@@ -1332,4 +1331,3 @@ class QPointCollectionMgrThread( QtCore.QThread ):
 #     app.exec_() 
 #     g.terminate() 
 #     
-

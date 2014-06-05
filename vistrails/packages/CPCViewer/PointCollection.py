@@ -283,6 +283,7 @@ class PointCollection():
                             elif ( cvar.standard_name.lower() in latitude_names ):
                                 lat = dset( cvar.id, squeeze=1 )   
         if PlotType.validCoords( lat, lon ): 
+
             return  self.processCoordinates( lat, lon ) 
         print>>sys.stdout, "Error, Can't find grid axes!"  
         return None, None

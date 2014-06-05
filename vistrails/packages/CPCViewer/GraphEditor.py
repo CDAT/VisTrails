@@ -87,14 +87,6 @@ class TransferFunction( QtCore.QObject ):
         self.points = new_points
         self.data = new_data
         return new_points
-    
-#    def updateBounds(self):
-#        num_nodes = len( self.points )
-#        for iN in range( 1, num_nodes-1 ):
-#            d0 = self.data[ iN-1 ]
-#            n = self.points[ iN ]
-#            d1 = self.data[ iN+1 ]
-#            n.setXBounds( d0[0], d1[0] )
                     
 def getScaledPoint( p ):   
     if len(p) > 4: return ( p[0] + p[4] * ( p[2] - p[0] ), p[1] + p[4] * ( p[3] - p[1] ) )
@@ -753,7 +745,6 @@ class GraphWidget(QtGui.QGraphicsView):
 #            print "Add point: ", str( [ x, y ] ), str( ( spt.x(), spt.y() ) )
             nodes = self.currentTransferFunction.addTransferFunctionPoint( [ x, y ] )
             self.createGraph( self.bounds[0], self.bounds[1], nodes )
-
 
     def keyPressEvent(self, event):
         key = event.key()
