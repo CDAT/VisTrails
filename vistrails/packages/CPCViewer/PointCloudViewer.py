@@ -197,7 +197,7 @@ class Counter():
     
     
 class CPCPlot(DV3DPlot):  
-    
+    sliceAxes = [ 'x', 'y', 'z' ]
 
     def __init__( self, **args ):
         DV3DPlot.__init__( self, **args  )
