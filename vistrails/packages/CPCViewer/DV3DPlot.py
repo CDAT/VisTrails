@@ -531,14 +531,15 @@ class DV3DPlot(QtCore.QObject):
         return ispec.scaleToImage( data_value )  
 
     def finalizeLeveling( self, cmap_index=0 ):
-        ispec = self.inputSpecs[ cmap_index ] 
-        ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
-        if self.configuring: 
-            self.finalizeConfigurationObserver( self.InteractionState )            
-            self.resetNavigation()
-            self.configuring = False
-            self.InteractionState = None
-            return True
+        ispec = self.inputSpecs.get( cmap_index, None )
+        if ispec:
+            ispec.addMetadata( { 'colormap' : self.getColormapSpec(), 'orientation' : self.iOrientation } ) 
+            if self.configuring: 
+                self.finalizeConfigurationObserver( self.InteractionState )            
+                self.resetNavigation()
+                self.configuring = False
+                self.InteractionState = None
+                return True
         return False
 #            self.updateSliceOutput()
 

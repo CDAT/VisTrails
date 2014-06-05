@@ -193,6 +193,10 @@ class NodeData( QtCore.QObject ):
         self.spt1 = None
         self.vector = None
 
+    def setDataPoint(self, x, y ):
+        self.dx0 = x 
+        self.y0 = y
+
     def setImageVectorData(self, ipt1, s ): 
         self.ix1 = ipt1[0] 
         self.y1 = ipt1[1]  
@@ -655,7 +659,7 @@ class GraphWidget(QtGui.QGraphicsView):
             node.setMovable( nodeData.free )                
             node.setPos ( nodeData.getScenePosition() ) 
             node.setVisible ( True )
-            node.setXBounded( nodeData.xbound ) 
+#            node.setXBounded( nodeData.xbound ) 
 #            bnds = nodeData.getBounds()
 #            if bnds:
 #                sbnds0 = self.getScenePoint( bnds[0:2] )
@@ -739,7 +743,7 @@ class GraphWidget(QtGui.QGraphicsView):
             x, y = self.getDataPoint( spt.x(), spt.y() )
 #            print "Add point: ", str( [ x, y ] ), str( ( spt.x(), spt.y() ) )
             nodes = self.currentTransferFunction.addTransferFunctionPoint( [ x, y ] )
-            self.createGraph( self.tbounds, self.bounds[1], nodes )
+            self.createGraph( self.bounds[0], self.bounds[1], nodes )
 
     def keyPressEvent(self, event):
         key = event.key()
