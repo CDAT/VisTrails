@@ -728,6 +728,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       """Display result into one cell defined by row/col args"""
       projectController = self.parent().get_current_project_controller()
       projectController.clear_cell(sheet, row, column)
+      projectController.enable_animation = False  # I (JfP) don't know why I need this, it didn't
+                                                  # used to be necessary.
       if res30 is None:
          return
       pvars = res30.vars
