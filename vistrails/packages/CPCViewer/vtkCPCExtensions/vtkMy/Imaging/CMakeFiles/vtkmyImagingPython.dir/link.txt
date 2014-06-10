@@ -1,0 +1,1 @@
+/usr/bin/c++    -bundle -Wl,-headerpad_max_install_names    -o ../bin/vtkmyImagingPython.so CMakeFiles/vtkmyImagingPython.dir/vtkmyImagingPythonInit.cxx.o ../bin/libvtkmyImagingPythonD.dylib ../bin/libvtkmyImaging.dylib ../bin/libvtkmyCommonPythonD.dylib ../bin/libvtkmyCommon.dylib -lvtkCommon -lvtkCommonPythonD -lvtkImaging -lvtkImagingPythonD 

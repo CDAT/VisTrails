@@ -353,6 +353,7 @@ class ParallelCoordinatesWidget(QCellWidget):
         # Connect the annotation link to the parallel coordinates representation
         self.chart.SetAnnotationLink(self.annotationLink)
         self.annotationLink.AddObserver("AnnotationChangedEvent", self.selectionCallback)
+        self.setFixedSize(400, 200)
 
     def updateContents(self, inputPorts):
         (self.coord, matrix) = inputPorts 
