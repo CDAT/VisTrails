@@ -7,6 +7,7 @@ def package_dependencies():
             manager.has_package('edu.utah.sci.vistrails.vtk')):
         dependencies.append('edu.utah.sci.vistrails.spreadsheet')
         dependencies.append('edu.utah.sci.vistrails.vtk')
+    dependencies.append('gov.nasa.nccs.vtdv3d')
     return dependencies
 
 def package_requirements():

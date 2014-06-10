@@ -166,8 +166,8 @@ class QAnimationView(QtGui.QWidget):
         unique_connect(self.canvas.animate.signals.paused, self.paused)
 
     def setCanvas(self,canvas):
-        if self.canvas is not None:
-            self.disconnectAnimationSignals()
+        #if self.canvas is not None:
+        #    self.disconnectAnimationSignals()
             
         self.canvas = canvas
         
@@ -177,7 +177,7 @@ class QAnimationView(QtGui.QWidget):
         
         self.setEnabled(True)
         
-        self.connectAnimationSignals()
+        #self.connectAnimationSignals()
         
         self.doLoop.setChecked(canvas.animate.loop)
         

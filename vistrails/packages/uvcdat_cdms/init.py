@@ -33,6 +33,8 @@ from gui.application import get_vistrails_application
 from gui.uvcdat.theme import UVCDATTheme
 from gui.uvcdat.cdmsCache import CdmsCache
 import gui.uvcdat.regionExtractor #for certain toPython commands
+import vtk
+from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 
 canvas = None
 original_gm_attributes = {}
@@ -1101,7 +1103,7 @@ class CDMSColorMap(Module):
             module.add_function(f)
         return module
      
-class CDMSCell(VTKCell):
+class CDMSCell(SpreadsheetCell, PersistentVisualizationModule):
     _input_ports = expand_port_specs([("plot", "CDMSPlot")])
 
     def compute(self):
@@ -1111,6 +1113,7 @@ class CDMSCell(VTKCell):
                            key=lambda obj: obj.plot_order):
             plots.append(plot)
         input_ports.append(plots)
+        print "INPUT PORTS:",input_ports
         self.cellWidget = self.displayAndWait(QCDATWidget, input_ports)
 
 class QCDATWidget(QVTKWidget):
@@ -1157,9 +1160,9 @@ class QCDATWidget(QVTKWidget):
 #Please delete unused CDAT Cells in the spreadsheet.")
         #else:
         #    if windowIndex > len(vcs.canvaslist):
+        print "Backend started with renwin:",self.GetRenderWindow()
         self.canvas = vcs.init(backend=self.GetRenderWindow())
-#            else:
-#                self.canvas = vcs.canvaslist[windowIndex-1]
+        self.interactor = self.canvas.backend.defaultInteractor
         self.windowId = windowIndex
         QCDATWidget.usedIndexes.append(self.windowId)
 
@@ -1202,7 +1205,8 @@ class QCDATWidget(QVTKWidget):
         # Place the mainwindow that the plot will be displayed in, into this
         # cell widget's layout
            
-        self.canvas.clear()
+        #self.canvas.clear()
+        print "Yes we do come here!"
         if not fromToolBar:
             self.extraDimsNames=inputPorts[0][0].var.var.getAxisIds()[:-2]
             self.extraDimsIndex=[0,]*len(self.extraDimsNames)
@@ -1266,8 +1270,9 @@ class QCDATWidget(QVTKWidget):
             
             #try:
             if 1:
-                print "ARGS:",args
+                #print "ARGS:",args
                 print "KW:",kwargs
+                print "RenderWindow:",self.canvas.backend.renWin
                 self.canvas.plot(cgm,*args,**kwargs)
             #except Exception, e:
             #    spreadsheetWindow.setUpdatesEnabled(True)
