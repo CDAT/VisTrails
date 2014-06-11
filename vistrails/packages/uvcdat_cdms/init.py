@@ -1154,24 +1154,28 @@ class QCDATWidget(QVTKWidget):
         self.canvas =  None
         self.windowId = -1
         self.createCanvas()
-        self.mRenWin = self.canvas.backend.renWin
-        layout = QtGui.QVBoxLayout()
-        self.setLayout(layout) 
+        #layout = QtGui.QVBoxLayout()
+        #self.setLayout(layout) 
          
     def createCanvas(self):
         windowIndex = self.startIndex
         while (windowIndex in QCDATWidget.usedIndexes and 
                    windowIndex <= QCDATWidget.maxIndex):
             windowIndex += 1
-        #if windowIndex > QCDATWidget.maxIndex:
-        #    raise ModuleError(self, "Maximum number of vcs.Canvas objects achieved.\
+        if windowIndex > QCDATWidget.maxIndex:
+            raise ModuleError(self, "Maximum number of vcs.Canvas objects achieved.\
 #Please delete unused CDAT Cells in the spreadsheet.")
         #else:
         #    if windowIndex > len(vcs.canvaslist):
         print "Backend started with renwin:",self.GetRenderWindow()
         self.canvas = vcs.init(backend=self.GetRenderWindow())
-        self.interactor = self.canvas.backend.defaultInteractor
+        ren = vtk.vtkRenderer()
+        r,g,b = self.canvas.backgroundcolor
+        ren.SetBackground(r/255.,g/255.,b/255.)
+        self.canvas.backend.renWin.AddRenderer(ren)
+        #self.interactor = self.canvas.backend.defaultInteractor
         self.windowId = windowIndex
+        self.interactorStyle = vcs.VTKPlots.VCSInteractorStyle(parent=self.canvas.backend)
         QCDATWidget.usedIndexes.append(self.windowId)
 
     def prepExtraDims(self,var):
@@ -1181,45 +1185,7 @@ class QCDATWidget(QVTKWidget):
                 k[d]=slice(i,None)
         return k
     
-    def updateContents(self,*args,**kargs):
-      return self.updateContentsNoVCS(*args,**kargs)
-
-    def updateContentsNoVCS(self,inputPorts,fromToolBar=False):
-      renWin = self.GetRenderWindow()
-      ren = vtk.vtkRenderer()
-      S=vtk.vtkSphereSource()
-      M= vtk.vtkPolyDataMapper()
-      M.SetInputConnection(S.GetOutputPort())
-      A=vtk.vtkActor()
-      A.SetMapper(M)
-      ren.AddActor(A)
-      renWin.AddRenderer(ren)
-      renderers = []
-      renderers.append(wrapVTKModule('vtkRenderer',ren))
-      QVTKWidget.updateContents(self,(renderers,None,[],None,None))
-      
-    def updateContents1( self, inputPorts, fromToolBar=False):
-        print "Input ports:",inputPorts
-        #self.SetRendererWindow(self.canvas.backend.renWin)
-        print "Ok here the rendewindow is:",self.GetRenderWindow()
-        self.SetRenderWindow(self.canvas.backend.renWin)
-        print "Ok here the rendewindow is actually:",self.GetRenderWindow()
-        txt = self.canvas.createtext()
-        txt.x = .5
-        txt.y = .5
-        txt.string = "Hello you!"
-        vtkRenderers = self.canvas.backend.renWin.GetRenderers()
-        vtkRenderers.InitTraversal()
-        renderers = []
-        r = vtkRenderers.GetNextItem()
-        self.SetRenderWindow(self.canvas.backend.renWin)
-        while r is not None:
-          renderers.append(wrapVTKModule('vtkRenderer',r))
-          r = vtkRenderers.GetNextItem()
-          print "Renderers:",renderers
-        QVTKWidget.updateContents(self,(renderers,None,[],None,None))
-
-    def updateContents2(self, inputPorts, fromToolBar=False):
+    def updateContents(self, inputPorts, fromToolBar=False):
         """ Get the vcs canvas, setup the cell's layout, and plot """      
         global reparentedVCSWindows
               
@@ -1314,22 +1280,28 @@ class QCDATWidget(QVTKWidget):
                     self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module
                     self.canvas.flush() # update the canvas by processing all the X events
             
-            #try:
-            if 1:
-                #print "ARGS:",args
-                print "KW:",kwargs
-                print "RenderWindow:",self.canvas.backend.renWin
+            try:
                 self.canvas.plot(cgm,*args,**kwargs)
-            #except Exception, e:
-            #    spreadsheetWindow.setUpdatesEnabled(True)
-            #    raise e
-            
+            except Exception, e:
+                spreadsheetWindow.setUpdatesEnabled(True)
+                raise e
+        doInteractorStyle = False
+        if doInteractorStyle:
+          vtkRenderers = self.canvas.backend.renWin.GetRenderers()
+          vtkRenderers.InitTraversal()
+          renderers = []
+          r = vtkRenderers.GetNextItem()
+          self.SetRenderWindow(self.canvas.backend.renWin)
+          while r is not None:
+            renderers.append(wrapVTKModule('vtkRenderer',r))
+            r = vtkRenderers.GetNextItem()
+          QVTKWidget.updateContents(self,(renderers,None,[],self.interactorStyle,None))
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
         
         #make sure reparented windows stay invisible
-        for windowId in reparentedVCSWindows:
-            reparentedVCSWindows[windowId].setVisible(False)
+        #for windowId in reparentedVCSWindows:
+        #    reparentedVCSWindows[windowId].setVisible(False)
         
     def get_graphics_method(self, plotType, gmName):
         method_name = "get"+str(plotType).lower()
