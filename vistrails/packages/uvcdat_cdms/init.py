@@ -399,6 +399,12 @@ class CDMSVariable(Variable):
             cdutil.times.setTimeBoundsDaily(var,val)
         return var
     
+def wrapVTKModule(classname,instance):
+  registry = get_module_registry()
+  result = registry.get_descriptor_by_name('edu.utah.sci.vistrails.vtk',classname).module()
+  result.vtkInstance = instance
+  return result
+
 class CDMSVariableOperation(Module):
     _input_ports = expand_port_specs([("varname", "basic:String"),
                                       ("python_command", "basic:String"),
@@ -1103,9 +1109,11 @@ class CDMSColorMap(Module):
             module.add_function(f)
         return module
      
-class CDMSCell(SpreadsheetCell, PersistentVisualizationModule):
+class CDMSCell(SpreadsheetCell):
     _input_ports = expand_port_specs([("plot", "CDMSPlot")])
-
+    def __init__(self,*args,**kargs):
+        print "INIT CELL WITH:",args,kargs
+        SpreadsheetCell.__init__(self)
     def compute(self):
         input_ports = []
         plots = []
@@ -1173,7 +1181,45 @@ class QCDATWidget(QVTKWidget):
                 k[d]=slice(i,None)
         return k
     
-    def updateContents(self, inputPorts, fromToolBar=False):
+    def updateContents(self,*args,**kargs):
+      return self.updateContentsNoVCS(*args,**kargs)
+
+    def updateContentsNoVCS(self,inputPorts,fromToolBar=False):
+      renWin = self.GetRenderWindow()
+      ren = vtk.vtkRenderer()
+      S=vtk.vtkSphereSource()
+      M= vtk.vtkPolyDataMapper()
+      M.SetInputConnection(S.GetOutputPort())
+      A=vtk.vtkActor()
+      A.SetMapper(M)
+      ren.AddActor(A)
+      renWin.AddRenderer(ren)
+      renderers = []
+      renderers.append(wrapVTKModule('vtkRenderer',ren))
+      QVTKWidget.updateContents(self,(renderers,None,[],None,None))
+      
+    def updateContents1( self, inputPorts, fromToolBar=False):
+        print "Input ports:",inputPorts
+        #self.SetRendererWindow(self.canvas.backend.renWin)
+        print "Ok here the rendewindow is:",self.GetRenderWindow()
+        self.SetRenderWindow(self.canvas.backend.renWin)
+        print "Ok here the rendewindow is actually:",self.GetRenderWindow()
+        txt = self.canvas.createtext()
+        txt.x = .5
+        txt.y = .5
+        txt.string = "Hello you!"
+        vtkRenderers = self.canvas.backend.renWin.GetRenderers()
+        vtkRenderers.InitTraversal()
+        renderers = []
+        r = vtkRenderers.GetNextItem()
+        self.SetRenderWindow(self.canvas.backend.renWin)
+        while r is not None:
+          renderers.append(wrapVTKModule('vtkRenderer',r))
+          r = vtkRenderers.GetNextItem()
+          print "Renderers:",renderers
+        QVTKWidget.updateContents(self,(renderers,None,[],None,None))
+
+    def updateContents2(self, inputPorts, fromToolBar=False):
         """ Get the vcs canvas, setup the cell's layout, and plot """      
         global reparentedVCSWindows
               
