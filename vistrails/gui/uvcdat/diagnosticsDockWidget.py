@@ -719,8 +719,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                   res30 = res[ires]
                   print 'res[', ires,']: \'', res30,'\''
                else:
-#                  res30 = None
-                  res30 = metrics.frontend.uvcdat.uvc_zero_plotspec()
+                  res30 = None
+#                  res30 = metrics.frontend.uvcdat.uvc_zero_plotspec()
                self.displayCell(res30, row, col)
                ires += 1
 
@@ -730,8 +730,14 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       projectController.clear_cell(sheet, row, column)
       projectController.enable_animation = False  # I (JfP) don't know why I need this, it didn't
                                                   # used to be necessary.
+      clearmeagain = False
       if res30 is None:
-         return
+         # We should just return, but the above clear_cell doesn't have a visible effect.
+         # The following "zero plot" works as a substitute - except that clicking on
+         # it causes a segfault.  Another clear_cell would fix that...
+         res30 = metrics.frontend.uvcdat.uvc_zero_plotspec()
+         clearmeagain = True
+         #return
       pvars = res30.vars
       labels = res30.labels
       title = res30.title
@@ -742,7 +748,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       print "presentation:",presentation
       print "x min,max:",presentation.datawc_x1, presentation.datawc_x2
       print "y min,max:",presentation.datawc_y1, presentation.datawc_y2
-#      print "res",res30.type
+      print "res",res30.type," clearmeagain=",clearmeagain
       #define where to drag and drop
       import cdms2
       from packages.uvcdat_cdms.init import CDMSVariable
@@ -771,12 +777,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       # jfp ...end of temporary title-fixup section.
       
       for V in pvars:
-         # We really need to fix the 2-line plots.  Scale so that both variables use the
-         # same axes!  The Diagnostics package can provide upper and lower bounds for the
-         # axes (important for a composite plot) and the graphics should follow that.
-         # That's for contour (Isofill) as well as line (Yxvsx) and other plots.
-         #V[0]=220  # temporary kludge for TREFHT, plot set 3
-         #V[1]=305  # temporary kludge for TREFHT, plot set 3
          # Until I know better storing vars in tempfile....
          f = tempfile.NamedTemporaryFile()
          filename = f.name
@@ -809,16 +809,16 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          #d = _app.uvcdatWindow.dockPlot
          # simulate drop plot
          pm = projectController.plot_manager
-         print "pm._plot_list keys=", pm._plot_list.keys()
+         #print "pm._plot_list keys=", pm._plot_list.keys()
          V=pm._plot_list["VCS"]
-         print "V.keys=", V.keys()
+         #print "V.keys=", V.keys()
          gm = res30.presentation
          from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
          from gui.uvcdat.uvcdatCommons import gmInfos
          Gtype = res30.type
          G = V[Gtype]
-         print "G:",G.keys()
-         print get_canvas().listelements(Gtype.lower())
+         #print "G:",G.keys()
+         #print get_canvas().listelements(Gtype.lower())
          if not gm.name in G.keys():
             G[gm.name] = pm._registry.add_plot(gm.name,"VCS",None,None,Gtype)
             G[gm.name].varnum = int(gmInfos[Gtype]["nSlabs"])
@@ -837,6 +837,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          #plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
          plotDropInfo = (plot, sheet, row, column)
          projectController.plot_was_dropped(plotDropInfo)
+      if clearmeagain:  # work around problems with clear_cell not working right
+         projectController.clear_cell(sheet, row, column)
 
 
    def cancelClicked(self):
