@@ -2009,17 +2009,19 @@ class PersistentVisualizationModule( PersistentModule ):
             if self.renwin <> None:
                 iren = self.renwin.GetInteractor() 
                 if ( iren <> None ) and not self.isConfigStyle( iren ):
-                    if ( iren <> self.iren ):
-                        if self.iren == None: 
-                            self.addObserver( self.renwin,"AbortCheckEvent", CheckAbort)
-                        self.iren = iren
-                        self.activateWidgets( self.iren )                                  
+                    if ( iren <> self.iren ): self.iren = iren   
+                    self.activateWidgets( self.iren )                                                      
+                    for configurableFunction in self.configurableFunctions.values():
+                        configurableFunction.activateWidget( iren )
+                    if not self.renwin.HasObserver( "AbortCheckEvent" ):
+                        print "Activate Event, iren = %x, renderer = %s, renwin = %x  " % ( id( iren ), id( self.renderer ), id( self.renwin ) )
+                        self.addObserver( self.renwin,"AbortCheckEvent", CheckAbort)
                         self.addObserver( self.iren, 'CharEvent', self.setInteractionState )                   
-                        self.addObserver( self.iren, 'MouseMoveEvent', self.updateLevelingEvent )
-#                        self.addObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
-                        self.addObserver( self.iren, 'AnyEvent', self.onAnyEvent )  
-#                        self.addObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
-#                        self.addObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
+    #                        self.addObserver( self.iren, 'MouseMoveEvent', self.updateLevelingEvent )
+    #                        self.addObserver( 'LeftButtonReleaseEvent', self.finalizeLevelingEvent )
+    #                        self.addObserver( self.iren, 'AnyEvent', self.onAnyEvent )  
+    #                        self.addObserver( 'MouseWheelForwardEvent', self.refineLevelingEvent )     
+    #                        self.addObserver( 'MouseWheelBackwardEvent', self.refineLevelingEvent )     
                         self.addObserver( self.iren, 'CharEvent', self.onKeyPress )
                         self.addObserver( self.iren, 'KeyReleaseEvent', self.onKeyRelease )
                         self.addObserver( self.iren, 'LeftButtonPressEvent', self.onLeftButtonPress )
@@ -2028,9 +2030,7 @@ class PersistentVisualizationModule( PersistentModule ):
                         self.addObserver( self.iren, 'LeftButtonReleaseEvent', self.onLeftButtonRelease )
                         self.addObserver( self.iren, 'RightButtonReleaseEvent', self.onRightButtonRelease )
                         self.addObserver( self.iren, 'RightButtonPressEvent', self.onRightButtonPress )
-                        for configurableFunction in self.configurableFunctions.values():
-                            configurableFunction.activateWidget( iren )
-                    self.updateInteractor()  
+                        self.updateInteractor()  
     
     def addObserver( self, target, event, observer ):
         self.observerTargets.add( target ) 

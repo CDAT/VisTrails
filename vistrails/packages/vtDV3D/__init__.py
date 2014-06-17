@@ -203,7 +203,7 @@ def initialize(*args, **keywords):
     reg.add_output_port( CPCViewer, "pointCloud", AlgorithmOutputModule3D ) 
     CPCViewer.registerConfigurableFunctions( reg )
 
-    reg.add_module( UVIS_Viewer, configureWidgetType=UVIS_ViewerConfigurationWidget, namespace='vtk' )   
+    reg.add_module( UVIS_Viewer, namespace='vtk' )   
     reg.add_input_port( UVIS_Viewer, "pointCloud", AlgorithmOutputModule3D )      
     reg.add_input_port( UVIS_Viewer, "cpcConfigData",   [ ( String, 'serializedConfigData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( UVIS_Viewer, "pointCloud", AlgorithmOutputModule3D ) 

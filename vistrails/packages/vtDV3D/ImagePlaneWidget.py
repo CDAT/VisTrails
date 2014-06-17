@@ -410,7 +410,7 @@ class ImagePlaneWidget:
         
 #----------------------------------------------------------------------------
 
-    def HaltNavigationInteraction(self):   
+    def HaltNavigationInteraction(self): 
         self.Interactor.SetInteractorStyle( self.ConfigurationInteractorStyle )  
 #        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )        
 
