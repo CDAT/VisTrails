@@ -5,7 +5,8 @@ try:
 except:
     import pickle
 
-from cdatguiwrap import VCSQtManager
+#from cdatguiwrap import VCSQtManager
+from packages.vtk.vtkcell import QVTKWidget, QVTKWidgetToolBar, VTKCell
 import vcs
 import genutil
 import cdutil
@@ -32,10 +33,11 @@ from gui.application import get_vistrails_application
 from gui.uvcdat.theme import UVCDATTheme
 from gui.uvcdat.cdmsCache import CdmsCache
 import gui.uvcdat.regionExtractor #for certain toPython commands
+import vtk
+from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 
 canvas = None
 original_gm_attributes = {}
-reparentedVCSWindows = {}
 
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
@@ -396,6 +398,12 @@ class CDMSVariable(Variable):
             cdutil.times.setTimeBoundsDaily(var,val)
         return var
     
+def wrapVTKModule(classname,instance):
+  registry = get_module_registry()
+  result = registry.get_descriptor_by_name('edu.utah.sci.vistrails.vtk',classname).module()
+  result.vtkInstance = instance
+  return result
+
 class CDMSVariableOperation(Module):
     _input_ports = expand_port_specs([("varname", "basic:String"),
                                       ("python_command", "basic:String"),
@@ -1103,7 +1111,8 @@ class CDMSColorMap(Module):
      
 class CDMSCell(SpreadsheetCell):
     _input_ports = expand_port_specs([("plot", "CDMSPlot")])
-
+    def __init__(self,*args,**kargs):
+        SpreadsheetCell.__init__(self)
     def compute(self):
         input_ports = []
         plots = []
@@ -1113,7 +1122,7 @@ class CDMSCell(SpreadsheetCell):
         input_ports.append(plots)
         self.cellWidget = self.displayAndWait(QCDATWidget, input_ports)
 
-class QCDATWidget(QCellWidget):
+class QCDATWidget(QVTKWidget):
     """ QCDATWidget is the spreadsheet cell widget where the plots are displayed.
     The widget interacts with the underlying C++, VCSQtManager through SIP.
     This enables QCDATWidget to get a reference to the Qt MainWindow that the
@@ -1132,34 +1141,38 @@ class QCDATWidget(QCellWidget):
                     "Postscript file (*.ps)",
                     "SVG file (*.svg)"]
 
-    startIndex = 2 #this should be the current number of canvas objects created 
-    maxIndex = 6
-    usedIndexes = []
+    #startIndex = 2 #this should be the current number of canvas objects created 
+    #maxIndex = 9999999999
+    #usedIndexes = []
     
     def __init__(self, parent=None):
-        QCellWidget.__init__(self, parent)
-        self.toolBarType = QCDATWidgetToolBar
+        QVTKWidget.__init__(self, parent)
+        #self.toolBarType = QCDATWidgetToolBar
         self.window = None
         self.canvas =  None
-        self.windowId = -1
-        layout = QtGui.QVBoxLayout()
-        self.setLayout(layout) 
-         
+        #self.windowId = -1
+        self.createCanvas()
+        #layout = QtGui.QVBoxLayout()
+        #self.setLayout(layout) 
+        
     def createCanvas(self):
-        windowIndex = self.startIndex
-        while (windowIndex in QCDATWidget.usedIndexes and 
-                   windowIndex <= QCDATWidget.maxIndex):
-            windowIndex += 1
-        if windowIndex > QCDATWidget.maxIndex:
-            raise ModuleError(self, "Maximum number of vcs.Canvas objects achieved.\
-Please delete unused CDAT Cells in the spreadsheet.")
-        else:
-            if windowIndex > len(vcs.canvaslist):
-                self.canvas = vcs.init()
-            else:
-                self.canvas = vcs.canvaslist[windowIndex-1]
-            self.windowId = windowIndex
-            QCDATWidget.usedIndexes.append(self.windowId)
+        if self.canvas is not None:
+          return
+        
+        self.canvas = vcs.init(backend=self.GetRenderWindow())
+        ren = vtk.vtkRenderer()
+        r,g,b = self.canvas.backgroundcolor
+        ren.SetBackground(r/255.,g/255.,b/255.)
+        self.canvas.backend.renWin.AddRenderer(ren)
+        self.canvas.backend.createDefaultInteractor()
+        i = self.canvas.backend.renWin.GetInteractor()
+        i.RemoveObservers("ConfigureEvent")
+        try:
+          i.RemoveObservers("ModifiedEvent")
+        except:
+          pass
+        i.AddObserver("ModifiedEvent",self.canvas.backend.configureEvent)
+
 
     def prepExtraDims(self,var):
         k={}
@@ -1170,13 +1183,13 @@ Please delete unused CDAT Cells in the spreadsheet.")
     
     def updateContents(self, inputPorts, fromToolBar=False):
         """ Get the vcs canvas, setup the cell's layout, and plot """      
-        global reparentedVCSWindows
               
         spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         spreadsheetWindow.setUpdatesEnabled(False)
         # Set the canvas
         # if inputPorts[0] is not None:
         #     self.canvas = inputPorts[0]
+        #self.window = self.canvas
         if self.canvas is None:
             try:
                 self.createCanvas()
@@ -1184,22 +1197,22 @@ Please delete unused CDAT Cells in the spreadsheet.")
                 spreadsheetWindow.setUpdatesEnabled(True)
                 raise e
         #print self.windowId, self.canvas
-        if self.window is not None:
-            self.layout().removeWidget(self.window)
             
         #get reparented window if it's there
-        if self.windowId in reparentedVCSWindows:
-            self.window = reparentedVCSWindows[self.windowId]
-            del reparentedVCSWindows[self.windowId]
-        else:
-            self.window = VCSQtManager.window(self.windowId)
+        #if self.windowId in reparentedVCSWindows:
+        #    self.window = reparentedVCSWindows[self.windowId]
+        #    del reparentedVCSWindows[self.windowId]
+        #else:
+        #    print "yes we come here"
+        #    self.window = self.canvas
+        #pass
             
-        self.layout().addWidget(self.window)
-        self.window.setVisible(True)    
+        #self.layout().addWidget(self.window)
+        #self.window.setVisible(True)    
         # Place the mainwindow that the plot will be displayed in, into this
         # cell widget's layout
            
-        self.canvas.clear()
+        #self.canvas.clear()
         if not fromToolBar:
             self.extraDimsNames=inputPorts[0][0].var.var.getAxisIds()[:-2]
             self.extraDimsIndex=[0,]*len(self.extraDimsNames)
@@ -1231,8 +1244,7 @@ Please delete unused CDAT Cells in the spreadsheet.")
                             setattr(cgm,k,eval(getattr(plot,k)))
                         else:
                             if getattr(plot,k)!=getattr(cgm,k):
-                                #print "Setting:",k,getattr(plot,k)
-                                setattr(cgm,k,getattr(plot,k))
+                                setattr(cgm,k,eval(getattr(plot,k)))
                         #print k, " = ", getattr(cgm,k)
                             
             kwargs = plot.kwargs
@@ -1266,13 +1278,23 @@ Please delete unused CDAT Cells in the spreadsheet.")
             except Exception, e:
                 spreadsheetWindow.setUpdatesEnabled(True)
                 raise e
-            
+        doInteractorStyle = False
+        if doInteractorStyle:
+          vtkRenderers = self.canvas.backend.renWin.GetRenderers()
+          vtkRenderers.InitTraversal()
+          renderers = []
+          r = vtkRenderers.GetNextItem()
+          self.SetRenderWindow(self.canvas.backend.renWin)
+          while r is not None:
+            renderers.append(wrapVTKModule('vtkRenderer',r))
+            r = vtkRenderers.GetNextItem()
+          QVTKWidget.updateContents(self,(renderers,None,[],self.interactorStyle,None))
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
         
         #make sure reparented windows stay invisible
-        for windowId in reparentedVCSWindows:
-            reparentedVCSWindows[windowId].setVisible(False)
+        #for windowId in reparentedVCSWindows:
+        #    reparentedVCSWindows[windowId].setVisible(False)
         
     def get_graphics_method(self, plotType, gmName):
         method_name = "get"+str(plotType).lower()
@@ -1284,21 +1306,19 @@ Please delete unused CDAT Cells in the spreadsheet.")
         deallocating. Overriding PyQt deleteLater to free up
         resources
         """
-        global reparentedVCSWindows
         #we need to re-parent self.window or it will be deleted together with
         #this widget. We'll put it on the mainwindow
         _app = get_vistrails_application()
-        if self.window is not None:
-            if hasattr(_app, 'uvcdatWindow'):
-                self.window.setParent(_app.uvcdatWindow)
-            else: #uvcdatWindow is not setup when running in batch mode
-                self.window.setParent(QtGui.QApplication.activeWindow())
-            self.window.setVisible(False)
-            reparentedVCSWindows[self.windowId] = self.window
+        #if self.window is not None:
+        #    if hasattr(_app, 'uvcdatWindow'):
+        #        self.window.setParent(_app.uvcdatWindow)
+        #    else: #uvcdatWindow is not setup when running in batch mode
+        #        self.window.setParent(QtGui.QApplication.activeWindow())
+        #    self.window.setVisible(False)
+            #reparentedVCSWindows[self.windowId] = self.window
         self.canvas = None
-        self.window = None
+        #self.window = None
         
-        QCDATWidget.usedIndexes.remove(self.windowId)
         QCellWidget.deleteLater(self)    
         
     def dumpToFile(self, filename):
