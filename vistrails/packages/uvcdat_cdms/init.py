@@ -1048,6 +1048,7 @@ class CDMSPlot(Plot, NotCacheable):
     def get_initial_values(klass, gmName):
         global original_gm_attributes
         return original_gm_attributes[klass.plot_type][gmName]
+            
 #        cgm = CDMSPlot.get_canvas_graphics_method(klass.plot_type, gmName)
 #        attribs = {}
 #        for attr in klass.gm_attributes:
@@ -1935,6 +1936,8 @@ def get_gm_attributes(plot_type):
                 'referencevalue','arrowlength','arrowangle','arrowbase',
                 'xmtics1', 'xticlabels1', 'ymtics1', 
                 'yticlabels1','cmtics1', 'cticlabels1', 'Marker']
+    else:
+        print "Unable to get gm attributes for plot type %s" % plot_type
     
 def get_canvas():
     global canvas
