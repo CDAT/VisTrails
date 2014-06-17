@@ -734,7 +734,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       if res30 is None:
          # We should just return, but the above clear_cell doesn't have a visible effect.
          # The following "zero plot" works as a substitute - except that clicking on
-         # it causes a segfault.  Another clear_cell would fix that...
+         # it causes a segfault.  Maybe another clear_cell would help...
          res30 = metrics.frontend.uvcdat.uvc_zero_plotspec()
          clearmeagain = True
          #return
