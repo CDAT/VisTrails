@@ -720,24 +720,17 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                   print 'res[', ires,']: \'', res30,'\''
                else:
                   res30 = None
-#                  res30 = metrics.frontend.uvcdat.uvc_zero_plotspec()
                self.displayCell(res30, row, col)
                ires += 1
 
    def displayCell(self, res30, row, column, sheet="Sheet 1"):
       """Display result into one cell defined by row/col args"""
       projectController = self.parent().get_current_project_controller()
-      projectController.clear_cell(sheet, row, column)
+      projectController.get_sheet_widget(sheet).deleteCell(row,column)
       projectController.enable_animation = False  # I (JfP) don't know why I need this, it didn't
                                                   # used to be necessary.
-      clearmeagain = False
       if res30 is None:
-         # We should just return, but the above clear_cell doesn't have a visible effect.
-         # The following "zero plot" works as a substitute - except that clicking on
-         # it causes a segfault.  Maybe another clear_cell would help...
-         res30 = metrics.frontend.uvcdat.uvc_zero_plotspec()
-         clearmeagain = True
-         #return
+         return
       pvars = res30.vars
       labels = res30.labels
       title = res30.title
@@ -748,7 +741,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       print "presentation:",presentation
       print "x min,max:",presentation.datawc_x1, presentation.datawc_x2
       print "y min,max:",presentation.datawc_y1, presentation.datawc_y2
-      print "res",res30.type," clearmeagain=",clearmeagain
+      print "res",res30.type
       #define where to drag and drop
       import cdms2
       from packages.uvcdat_cdms.init import CDMSVariable
@@ -837,9 +830,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          #plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
          plotDropInfo = (plot, sheet, row, column)
          projectController.plot_was_dropped(plotDropInfo)
-      if clearmeagain:  # work around problems with clear_cell not working right
-         projectController.clear_cell(sheet, row, column)
-
 
    def cancelClicked(self):
         self.close()
