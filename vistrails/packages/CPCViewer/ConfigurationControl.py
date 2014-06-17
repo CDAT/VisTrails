@@ -34,6 +34,18 @@ from ROISelection import ROIControl
 import vtk.util.numpy_support as VN
 import numpy
 
+def kill_all_zombies():
+#                                              Cleanup abandoned processes
+    import subprocess, signal    
+    proc_specs = subprocess.check_output('ps').split('\n')
+    for proc_spec in proc_specs:
+        if 'CPCViewer' in proc_spec or 'uvcdat' in proc_spec:
+            pid = int( proc_spec.split()[0] )
+            if pid <> os.getpid():
+                os.kill( pid, signal.SIGKILL )
+                print "Killing proc: ", proc_spec
+
+
 def isNone(obj):
     return ( id(obj) == id(None) )
 
@@ -934,17 +946,17 @@ class ConfigurationWidget(QtGui.QWidget):
         cparm = self.cfgManager.addParameter( self.GeometryCatIndex, "Vertical Variable", choices = vertical_vars, init_index=0  )
         self.addConfigControl( self.GeometryCatIndex, RadioButtonSelectionControl( cparm ) )
 
-        self.AnalysisCatIndex = self.addCategory( 'Analysis' )
-        cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "Animation" )
-        self.addConfigControl( self.AnalysisCatIndex, AnimationControl( cparm ) )
-        cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "InfoGrid" )
-        igc = InfoGridControl( self.cfgManager, self.point_collection, cparm, self.AnalysisCatIndex )
-        igc.setExternalParameter( defvar, thresh_cparm )
-        self.addConfigControl( self.AnalysisCatIndex, igc )
+#         self.AnalysisCatIndex = self.addCategory( 'Analysis' )
+#         cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "Animation" )
+#         self.addConfigControl( self.AnalysisCatIndex, AnimationControl( cparm ) )
+#         cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "InfoGrid" )
+#         igc = InfoGridControl( self.cfgManager, self.point_collection, cparm, self.AnalysisCatIndex )
+#         igc.setExternalParameter( defvar, thresh_cparm )
+#         self.addConfigControl( self.AnalysisCatIndex, igc )
 
-        cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "Timeseries" )
-        tsc = TimeseriesPlotControl( self.cfgManager, self.point_collection, cparm, self.AnalysisCatIndex )
-        self.addConfigControl( self.AnalysisCatIndex, tsc )
+#         cparm = self.cfgManager.addParameter( self.AnalysisCatIndex, "Timeseries" )
+#         tsc = TimeseriesPlotControl( self.cfgManager, self.point_collection, cparm, self.AnalysisCatIndex )
+#         self.addConfigControl( self.AnalysisCatIndex, tsc )
         
     def saveConfig(self):
         self.cfgManager.saveConfig()

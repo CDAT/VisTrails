@@ -7,7 +7,7 @@ Created on Nov 26, 2013
 import sys
 import os.path
 from PyQt4 import QtCore, QtGui
-from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
+from packages.CPCViewer.ConfigurationControl import kill_all_zombies
 from packages.CPCViewer.PointCloudViewer import CPCPlot, QVTKAdaptor
 from packages.CPCViewer.ControlPanel import CPCConfigGui
 

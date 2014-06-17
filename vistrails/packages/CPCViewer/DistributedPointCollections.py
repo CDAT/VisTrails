@@ -305,7 +305,12 @@ class vtkPointCloud(QtCore.QObject):
     def updateScalars( self, **args ):
         if isNone(self.vardata):
             wait = args.get( 'wait', True ) 
-            if wait: self.waitForData( ExecutionDataPacket.VARDATA )
+            if wait: 
+                try:
+                    self.waitForData( ExecutionDataPacket.VARDATA )
+                except:
+                    print " updateScalars "
+                    return
             else: return
         vtk_color_data = numpy_support.numpy_to_vtk( self.vardata ) 
         vtk_color_data.SetName( 'vardata' )       
@@ -317,7 +322,12 @@ class vtkPointCloud(QtCore.QObject):
     def initPoints( self, **args ):
         if isNone(self.np_points_data):
             wait = args.get( 'wait', True ) 
-            if wait: self.waitForData( ExecutionDataPacket.POINTS )
+            if wait: 
+                try: 
+                    self.waitForData( ExecutionDataPacket.POINTS )
+                except: 
+                    print " initPoints "
+                    return
             else: return
         vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data )    
         vtk_points_data.SetNumberOfComponents( 3 )
@@ -911,22 +921,6 @@ class vtkPartitionedPointCloud( QtCore.QObject ):
     def postDataQueueEvent( self ):
         QtCore.QCoreApplication.postEvent( self, QtCore.QTimerEvent( self.dataQueueTimer ) ) 
     
-
-def kill_all_zombies():
-#                                              Cleanup abandoned processes
-    import subprocess, signal    
-    proc_specs = subprocess.check_output('ps').split('\n')
-    for proc_spec in proc_specs:
-        if 'CPCViewer' in proc_spec or 'uvcdat' in proc_spec:
-            pid = int( proc_spec.split()[0] )
-            if pid <> os.getpid():
-                os.kill( pid, signal.SIGKILL )
-                print "Killing proc: ", proc_spec
-      
-if __name__ == '__main__':
-    
-    kill_all_zombies()
-
     
         
         

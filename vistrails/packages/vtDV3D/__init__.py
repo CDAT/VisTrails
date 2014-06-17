@@ -95,11 +95,14 @@ def initialize(*args, **keywords):
     from packages.vtDV3D.UVIS_Viewer import UVIS_Viewer, UVIS_ViewerConfigurationWidget
     from packages.spreadsheet.basic_widgets import CellLocation
     from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
-    from packages.CPCViewer.PointCloudViewer import CPCPlot, kill_all_zombies
+    from packages.CPCViewer.PointCloudViewer import CPCPlot
+    from packages.CPCViewer.ConfigurationControl import kill_all_zombies
     from core import command_line
     import api
     get = command_line.CommandLineParser().get_option
-    if get('kill_all_zombies') != None: kill_all_zombies()  
+    if get('kill_all_zombies') != None: 
+        print "Killing all zombies"
+        kill_all_zombies()  
           
     reg = core.modules.module_registry.get_module_registry()   
     vtkAlgorithmOutputType = typeMap('vtkAlgorithmOutput')
@@ -204,7 +207,7 @@ def initialize(*args, **keywords):
     reg.add_input_port( UVIS_Viewer, "pointCloud", AlgorithmOutputModule3D )      
     reg.add_input_port( UVIS_Viewer, "cpcConfigData",   [ ( String, 'serializedConfigData' ), ( Integer, 'version' ) ], True   ) 
     reg.add_output_port( UVIS_Viewer, "pointCloud", AlgorithmOutputModule3D ) 
-    CPCViewer.registerConfigurableFunctions( reg )
+    UVIS_Viewer.registerConfigurableFunctions( reg )
 
     reg.add_module( CDMS_VolumeReader, configureWidgetType=CDMS_VolumeReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_VolumeReader, "dataset", CDMSDataset )      

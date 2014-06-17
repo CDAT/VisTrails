@@ -18,6 +18,7 @@ import numpy.core.umath as umath
 import numpy as np
 packagePath = os.path.dirname( __file__ ) 
 resourcePath = os.path.join( packagePath,  'resources')
+NavigationInteractorStyle = None
 
 VTK_CURSOR_ACTION       = 0
 VTK_SLICE_MOTION_ACTION = 1
@@ -26,7 +27,7 @@ VTK_WINDOW_LEVEL_ACTION = 2
 VTK_NO_MODIFIER         = 0
 VTK_SHIFT_MODIFIER      = 1
 VTK_CONTROL_MODIFIER    = 2        
-VTK_BACKGROUND_COLOR = ( 1.0, 1.0, 1.0 )
+VTK_BACKGROUND_COLOR = ( 1.0, 1.0, 0.0 )
 VTK_FOREGROUND_COLOR = ( 0.0, 0.0, 0.0 )
 VTK_TITLE_SIZE = 14
 VTK_NOTATION_SIZE = 14

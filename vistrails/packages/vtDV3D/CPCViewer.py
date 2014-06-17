@@ -7,7 +7,8 @@ from packages.vtDV3D.PersistentModule import *
 from packages.CPCViewer.PointCloudViewer import CPCPlot
 from packages.CPCViewer.ConfigurationControl import ConfigurationWidget
 from packages.vtDV3D.CDMS_VariableReaders import  CDMSReaderConfigurationWidget
-from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
+from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper   
+from packages.CPCViewer.MultiVarPointCollection import InterfaceType         
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
@@ -77,10 +78,12 @@ class PM_CPCViewer(PersistentVisualizationModule):
         PersistentVisualizationModule.activateEvent( self, caller, event )
         if self.renwin <> None:
             if self.plotter == None:
-                self.plotter = CPCPlot( self.renwin ) 
+                self.plotter = CPCPlot() 
                 op = None
+                interface = InterfaceType.InfoVis
+                roi = None # ( 0, 0, 50, 50 )
                 grid_specs = ( None, None, None, self.height_varname) 
-                self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, grid_specs, op ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
+                self.plotter.init( init_args = ( self.grid_file, self.data_file, interface, self.varname, grid_specs, op, roi ), n_overview_points=self.n_overview_points, renwin=self.renwin ) # , n_subproc_points=100000000 )
                 self.getConfigWidget()
                 DV3DPipelineHelper.denoteCPCViewer( self.moduleID )
                 app = get_vistrails_application()
@@ -95,7 +98,7 @@ class PM_CPCViewer(PersistentVisualizationModule):
         
     def addConfigurableFunctions( self ):
         if PM_CPCViewer.PortSpecs == None:
-            config_widget = ConfigurationWidget()
+            config_widget = ConfigurationWidget( None, self.plotter.point_cloud_overview.getPointCollection() )
             config_widget.build()
             PM_CPCViewer.PortSpecs = config_widget.cfgManager.getPersistentParameterSpecs()
         for port_spec in PM_CPCViewer.PortSpecs:
@@ -105,17 +108,18 @@ class PM_CPCViewer(PersistentVisualizationModule):
             self.configurableFunctions[name] = ConfigurableFunction( name, signature )
                        
     def getConfigWidget( self ):
-        self.config_widget = ConfigurationWidget()
+        self.config_widget = ConfigurationWidget( None, self.plotter.point_cloud_overview.getPointCollection() )
         self.config_widget.build()
         QObject.connect( self.config_widget, QtCore.SIGNAL("ConfigCmd"), self.plotter.processConfigCmd )
         QObject.connect( self.config_widget, QtCore.SIGNAL("Close"), self.closeCPCWidget )
     #    configDialog.connect( g, QtCore.SIGNAL("UpdateGui"), configDialog.externalUpdate )
-        for port_spec in PM_CPCViewer.PortSpecs:
-            pname = port_spec[0]
-            parm_values = self.getInputValue( pname )
-            if parm_values <> None:
-#                print "*** Initialize Parameter %s: %s " % ( pname, str(parm_values) );
-                self.config_widget.initialize( pname, parm_values )
+        if PM_CPCViewer.PortSpecs <> None:
+            for port_spec in PM_CPCViewer.PortSpecs:
+                pname = port_spec[0]
+                parm_values = self.getInputValue( pname )
+                if parm_values <> None:
+    #                print "*** Initialize Parameter %s: %s " % ( pname, str(parm_values) );
+                    self.config_widget.initialize( pname, parm_values )
         self.config_widget.activate()
         sys.stdout.flush()
         return self.config_widget

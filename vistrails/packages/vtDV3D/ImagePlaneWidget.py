@@ -1,6 +1,6 @@
 
 import vtk, sys, gc
-from vtUtilities import versionAgnosticSetInput
+from vtUtilities import NavigationInteractorStyle, versionAgnosticSetInput
 
 VTK_NEAREST_RESLICE = 0
 VTK_LINEAR_RESLICE  = 1
@@ -410,15 +410,13 @@ class ImagePlaneWidget:
         
 #----------------------------------------------------------------------------
 
-    def HaltNavigationInteraction(self):
-        if self.NavigationInteractorStyle == None:
-            self.NavigationInteractorStyle = self.Interactor.GetInteractorStyle()       
+    def HaltNavigationInteraction(self):   
         self.Interactor.SetInteractorStyle( self.ConfigurationInteractorStyle )  
 #        print " ~~~~~~~~~SS SetInteractorStyle: configurationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )        
 
     def ResetNavigationInteraction(self):
-        if self.NavigationInteractorStyle <> None:    
-            self.Interactor.SetInteractorStyle( self.NavigationInteractorStyle )  
+        if NavigationInteractorStyle <> None:    
+            self.Interactor.SetInteractorStyle( NavigationInteractorStyle )  
 #        print " ~~~~~~~~~ES SetInteractorStyle: navigationInteractorStyle: %s %x " % ( self.Interactor.GetInteractorStyle().__class__.__name__, id(self.Interactor) )         
 
 #----------------------------------------------------------------------------

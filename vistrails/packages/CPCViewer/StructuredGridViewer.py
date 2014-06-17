@@ -33,7 +33,6 @@ import sys, vtk, cdms2, traceback, os, cdtime
 from packages.CPCViewer.ColorMapManager import *  
 from packages.CPCViewer.ImagePlaneWidget import ImagePlaneWidget 
 from packages.CPCViewer.Shapefile import shapeFileReader     
-from packages.CPCViewer.DistributedPointCollections import kill_all_zombies
 from packages.CPCViewer.DV3DPlot import  *
 from packages.CPCViewer.StructuredGridConfiguration import *
  

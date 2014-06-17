@@ -9,7 +9,7 @@ from gui.qt import qt_super
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_base import StandardSheetReference, StandardSingleCellSheetReference
 from packages.vtk.vtkcell import QVTKWidget, QVTKWidgetToolBar
-from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
+from packages.vtDV3D.PersistentModule import PersistentVisualizationModule
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.vtDV3D.CaptionManager import *
 from packages.vtDV3D.WorkflowModule import WorkflowModule
@@ -565,7 +565,10 @@ class PM_DV3DCell( SpreadsheetCell, PersistentVisualizationModule ):
                 if self.cellWidget:
                     self.renWin = self.cellWidget.GetRenderWindow() 
                     self.iren = self.renWin.GetInteractor()
-                    self.navigationInteractorStyle = self.iren.GetInteractorStyle()
+                    NavigationInteractorStyle = self.iren.GetInteractorStyle()
+                    NavigationInteractorStyle.KeyPressActivationOff()
+                    NavigationInteractorStyle.On()
+                    NavigationInteractorStyle.SetEnabled(1)
                     caption_data = self.getInputValue( CaptionManager.config_name, None )
                     self.captionManager = CaptionManager( self.cellWidget, self.iren, data=caption_data )
                     self.connect(self.captionManager, CaptionManager.persist_captions_signal, self.persistCaptions )  
@@ -920,8 +923,9 @@ class PM_MapCell3D( PM_DV3DCell ):
         md = self.getInputSpec().getMetadata()
         if md:
             latLonGrid = md.get( 'latLonGrid', True )
+            if not latLonGrid: return
             self.enableBasemap = self.getInputValue( "enable_basemap", True )
-            if latLonGrid and self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
+            if self.enableBasemap and self.renderers and ( self.newDataset or not self.baseMapActor or PM_MapCell3D.baseMapDirty):
                 if self.baseMapActor <> None: self.renderer.RemoveActor( self.baseMapActor )               
                 world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None 
                 map_border_size = self.getInputValue( "map_border_size", 20  ) # wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
@@ -1100,6 +1104,7 @@ class PM_MapCell3D( PM_DV3DCell ):
         return ( ( lon - self.map_cut ) % 360 ) + self.map_cut
 
     def getBoundedMap( self, baseImage, dataLocation, map_cut_size, map_border_size ):
+        print " @@@ DV3DCell: getBoundedMap "
         baseExtent = baseImage.GetExtent()
         baseSpacing = baseImage.GetSpacing()
         x0 = baseExtent[0]

@@ -1535,7 +1535,6 @@ class PersistentVisualizationModule( PersistentModule ):
         self.observerTargets = set()
         self.stereoEnabled = 0
         self.showInteractiveLens = False
-        self.navigationInteractorStyle = None
         self.configurationInteractorStyle = vtk.vtkInteractorStyleUser()
 
     def enableVisualizationInteraction(self): 
@@ -2243,18 +2242,15 @@ class PersistentVisualizationModule( PersistentModule ):
 
     def haltNavigationInteraction(self):
         if self.iren:
-            istyle = self.iren.GetInteractorStyle()  
-            if self.navigationInteractorStyle == None:
-                self.navigationInteractorStyle = istyle    
             self.iren.SetInteractorStyle( self.configurationInteractorStyle )  
 #            print "\n ---------------------- [%s] halt Navigation: nis = %s, is = %s  ----------------------  \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle)  ) 
     
     def resetNavigation(self):
         if self.iren:
-            if self.navigationInteractorStyle <> None: 
-                self.iren.SetInteractorStyle( self.navigationInteractorStyle )
-            istyle = self.iren.GetInteractorStyle()  
-#            print "\n ---------------------- [%s] reset Navigation: nis = %s, is = %s  ---------------------- \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle) )        
+            if NavigationInteractorStyle <> None: 
+                self.iren.SetInteractorStyle( NavigationInteractorStyle )
+#             istyle = self.iren.GetInteractorStyle()  
+#             print "\n ---------------------- [%s] reset Navigation: nis = %s, is = %s  ---------------------- \n" % ( getClassName(self), getClassName(self.navigationInteractorStyle), getClassName(istyle) )        
             self.enableVisualizationInteraction()
 
     def onModified( self, caller, event ):

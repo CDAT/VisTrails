@@ -3,49 +3,6 @@ Created on Oct 10, 2013
 
 @author: tpmaxwell
 '''
-from __future__ import with_statement
-from __future__ import division
-
-_TRY_PYSIDE = True
-
-try:
-    if not _TRY_PYSIDE:
-        raise ImportError()
-    import PySide.QtCore as _QtCore
-    QtCore = _QtCore
-    USES_PYSIDE = True
-except ImportError:
-    import sip
-    try: sip.setapi('QString', 2)
-    except: pass
-    try: sip.setapi('QVariant', 2)
-    except: pass
-    import PyQt4.QtCore as _QtCore
-    QtCore = _QtCore
-    USES_PYSIDE = False
-
-# def _pyside_import_module(moduleName):
-#     pyside = __import__('PySide', globals(), locals(), [moduleName], -1)
-#     return getattr(pyside, moduleName)
-# 
-# 
-# def _pyqt4_import_module(moduleName):
-#     pyside = __import__('PyQt4', globals(), locals(), [moduleName], -1)
-#     return getattr(pyside, moduleName)
-# 
-# 
-# if USES_PYSIDE:
-#     import_module = _pyside_import_module
-# 
-#     Signal = QtCore.Signal
-#     Slot = QtCore.Slot
-#     Property = QtCore.Property
-# else:
-#     import_module = _pyqt4_import_module
-# 
-#     Signal = QtCore.pyqtSignal
-#     Slot = QtCore.pyqtSlot
-#     Property = QtCore.pyqtProperty
     
 import sys
 import os.path
@@ -63,10 +20,9 @@ def NormalizeLon( lon ):
     while lon < 0: lon = lon + 360
     return lon % 360  
             
-class MapManager( QtCore.QObject ):
+class MapManager:
     
     def __init__(self, **args ):
-        super( MapManager, self ).__init__()  
         self.baseMapActor = None
         self.sphereActor = None
         self.map_opacity = args.get('opacity',0.5)
@@ -75,6 +31,7 @@ class MapManager( QtCore.QObject ):
         self.world_cut = args.get( "world_cut", -1 ) 
         self.enableBasemap = args.get( "enable_basemap", True )
         self.y0 = -90.0 
+        print " @@@ MapManager: create "
 
     def getMapOpacity(self):
         return self.map_opacity
@@ -84,6 +41,7 @@ class MapManager( QtCore.QObject ):
         self.updateMapOpacity() 
         
     def getSphericalMap( self, **args ):
+        print " @@@ MapManager: getSphericalMap "
         thetaResolution = args.get( "thetaRes", 32 )
         phiResolution = args.get( "phiRes", 32 )
         radius = args.get( "radius", 100 )
@@ -92,7 +50,8 @@ class MapManager( QtCore.QObject ):
             self.sphere.SetThetaResolution( thetaResolution )
             self.sphere.SetPhiResolution( phiResolution )
             self.sphere.SetRadius( radius )   
-            self.sphere.SetEndTheta( 359.999 )    
+            self.sphere.SetEndTheta( 359.999 ) 
+            self.sphere.Update()   
             mesh = self.sphere.GetOutput()
             
             self.sphereTexmapper = vtk.vtkTextureMapToSphere()
@@ -128,6 +87,7 @@ class MapManager( QtCore.QObject ):
         
     def build( self, **args ):
         if self.enableBasemap:              
+            print " @@@ MapManager: build "
             world_map =  None                 
             dataPosition = None
             if world_map == None:
@@ -175,6 +135,10 @@ class MapManager( QtCore.QObject ):
             self.baseMapActor.SetOpacity( self.map_opacity )
             mapCorner = [ self.x0, self.y0 ]
             self.baseMapActor.SetPosition( mapCorner[0], mapCorner[1], 0.1 )
+            extent = self.baseImage.GetExtent()
+            print " @@@ baseImage.GetExtent: ", str( extent )
+            print " @@@ baseImage.Position: ", str( self.x0 )
+            print " @@@ baseImage.Size: ", str( map_cut_size )
             if vtk.VTK_MAJOR_VERSION <= 5:  self.baseMapActor.SetInput(self.baseImage)
             else:                           self.baseMapActor.SetInputData(self.baseImage)        
             self.mapCenter = [ self.x0 + map_cut_size[0]/2.0, self.y0 + map_cut_size[1]/2.0 ]  
@@ -258,7 +222,7 @@ class MapManager( QtCore.QObject ):
         return ( ( lon - self.map_cut ) % 360 ) + self.map_cut
 
     def getBoundedMap( self, baseImage, dataLocation, map_cut_size, map_border_size ):
-        baseImage.Update()
+        print " @@@ MapManager: getBoundedMap "
         baseExtent = baseImage.GetExtent()
         baseSpacing = baseImage.GetSpacing()
         x0 = baseExtent[0]
@@ -300,15 +264,16 @@ class MapManager( QtCore.QObject ):
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[0:2] = [ x0 + sliceCoord, x1 ]
             clip1 = vtk.vtkImageClip()
-            clip1.SetInput( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  clip1.SetInput( baseImage )
+            else:                           clip1.SetInputData( baseImage )
             clip1.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             size1 = extent[1] - extent[0] + 1
 #            print "Set Corner pos: %s, cuts: %s " % ( str(self.x0), str( (cut0, cut1) ) )
         
             append = vtk.vtkImageAppend()
             append.SetAppendAxis( 0 )
-            append.AddInput( clip1.GetOutput() )          
-            append.AddInput( clip0.GetOutput() )
+            append.AddInputConnection( clip1.GetOutputPort() )              
+            append.AddInputConnection( clip0.GetOutputPort() )    
             bounded_dims = ( size0 + size1, vertExtent[1] - vertExtent[0] + 1 )
             
             imageInfo.SetInputConnection( append.GetOutputPort() ) 
@@ -327,7 +292,8 @@ class MapManager( QtCore.QObject ):
             sliceCoord = int( round( x0 + sliceSize) )       
             extent[1] = x0 + sliceCoord
             clip = vtk.vtkImageClip()
-            clip.SetInput( baseImage )
+            if vtk.VTK_MAJOR_VERSION <= 5:  clip.SetInput( baseImage )
+            else:                           clip.SetInputData( baseImage )
             clip.SetOutputWholeExtent( extent[0], extent[1], vertExtent[0], vertExtent[1], extent[4], extent[5] )
             bounded_dims = ( extent[1] - extent[0] + 1, vertExtent[1] - vertExtent[0] + 1 )
 #            print "Set Corner pos: %s, dataXLoc: %s " % ( str(self.x0), str( (dataXLoc, selectionDim[0]) ) )
@@ -337,8 +303,8 @@ class MapManager( QtCore.QObject ):
         imageInfo.SetOutputOrigin( 0.0, 0.0, 0.0 )
         imageInfo.SetOutputExtentStart( 0, 0, 0 )
         imageInfo.SetOutputSpacing( baseSpacing[0], baseSpacing[1], baseSpacing[2] )
+        imageInfo.Update()
         
         result = imageInfo.GetOutput() 
-        result.Update()
         return result, bounded_dims
     

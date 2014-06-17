@@ -1730,7 +1730,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             return
         
         cls.currentCPCWidget = None
-        if pname == "Unstructured Grid Visualization":
+        if False:  # pname == "Unstructured Grid Visualization":
             for active_cell in active_cells:               
                 cpc_mid = cls.cpcModules.get( active_cell, None )
                 if cpc_mid:

@@ -51,7 +51,7 @@ import sys, cdms2
 import os.path, traceback
 import vtk, time
 from vtk.qt4.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-from packages.CPCViewer.DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType, kill_all_zombies
+from packages.CPCViewer.DistributedPointCollections import vtkPartitionedPointCloud, vtkLocalPointCloud, ScalarRangeType
 from packages.CPCViewer.ControlPanel import extract_arg, LevelingConfigParameter, POS_VECTOR_COMP, SLICE_WIDTH_HR_COMP, SLICE_WIDTH_LR_COMP
 from packages.CPCViewer.ConfigurationControl import CPCConfigGui 
 from packages.CPCViewer.ColorMapManager import *
@@ -1279,7 +1279,6 @@ class QPointCollectionMgrThread( QtCore.QThread ):
 #     parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CSU", help='input data type')
 #     ns = parser.parse_args( sys.argv )
 #     
-#     kill_all_zombies()
 # 
 #     app = QtGui.QApplication(['Point Cloud Plotter'])
 #     point_size = 1
