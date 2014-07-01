@@ -1243,8 +1243,12 @@ class QCDATWidget(QVTKWidget):
                         if k in ['legend']:
                             setattr(cgm,k,eval(getattr(plot,k)))
                         else:
+                            print "cgm=",cgm,"k=",k,"getattr(plot,k)=",getattr(plot,k)
                             if getattr(plot,k)!=getattr(cgm,k):
-                                setattr(cgm,k,eval(getattr(plot,k)))
+                                try:
+                                    setattr(cgm,k,eval(getattr(plot,k)))
+                                except:
+                                    setattr(cgm,k,getattr(plot,k))
                         #print k, " = ", getattr(cgm,k)
                             
             kwargs = plot.kwargs
@@ -1276,6 +1280,7 @@ class QCDATWidget(QVTKWidget):
             try:
                 self.canvas.plot(cgm,*args,**kwargs)
             except Exception, e:
+                print "cgm=",cgm,"args=",args,"kwargs=",kwargs
                 spreadsheetWindow.setUpdatesEnabled(True)
                 raise e
         doInteractorStyle = False
@@ -1994,6 +1999,7 @@ for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
 
 def initialize(*args, **keywords):
     global original_gm_attributes
+    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>hello, here I am, uvcdat_cdms/init.py!!!!"
     for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
                   'Xyvsy', 'Yxvsx']:

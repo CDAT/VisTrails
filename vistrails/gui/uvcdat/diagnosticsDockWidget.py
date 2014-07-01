@@ -688,7 +688,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             print "Can't plot, plot_set results were None!"
             return None
 
-
         tabcont = self.parent().spreadsheetWindow.get_current_tab_controller()
         for t in tabcont.tabWidgets:
             dim = t.getDimension()
