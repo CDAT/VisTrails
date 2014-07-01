@@ -323,7 +323,152 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         print "Finished"
             
 
-    def cancelClicked(self):
+        tabcont = self.parent().spreadsheetWindow.get_current_tab_controller()
+        for t in tabcont.tabWidgets:
+            dim = t.getDimension()
+            Nrows = dim[0]
+            Ncolumns = dim[1]
+        print 'res returned: \'', res,'\''
+        if type(res) is not list:
+            res = [res]
+        print "***jfp res=",res
+
+        # I'm keeping this old message as a reminder of scrollable panes, a feature which would be
+        # nice to have in the future (but it doesn't work now)...
+        #mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,"This diagnostics generated more rows than the number currently disaplyed by your spreadsheet, don't forget to scroll down")
+
+        print 'Nrows: ', Nrows, 'NCols: ', Ncolumns, 'len(res): ', len(res)
+        if len(res)>Nrows*Ncolumns:
+            msg = "This diagnostics generated a composite of %s simple plots, which is more than your spreadsheet can display."%len(res)
+            mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning, msg, QString(msg))
+            mbox.exec_()
+        print '**************************'
+        print 'res: ', res
+        print '**************************'
+        ires = 0
+        for row in range(Nrows):
+            for col in range(Ncolumns):
+               print 'displaying cell for row, col: ', row, col
+               if ires<len(res):
+                  res30 = res[ires]
+                  print 'res[', ires,']: \'', res30,'\''
+               else:
+                  res30 = None
+               self.displayCell(res30, row, col)
+               ires += 1
+
+   def displayCell(self, res30, row, column, sheet="Sheet 1"):
+      """Display result into one cell defined by row/col args"""
+      projectController = self.parent().get_current_project_controller()
+      projectController.get_sheet_widget(sheet).deleteCell(row,column)
+      projectController.enable_animation = False  # I (JfP) don't know why I need this, it didn't
+                                                  # used to be necessary.
+      if res30 is None:
+         return
+      pvars = res30.vars
+      labels = res30.labels
+      title = res30.title
+      presentation = res30.presentation
+      presentation.list()
+      print "pvars:",[p.id for p in pvars]
+      print "labels:",labels
+      print "title:",title
+      print "presentation:",presentation
+      print "x min,max:",presentation.datawc_x1, presentation.datawc_x2
+      print "y min,max:",presentation.datawc_y1, presentation.datawc_y2
+      print "res",res30.type
+      #define where to drag and drop
+      import cdms2
+      from packages.uvcdat_cdms.init import CDMSVariable
+      from core.utils import InstanceObject
+
+      # jfp The following section is fix up the title, this works around some graphics system design flaws.
+      # jfp It can be deleted when we have a better way to do it, e.g. using a template.
+      # jfp Note in particular that the present graphics system doesn't have a real title line; it just
+      # jfp writes variable information in various places above the plot.
+      # jfp This approach won't work at all if we have more than 2 variables to plot together.
+      # jfp Then there is no alternative to using the title the diagnostics provide...
+      U = pvars[0]
+      U.title = '\n'+title+'\n'   # The graphics package looks at a title attribute of the variable, not the plot!
+      if hasattr(U,'long_name'):
+         U.long_name = '_'+' '*48+U.long_name
+      else:
+         U.title = '_'+' '*48+U.title
+      if len(pvars)==2:
+         V = pvars[1]
+         V.id = U.id+' '+V.id  # important to be different, but also we don't want overwriting
+         if hasattr(U,'long_name'):
+            V.long_name = U.long_name
+         if hasattr(U,'units'):
+            V.units = U.units
+         V.title = U.title
+      # jfp ...end of temporary title-fixup section.
+      
+      for V in pvars:
+         # Until I know better storing vars in tempfile....
+         f = tempfile.NamedTemporaryFile()
+         filename = f.name
+         f.close()
+         fd = cdms2.open(filename,"w")
+         fd.write(V)
+         fd.close()
+         cdmsFile = cdms2.open(filename)
+         #define name of variable to appear in var widget
+         name_in_var_widget = V.id
+         #get uri if exists
+         url = None
+         if hasattr(cdmsFile, 'uri'):
+            url = cdmsFile.uri
+         #create vistrails module
+         cdmsVar = CDMSVariable(filename=cdmsFile.id, url=url, name=name_in_var_widget,
+            varNameInFile=V.id)
+         #get variable widget and project controller
+         definedVariableWidget = self.parent().dockVariable.widget()
+         #add variable to display widget and controller
+         definedVariableWidget.addVariable(V)
+         projectController.add_defined_variable(cdmsVar)
+         
+         # simulate drop variable
+         varDropInfo = (name_in_var_widget, sheet, row, column)
+         projectController.variable_was_dropped(varDropInfo)
+         # Trying to add method to plot list....
+         #from gui.application import get_vistrails_application
+         #_app = get_vistrails_application()
+         #d = _app.uvcdatWindow.dockPlot
+         # simulate drop plot
+         pm = projectController.plot_manager
+         #print "pm._plot_list keys=", pm._plot_list.keys()
+         V=pm._plot_list["VCS"]
+         #print "V.keys=", V.keys()
+         gm = res30.presentation
+         from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
+         from gui.uvcdat.uvcdatCommons import gmInfos
+         global original_gm_attributes
+         Gtype = res30.type
+         G = V[Gtype]
+         #print "G:",G.keys()
+         #print get_canvas().listelements(Gtype.lower())
+         if not gm.name in G.keys():
+            G[gm.name] = pm._registry.add_plot(gm.name,"VCS",None,None,Gtype)
+            G[gm.name].varnum = int(gmInfos[Gtype]["nSlabs"])
+
+         #add initial attributes to global dict
+         canvas = get_canvas()
+         method_name = "get"+Gtype.lower()
+         attributes = get_gm_attributes(Gtype)
+
+         attrs = {}
+         for attr in attributes:
+            attrs[attr] = getattr(gm,attr)
+         print "original_gm_attributes=",original_gm_attributes
+         original_gm_attributes[Gtype][gm.name] = InstanceObject(**attrs)
+
+         plot = projectController.plot_manager.new_plot('VCS', Gtype, gm.name )
+         #plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
+         plotDropInfo = (plot, sheet, row, column)
+         projectController.plot_was_dropped(plotDropInfo)
+
+   def cancelClicked(self):
         self.close()
             
     def itemChecked(self, item, column):
