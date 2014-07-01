@@ -31,12 +31,12 @@ def displayRenderWindowQt( renderWindow ):
 parser = argparse.ArgumentParser(description='DV3D Point Cloud Viewer')
 parser.add_argument( 'PATH' )
 parser.add_argument( '-d', '--data_dir', dest='data_dir', nargs='?', default="~/data", help='input data dir')
-parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="CAM", help='input data type')
+parser.add_argument( '-t', '--data_type', dest='data_type', nargs='?', default="MMF", help='input data type')
 ns = parser.parse_args( sys.argv )
 
 kill_all_zombies()
 point_size = 1
-n_overview_points = 50000000
+n_overview_points = 500000
 height_varname = None
 data_dir = os.path.expanduser( ns.data_dir )
 height_varnames = []

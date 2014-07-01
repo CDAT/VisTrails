@@ -5,7 +5,7 @@ Created on Oct 29, 2013
 '''
 from packages.vtDV3D.PersistentModule import *
 from packages.CPCViewer.PointCloudViewer import CPCPlot
-from packages.CPCViewer.ControlPanel import ConfigurationWidget
+from packages.CPCViewer.ConfigurationControl import ConfigurationWidget
 from packages.vtDV3D.CDMS_VariableReaders import  CDMSReaderConfigurationWidget
 from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
 from PyQt4.QtCore import *
@@ -78,8 +78,9 @@ class PM_CPCViewer(PersistentVisualizationModule):
         if self.renwin <> None:
             if self.plotter == None:
                 self.plotter = CPCPlot( self.renwin ) 
-                op = None 
-                self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, self.height_varname, op ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
+                op = None
+                grid_specs = ( None, None, None, self.height_varname) 
+                self.plotter.init( init_args = ( self.grid_file, self.data_file, self.varname, grid_specs, op ), n_overview_points=self.n_overview_points ) # , n_subproc_points=100000000 )
                 self.getConfigWidget()
                 DV3DPipelineHelper.denoteCPCViewer( self.moduleID )
                 app = get_vistrails_application()
@@ -94,9 +95,9 @@ class PM_CPCViewer(PersistentVisualizationModule):
         
     def addConfigurableFunctions( self ):
         if PM_CPCViewer.PortSpecs == None:
-            config_widget = CPCConfigConfigurationWidget()
+            config_widget = ConfigurationWidget()
             config_widget.build()
-            PM_CPCViewer.PortSpecs = config_widget.getPersistentParameterSpecs()
+            PM_CPCViewer.PortSpecs = config_widget.cfgManager.getPersistentParameterSpecs()
         for port_spec in PM_CPCViewer.PortSpecs:
             name = port_spec[0]
             values_decl_list = port_spec[1]
@@ -104,7 +105,7 @@ class PM_CPCViewer(PersistentVisualizationModule):
             self.configurableFunctions[name] = ConfigurableFunction( name, signature )
                        
     def getConfigWidget( self ):
-        self.config_widget = CPCConfigConfigurationWidget()
+        self.config_widget = ConfigurationWidget()
         self.config_widget.build()
         QObject.connect( self.config_widget, QtCore.SIGNAL("ConfigCmd"), self.plotter.processConfigCmd )
         QObject.connect( self.config_widget, QtCore.SIGNAL("Close"), self.closeCPCWidget )
