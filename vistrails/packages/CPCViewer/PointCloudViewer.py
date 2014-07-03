@@ -1279,7 +1279,6 @@ class CPCPlot(QtCore.QObject):
         self.earth_actor.SetMapper( self.earth_mapper )
         self.earth_actor.GetProperty().SetColor(0,0,0)
         self.renderer.AddActor( self.earth_actor )
-
                 
     def createRenderer(self, **args ):
         background_color = args.get( 'background_color', VTK_BACKGROUND_COLOR )
@@ -1290,7 +1289,8 @@ class CPCPlot(QtCore.QObject):
         self.renderWindowInteractor.AddObserver( 'RightButtonPressEvent', self.onRightButtonPress )  
         self.textDisplayMgr = TextDisplayMgr( self.renderer )             
         self.pointPicker = vtk.vtkPointPicker()
-        self.pointPicker.PickFromListOn()   
+        self.pointPicker.PickFromListOn() 
+        self.pointPicker.SetUseCells( True )  
         self.pointPicker.InitializePickList()             
         self.renderWindowInteractor.SetPicker(self.pointPicker) 
         if self.enableClip:
