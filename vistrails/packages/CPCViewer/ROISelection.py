@@ -4,7 +4,7 @@ import sys
 import os
 import math
 import time
-import numpy.oldnumeric as N
+#import numpy.oldnumeric as N
 import numpy as np
 from ControlPanel import ConfigControl
 from PyQt4 import QtCore
