@@ -297,7 +297,10 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          print 'self.obss1: ', self.observations1
          if type(self.observations1) is list:
             self.observation1 = str(self.comboBoxObservation1.currentText())
-            self.opts._opts['filter'] = self.obs1_menu[self.observation1]
+            if(len(self.observation1) > 0):
+               self.opts._opts['filter'] = self.obs1_menu[self.observation1]
+            else:
+               self.opts._opts['filter'] = None
          else:
             self.opts._opts['filter'] = None
 
