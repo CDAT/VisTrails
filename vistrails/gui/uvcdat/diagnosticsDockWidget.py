@@ -50,7 +50,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       
       import metrics.frontend.uvcdat
       import os
-      # For speed of entry; these will be set to '/' for the real checkin.
+      # For speed of entry; these will be set to '/' for the real check-in.
       self.DS1PathLabel.setText('/')
       self.opts._opts['path'].append(str(self.DS1PathLabel.text()))
       self.DS2PathLabel.setText('/')
@@ -74,8 +74,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.DS2checkBox.setEnabled(True)
       self.Obs1checkBox.setEnabled(True)
       self.Obs2checkBox.setEnabled(True)
-      self.obs1TranslateCheck.setChecked(False)
-      self.obs2TranslateCheck.setChecked(False)
+#       self.obs1TranslateCheck.setChecked(False)
+#       self.obs2TranslateCheck.setChecked(False)
 
       # disable/hide stuff for now
       # Presumably ds1 will be used; at least since it starts off checked, it probably should be enabled
@@ -123,8 +123,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.pickObs1Path.clicked.connect(self.setObs1Path)
       self.pickObs2Path.clicked.connect(self.setObs2Path)
 
-      self.obs1TranslateCheck.stateChanged.connect(self.obs1trans)
-      self.obs2TranslateCheck.stateChanged.connect(self.obs2trans)
+#       self.obs1TranslateCheck.stateChanged.connect(self.obs1trans)
+#       self.obs2TranslateCheck.stateChanged.connect(self.obs2trans)
 
       self.comboBoxSeason.setEnabled(False)
       self.comboBoxVar.setEnabled(False)
@@ -138,20 +138,20 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       # that's basically all we can/should do until someone selects some directories, etc
       # disable some widgets until the metrics code implements the feature. perhaps these should be hidden instead?
 
-      self.DS1ShortnameEdit.setEnabled(False)
-      self.DS1TimeRangeCheck.setEnabled(False)
-      self.DS1StartLabel.setEnabled(False)
-      self.DS1StartEdit.setEnabled(False)
-      self.DS1EndLabel.setEnabled(False)
-      self.DS1EndEdit.setEnabled(False)
-      self.DS2ShortnameEdit.setEnabled(False)
-      self.DS2TimeRangeCheck.setEnabled(False)
-      self.DS2StartLabel.setEnabled(False)
-      self.DS2StartEdit.setEnabled(False)
-      self.DS2EndLabel.setEnabled(False)
-      self.DS2EndEdit.setEnabled(False)
-      self.obs1TranslateCheck.setEnabled(False)
-      self.obs2TranslateCheck.setEnabled(False)
+#       self.DS1ShortnameEdit.setEnabled(False)#
+#       self.DS1TimeRangeCheck.setEnabled(False)
+#       self.DS1StartLabel.setEnabled(False)
+#       self.DS1StartEdit.setEnabled(False)
+#       self.DS1EndLabel.setEnabled(False)
+#       self.DS1EndEdit.setEnabled(False)
+#       self.DS2ShortnameEdit.setEnabled(False)
+#       self.DS2TimeRangeCheck.setEnabled(False)
+#       self.DS2StartLabel.setEnabled(False)
+#       self.DS2StartEdit.setEnabled(False)
+      #self.DS2EndLabel.setEnabled(False)
+#       self.DS2EndEdit.setEnabled(False)
+#       self.obs1TranslateCheck.setEnabled(False)
+#       self.obs2TranslateCheck.setEnabled(False)
 
 
    # used for enabling/disabling controls en masse
@@ -159,7 +159,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       if field == 'ds1':
          self.pickDS1Path.setEnabled(value)
          self.DS1PathLabel.setEnabled(value)
-         self.DS1ShortnameEdit.setEnabled(value)
+#          self.DS1ShortnameEdit.setEnabled(value)#
          self.DS1FilterEdit.setEnabled(value)
          self.DS1FilterLabel.setEnabled(value)
 #         self.DS1TimeRangeCheck.setEnabled(value)
@@ -171,7 +171,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       if field == 'ds2':
          self.pickDS2Path.setEnabled(value)
          self.DS2PathLabel.setEnabled(value)
-         self.DS2ShortnameEdit.setEnabled(value)
+#          self.DS2ShortnameEdit.setEnabled(value)
          self.DS2FilterEdit.setEnabled(value)
          self.DS2FilterLabel.setEnabled(value)
 #         self.DS2TimeRangeCheck.setEnabled(value)
@@ -798,6 +798,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          
          # simulate drop variable
          varDropInfo = (name_in_var_widget, sheet, row, column)
+         print "testing, varDropInfo=",varDropInfo
          projectController.variable_was_dropped(varDropInfo)
          # Trying to add method to plot list....
          #from gui.application import get_vistrails_application
