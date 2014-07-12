@@ -12,7 +12,7 @@ import math
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import time
-import numpy.oldnumeric as N
+#import numpy.oldnumeric as N
 import numpy as np
 
 packagePath = os.path.dirname( __file__ )  
