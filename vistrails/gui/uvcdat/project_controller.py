@@ -79,6 +79,10 @@ class ProjectController(QtCore.QObject):
         self.plot_manager = get_plot_manager()
         self.current_cell_coords = [ 0, 0 ]
         self.current_sheetName = "Sheet 1"
+        # enable_animation is a workaround - a cellWidget is being made with canvas.animate present
+        # when it shouldn't be there.  I (JfP) can't figure out why.  Set enable_animation to False
+        # to make sure the cellWidget.canvas.animate is not seen...
+        self.enable_animation = True
         
     def add_defined_variable(self, var):
         self.defined_variables[var.name] = var
@@ -854,7 +858,7 @@ class ProjectController(QtCore.QObject):
         if sheetWidget is not None:
             cellWidget = sheetWidget.getCell(row, col)
 
-        if (cellWidget is not None and
+        if self.enable_animation and (cellWidget is not None and
                 hasattr(cellWidget, 'canvas') and
                 hasattr(cellWidget.canvas, 'animate')):
             animationWidget.setCanvas(cellWidget.canvas)
