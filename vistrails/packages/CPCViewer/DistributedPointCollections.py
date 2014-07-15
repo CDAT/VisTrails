@@ -321,11 +321,8 @@ class vtkPointCloud(QtCore.QObject):
             else: return
         vtk_points_data = numpy_support.numpy_to_vtk( self.np_points_data )    
         vtk_points_data.SetNumberOfComponents( 3 )
-<<<<<<< HEAD
-        vtk_points_data.SetNumberOfTuples( int( len( self.np_points_data ) / 3 ) )     
-=======
+#        vtk_points_data.SetNumberOfTuples( int( len( self.np_points_data ) / 3 ) )     
         vtk_points_data.SetNumberOfTuples( int( self.np_points_data.size / 3 ) )     
->>>>>>> eb72cea193330148d7a9e2c99c529e31bcb87039
         self.vtk_planar_points = vtk.vtkPoints()
         self.vtk_planar_points.SetData( vtk_points_data )
         self.createPolydata( **args )
