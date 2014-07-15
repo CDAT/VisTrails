@@ -1147,7 +1147,7 @@ class QCDATWidget(QVTKWidget):
     
     def __init__(self, parent=None):
         QVTKWidget.__init__(self, parent)
-        #self.toolBarType = QCDATWidgetToolBar
+        self.toolBarType = QCDATWidgetToolBar
         self.window = None
         self.canvas =  None
         #self.windowId = -1
@@ -1381,7 +1381,7 @@ class QCDATWidgetToolBar(QCellToolBar):
 
         self.appendAction(QCDATWidgetPrint(self))
         self.appendAction(QCDATWidgetColormap(self))
-        #self.appendAction(QCDATWidgetAnimation(self))
+        self.appendAction(QCDATWidgetAnimation(self))
         
     def updateStatus(self, cellWidget):
         if (cellWidget is not None and
