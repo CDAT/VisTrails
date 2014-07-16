@@ -1016,14 +1016,19 @@ def class_dict(base_module, node):
 disallowed_modules = set([
         'vtkGeoAlignedImageCache',
         'vtkGeoTerrainCache',
-        'vtkMPIGroup'
+        'vtkMPIGroup',
+        'vtkWebApplication',
         ])
+
 def createModule(baseModule, node):
     """ createModule(baseModule: a Module subclass, node: TreeNode) -> None
     Construct a module inherits baseModule with specification from node
     
     """
     if node.name in disallowed_modules: return
+    if (node.name.startswith("vtkPV") or
+        node.name.startswith("vtkSI") or
+        node.name.startswith("vtkSM")): return
     def obsolete_class_list():
         lst = []
         items = ['vtkInteractorStyleTrackball',
@@ -1048,7 +1053,7 @@ def createModule(baseModule, node):
             return True
         try:
             getattr(vtk, node.name)()
-        except TypeError: # VTK raises type error on abstract classes
+        except (TypeError, NotImplementedError): # VTK raises type error on abstract classes
             return True
         return False
     module = new_module(baseModule, node.name,
@@ -1098,7 +1103,6 @@ def createAllModules(g):
                 if child.name in disallowed_classes:
                     continue
                 createModule(vtkObjectBase, child)
-
 
 ##############################################################################
 # Convenience methods
