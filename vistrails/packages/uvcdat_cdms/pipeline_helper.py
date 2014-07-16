@@ -1161,6 +1161,7 @@ class CDMSPlotWidget(QtGui.QWidget):
                 if len(functions) > 0:
                     function_updates[plot_module.id] = functions
 
+        action = None
         if (len(self.to_be_added) != 0 or len(self.to_be_removed) != 0 or
             len(self.var_to_be_added) != 0 or len(self.var_to_be_removed) != 0 
             or self.plot_order_changed() or self.vars_were_changed or
@@ -1284,28 +1285,28 @@ class CDMSPlotWidget(QtGui.QWidget):
         return action
     
     def update_templates(self, ori_action):
-        return ori_action #templates should not change in uvcdat gui
-#        if ori_action is not None:
-#            version = ori_action.id
-#        else:
-#            version = self.version
-#        action = None
-#        #check if the template changed and update provenance
-#        for i in range(self.plot_table.topLevelItemCount()):
-#            plot_item = self.plot_table.topLevelItem(i)
-#            pipeline = self.controller.vistrail.getPipeline(version)
-#            if plot_item.module.id in pipeline.modules:
-#                plot_module = pipeline.modules[plot_item.module.id]
-#                functions = [('template', [plot_item.template])]
-#                action = self.controller.update_functions(plot_module, 
-#                                                          functions)
-#                if action is not None:
-#                    version = action.id
-#        
-#        if action is not None:
-#            return action
-#        else:
-#            return ori_action
+        # return ori_action #templates should not change in uvcdat gui
+        if ori_action is not None:
+            version = ori_action.id
+        else:
+            version = self.version
+        action = None
+        #check if the template changed and update provenance
+        for i in range(self.plot_table.topLevelItemCount()):
+            plot_item = self.plot_table.topLevelItem(i)
+            pipeline = self.controller.vistrail.getPipeline(version)
+            if plot_item.module.id in pipeline.modules:
+                plot_module = pipeline.modules[plot_item.module.id]
+                functions = [('template', [plot_item.template])]
+                action = self.controller.update_functions(plot_module, 
+                                                          functions)
+                if action is not None:
+                    version = action.id
+       
+        if action is not None:
+            return action
+        else:
+            return ori_action
             
     @pyqtSlot(bool)
     def save_triggered(self, checked):
