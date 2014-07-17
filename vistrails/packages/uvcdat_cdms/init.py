@@ -1750,6 +1750,12 @@ def get_input_ports(plot_type):
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
+    elif plot_type == "3D_Scalar":
+        return expand_port_specs([('axes', 'basic:String', True),])
+
+    elif plot_type == "3D_Vector":
+        return expand_port_specs([('vector_type', 'basic:String', True),])
+    
     elif plot_type == "Isofill":
         return expand_port_specs([('levels', 'basic:List', True),
                                   ('ext_1', 'basic:String', True),
@@ -1883,6 +1889,12 @@ def get_gm_attributes(plot_type):
                     'level_2', 'missing', 'projection', 'xaxisconvert', 'xmtics1', 
                     'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 
                     'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
+
+    elif plot_type == "3D_scalar":
+        return  [ 'axes' ]
+
+    elif plot_type == "3D_vector":
+        return  [ 'vector_type' ]
         
     elif plot_type == "Isofill":
         return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
@@ -1977,7 +1989,7 @@ def get_canvas():
     
 for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
-                  'Xyvsy', 'Yxvsx']:
+                  'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Vector' ]:
     def get_init_method():
         def __init__(self):
             CDMSPlot.__init__(self)
@@ -2002,7 +2014,7 @@ def initialize(*args, **keywords):
     print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>hello, here I am, uvcdat_cdms/init.py!!!!"
     for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
-                  'Xyvsy', 'Yxvsx']:
+                  'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Vector' ]:
         canvas = get_canvas()
         method_name = "get"+plot_type.lower()
         attributes = get_gm_attributes(plot_type)
