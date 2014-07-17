@@ -1756,8 +1756,7 @@ def get_input_ports(plot_type):
         return expand_port_specs([('axes', 'basic:String', True),])
 
     elif plot_type == "3D_Vector":
-        return expand_port_specs([('axes', 'basic:String', True),])
-    
+        return expand_port_specs([('axes', 'basic:String', True),])  
     elif plot_type == "Isofill":
         return expand_port_specs([('levels', 'basic:List', True),
                                   ('ext_1', 'basic:String', True),
