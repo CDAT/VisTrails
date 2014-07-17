@@ -21,7 +21,7 @@ defaultGmsColor = QtGui.QColor(179,140,138)
 
 plotTypes = {"VCS":['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill',
                      'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY',
-                     'Xyvsy', 'Yxvsx', 'Scalar3D', 'Vector3D' ],
+                     'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Vector' ],
              }
 
 gmInfos= {'Boxfill' :{'nSlabs':1},
@@ -36,8 +36,8 @@ gmInfos= {'Boxfill' :{'nSlabs':1},
           'XvsY' :{'nSlabs':2},
           'Xyvsy' :{'nSlabs':1},
           'Yxvsx' :{'nSlabs':1},
-          'Scalar3D' :{'nSlabs':1},
-          'Vector3D' :{'nSlabs':2},
+          '3D_Scalar' :{'nSlabs':1},
+          '3D_Vector' :{'nSlabs':2},
           }
 noMargins = QtCore.QMargins(0,0,0,0)
 indentSpacing = 10
