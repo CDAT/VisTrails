@@ -2457,6 +2457,7 @@ class QVistrailsWindow(QVistrailViewWindow):
         from gui.mashups.alias_inspector import QAliasInspector
         from gui.mashups.mashup_view import QMashupViewTab
         from packages.spreadsheet.spreadsheet_cell import QCellWidget
+        import sys
         def is_or_has_parent_of_types(widget, types):
             while widget is not None:
                 for _type in types:
@@ -2466,52 +2467,55 @@ class QVistrailsWindow(QVistrailViewWindow):
             return False
                 
         if current is not None:
-            owner = current.window()
-            #print "\n\n\n >>>>>> applicationfocuschanged"
-            #print "focus_owner: ", self._focus_owner," previous_vt_view ", self._previous_vt_view, " previous_view ", self._previous_view
-            #print "owner: ", owner, " current: ", current
-            allowed_widgets = [ConstantWidgetMixin,
-                               QParamExploreView,
-                               QAliasInspector,
-                               QCellWidget,
-                               QMashupViewTab]
-            if (self.isAncestorOf(current) or 
-                owner in self.windows.values()):
-                view = self.get_current_view()
-                #print "view: ", view
-                if view and (view == current or view.isAncestorOf(current)):
-                    # when a widget spans another control, for example, a Color
-                    # wheel, VisTrails will lose focus to that widget and it 
-                    # will try to generate a view_changed() event. This will
-                    # reset the view and happens with parameter exploration 
-                    # and mashups preview.
-                    # To avoid that, we will check if the current widget is a 
-                    # constant widget or a parameter exploration widget or has
-                    # any of these types as a parent in the hierarchy.  
-                    if (owner != self._focus_owner and 
+            try:
+                owner = current.window()
+                #print "\n\n\n >>>>>> applicationfocuschanged"
+                #print "focus_owner: ", self._focus_owner," previous_vt_view ", self._previous_vt_view, " previous_view ", self._previous_view
+                #print "owner: ", owner, " current: ", current
+                allowed_widgets = [ConstantWidgetMixin,
+                                   QParamExploreView,
+                                   QAliasInspector,
+                                   QCellWidget,
+                                   QMashupViewTab]
+                if (self.isAncestorOf(current) or 
+                    owner in self.windows.values()):
+                    view = self.get_current_view()
+                    #print "view: ", view
+                    if view and (view == current or view.isAncestorOf(current)):
+                        # when a widget spans another control, for example, a Color
+                        # wheel, VisTrails will lose focus to that widget and it 
+                        # will try to generate a view_changed() event. This will
+                        # reset the view and happens with parameter exploration 
+                        # and mashups preview.
+                        # To avoid that, we will check if the current widget is a 
+                        # constant widget or a parameter exploration widget or has
+                        # any of these types as a parent in the hierarchy.  
+                        if (owner != self._focus_owner and 
+                            not is_or_has_parent_of_types(current, allowed_widgets)):
+                            #print "generating view_changed"
+                            self._previous_vt_view = view
+                            self._focus_owner = owner
+                            self.change_view(view)
+                            self.update_window_menu()
+                            self._previous_view = view.get_current_tab()
+                            view.reset_tab_view_to_current()
+                            view.view_changed()    
+                            
+                elif isinstance(owner, QBaseViewWindow):
+                    view = owner.get_current_view()
+                    #print "QBaseViewWindow view: ", view
+                    if (view and owner != self._focus_owner and 
                         not is_or_has_parent_of_types(current, allowed_widgets)):
-                        #print "generating view_changed"
+                        #print "generating view changed"
                         self._previous_vt_view = view
                         self._focus_owner = owner
                         self.change_view(view)
                         self.update_window_menu()
                         self._previous_view = view.get_current_tab()
-                        view.reset_tab_view_to_current()
-                        view.view_changed()    
-                        
-            elif isinstance(owner, QBaseViewWindow):
-                view = owner.get_current_view()
-                #print "QBaseViewWindow view: ", view
-                if (view and owner != self._focus_owner and 
-                    not is_or_has_parent_of_types(current, allowed_widgets)):
-                    #print "generating view changed"
-                    self._previous_vt_view = view
-                    self._focus_owner = owner
-                    self.change_view(view)
-                    self.update_window_menu()
-                    self._previous_view = view.get_current_tab()
-                    view.set_to_current(current)
-                    view.view_changed()
+                        view.set_to_current(current)
+                        view.view_changed()
+            except:
+                print>>sys.stderr," No window in applicationFocusChanged, current = ", str( current )
         else:
             self._focus_owner = None
 _app = None
