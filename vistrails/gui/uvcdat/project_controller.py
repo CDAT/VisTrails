@@ -85,7 +85,10 @@ class ProjectController(QtCore.QObject):
         self.enable_animation = True
         
     def add_defined_variable(self, var):
-        self.defined_variables[var.name] = var
+        try:
+            self.defined_variables[var.name] = var
+        except Exception, err:
+            print "Error adding variable %s: %s" % ( str(var), str(err) )
 
     def rename_defined_variable(self, oldname, newname):
         """rename_defined_variable(oldname, newname) -> None
