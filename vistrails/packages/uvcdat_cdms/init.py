@@ -103,6 +103,8 @@ class CDMSVariable(Variable):
                      load=False, varNameInFile=None, axes=None, \
                      axesOperations=None, attributes=None, axisAttributes=None,
                      timeBounds=None):
+        import sys
+        print>>sys.stderr,  "CDMSVariable init"; sys.stderr.flush()
         Variable.__init__(self, filename, url, source, name, load)
         self.axes = axes
         self.axesOperations = axesOperations
@@ -1277,12 +1279,12 @@ class QCDATWidget(QVTKWidget):
                     self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module
                     self.canvas.flush() # update the canvas by processing all the X events
             
-            try:
-                self.canvas.plot(cgm,*args,**kwargs)
-            except Exception, e:
-                print "cgm=",cgm,"args=",args,"kwargs=",kwargs
-                spreadsheetWindow.setUpdatesEnabled(True)
-                raise e
+#            try:
+            self.canvas.plot(cgm,*args,**kwargs)
+#             except Exception, e:
+#                 print "cgm=",cgm,"args=",args,"kwargs=",kwargs
+#                 spreadsheetWindow.setUpdatesEnabled(True)
+#                 raise e
         doInteractorStyle = False
         if doInteractorStyle:
           vtkRenderers = self.canvas.backend.renWin.GetRenderers()
@@ -1890,11 +1892,11 @@ def get_gm_attributes(plot_type):
                     'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 
                     'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
 
-    elif plot_type == "3D_scalar":
+    elif plot_type == "3D_Scalar":
         return  [ 'axes' ]
 
-    elif plot_type == "3D_vector":
-        return  [ 'vector_type' ]
+    elif plot_type == "3D_Vector":
+        return  [ 'axes' ]
         
     elif plot_type == "Isofill":
         return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
@@ -2006,7 +2008,7 @@ for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   '_input_ports': get_input_ports(plot_type),
                   'gm_attributes': get_gm_attributes(plot_type),
                   'is_cacheable': get_is_cacheable_method()})
-    # print 'adding CDMS module', klass.__name__
+    
     _modules.append((klass,{'configureWidgetType':GraphicsMethodConfigurationWidget}))
 
 def initialize(*args, **keywords):

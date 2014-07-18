@@ -2047,6 +2047,58 @@ class QContinentsEditor(QtGui.QScrollArea):
         except:
             return None        
 
+
+
+class Q3D_ScalarEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
+    
+    def __init__( self, parent=None, gm=None, **args ):
+        QtGui.QScrollArea.__init__(self, parent)
+
+    def applyChanges(self, gm=None):
+        if gm is None:
+            gm = self.gm
+
+    def clickedBoxType(self,*args):
+        pass
+        
+    def initValues(self, gm=None):
+        if gm is None:
+            gm = self.gm
+                           
+    def setToolTips(self):
+        pass
+            
+    def getValue(self, lineEdit, convertType, default=None):
+        try:
+            return convertType(lineEdit.text())
+        except:
+            return default
+
+class Q3D_VectorEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
+    
+    def __init__( self, parent=None, gm=None, **args ):
+        QtGui.QScrollArea.__init__(self, parent)
+
+    def applyChanges(self, gm=None):
+        if gm is None:
+            gm = self.gm
+    
+    def clickedBoxType(self,*args):
+        pass
+        
+    def initValues(self, gm=None):
+        if gm is None:
+            gm = self.gm
+               
+    def setToolTips(self):
+        pass
+            
+    def getValue(self, lineEdit, convertType, default=None):
+        try:
+            return convertType(lineEdit.text())
+        except:
+            return default
+
 class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
     def __init__(self, parent=None, gm=None):
         QtGui.QScrollArea.__init__(self, parent)
