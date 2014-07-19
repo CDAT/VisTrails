@@ -208,14 +208,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    def regionChanged(self, index):
       rl = defines.all_regions.keys()
       rl.sort()
-      print 'Region changed - index: ', index
-      print 'key 0: '
-      print rl[0]
       if index != -1:
-         print 'key index: '
-         print rl[index]
-         print 'box coords: '
-         print defines.all_regions[rl[index]]
          self.region_box = defines.all_regions[rl[index]]
       else:
          self.region_box = None
@@ -223,10 +216,12 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    def obs1trans(self, state):
       print 'This is for translating var names between datasets and obs sets'
       print 'obs1 trans clicked - state: ', state
+      pass
 
    def obs2trans(self, state):
       print 'This is for translating var names between datasets and obs sets'
       print 'obs2 trans clicked - state: ', state
+      pass
 
    def setObs1Path(self, button):
       pa = QtGui.QFileDialog.getExistingDirectory(self, "Observations 1 Path", self.obs1PathLabel.text())
@@ -294,7 +289,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             i = self.comboBoxObservation1.findText("NCEP")
             self.comboBoxObservation1.setCurrentIndex(i)
 
-         print 'self.obss1: ', self.observations1
          if type(self.observations1) is list:
             self.observation1 = str(self.comboBoxObservation1.currentText())
             if(len(self.observation1) > 0):
@@ -370,10 +364,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    def plotsetchanged(self,item,column):
       import metrics.frontend.uvcdat
       txt = str(item.text(item.columnCount()-1))
-#      print 'need to call init for the thing that was just selected to get pre_compute done'
+      ##      print 'need to call init for the thing that was just selected to get pre_compute done'
       
       if 'REGIONAL' in txt.upper():
-         print 'This appears to be a regional diagnostic'
          rl = defines.all_regions.keys()
          rl.sort()
          for i in range(self.comboBoxRegion.count()):
@@ -420,28 +413,19 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
       varlist = []
       vtmp = []
-#      print 'varlist: ', varlist
-#      print 'diagnostic group: ', self.DiagnosticGroup
 
       if self.useDS1 == True:
-#         print 'diag set name: ', self.diagnostic_set_name
          vtmp = self.DiagnosticGroup.list_variables(self.ft1, diagnostic_set_name = self.diagnostic_set_name)
          varlist = vtmp
-#      print 'new varlist1: ', varlist
-#      print 'vtmp: ', vtmp
       if self.useDS2 == True:
          vtmp = self.DiagnosticGroup.list_variables(self.ft2, diagnostic_set_name = self.diagnostic_set_name)
          varlist = list(set(varlist) & (set(vtmp)))
       if self.useObs1 == True:
          vtmp = self.DiagnosticGroup.list_variables(self.obsft1, diagnostic_set_name = self.diagnostic_set_name)
          varlist = list(set(varlist) & (set(vtmp)))
-#      print 'new varlist2: ', varlist
-#      print 'vtmp: ', vtmp
       if self.useObs2 == True:
          vtmp = self.DiagnosticGroup.list_variables(self.obsft2, diagnostic_set_name = self.diagnostic_set_name)
          varlist = list(set(varlist) & (set(vtmp)))
-#      print 'new varlist3: ', varlist
-#      print 'vtmp: ', vtmp
 
 ###      var1 = []
 ###      var2 = []
@@ -481,35 +465,26 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 ###      varset = set(var1).union(set(var2)).union(set(var3)).union(set(var4))
 ###      vars = list(varset)
 
-#      print 'SORTING varlist: ', varlist
       varlist.sort()
       self.variables = varlist
 
-#      print self.variables
-#      print 'DONE'
       for i in range(self.comboBoxVar.count()):
          self.comboBoxVar.removeItem(0)
 
       self.comboBoxVar.addItems(self.variables)
-#      print 'ENABLING COMBOBOXVAR'
       self.comboBoxVar.setEnabled(True)
       self.comboBoxSeason.setEnabled(True)
 
 #### variableChanged needs connected to comboBoxVar changes        
    def variableChanged(self, index):
       ## populate the aux menu, if appropriate
-#      print 'CALLING ALLVARS *****'
       self.varmenu = self.DiagnosticGroup.all_variables(self.ft1, self.ft2, self.diagnostic_set_name)
-#      print 'DONE'
-#      print 'varmenu: ', self.varmenu
       varname = str(self.comboBoxVar.currentText())
 
       if varname in self.varmenu.keys():
-#         print 'inside if, passed'
          variable = self.varmenu[varname]( varname, self.diagnostic_set_name, self.DiagnosticGroup )
          self.auxmenu = variable.varoptions()
       else:
-#         print 'else so failed'
          self.auxmenu = None
       for i in range(self.comboBoxAux.count()):
          self.comboBoxAux.removeItem(0)
@@ -524,17 +499,10 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       diagnosticType = str(self.comboBoxType.itemText(index))
       self.treeWidget.clear()
 #      self.treeWidget.itemChanged.connect(self.plotsetchanged)
-#      print 'SETTING DIAG GROUP'
       self.DiagnosticGroup = DiagnosticsDockWidget.dg_menu[diagnosticType]()
-#      print 'DONE SETTING DIA GROUP', self.DiagnosticGroup
       # ds_menu and seasons depend on self.DiagnosticGroup (only), so they are best
       # set right after self.DiagnosticGroup is set...
-#      if self.ds_menu != None:
-#         print '*************************** ds_menu before:', self.ds_menu
-#      else:
-#         print '*************************** ds_menu not initialized'
       self.ds_menu = self.DiagnosticGroup.list_diagnostic_sets()
-#      print '*************************** ds_menu after:', self.ds_menu
       self.seasons = self.DiagnosticGroup.list_seasons()
       # Note that the following loop calls plotsetchanged()
       for diagnostic_set in sorted(self.ds_menu.keys()):
@@ -642,26 +610,20 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         ft2 = None
         ft1 = None
         if(self.useDS1 == 1): #ds1
-            print 'setting ft1 to self.ft1'
             ft1 = self.ft1
             if(self.useDS2 == 1):
-               print 'setting ft2 to self.ft2'
                ft2 = self.ft2
             if(self.useObs1 == 1):
-               print 'setting ft2 to self.obsft1'
                ft2 = self.obsft1
             if(self.useObs2 == 1):
-               print 'setting ft2 to self.obsft2'
                ft2 = self.obsft2
         elif self.useDS2 == 1: #just ds2, or ds2+obs
-            print 'useDS2 was selected'
             ft1 = self.ft2
             if(self.useObs1 == 1):
                ft2 = self.obsft1
             if(self.useObs2 == 1):
                ft2 = self.obsft2
         else: # just observation
-            print 'just obs'
             if(self.useObs1 == 1):
                ft1 = self.obsft1
             if(self.useObs2 == 1):
@@ -679,8 +641,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          ### ADDED STR() HERE. NOT SURE IF IT WAS NEEDED YET ###
         self.diagnostic_set_name = str(diagnostic)
         self.plot_spec = self.ds_menu[diagnostic](ft1, ft2, variable, season, self.region_box, aux)
-#        print 'options at apply clicked: ', self.opts
-#        print 'options.opts at apply clicked: ', self.opts._opts
 
         ps = self.plot_spec
         if ps is None:
@@ -697,30 +657,23 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             dim = t.getDimension()
             Nrows = dim[0]
             Ncolumns = dim[1]
-        print 'res returned: \'', res,'\''
         if type(res) is not list:
             res = [res]
-        print "***jfp res=",res
 
         # I'm keeping this old message as a reminder of scrollable panes, a feature which would be
         # nice to have in the future (but it doesn't work now)...
         #mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,"This diagnostics generated more rows than the number currently disaplyed by your spreadsheet, don't forget to scroll down")
 
-        print 'Nrows: ', Nrows, 'NCols: ', Ncolumns, 'len(res): ', len(res)
         if len(res)>Nrows*Ncolumns:
             msg = "This diagnostics generated a composite of %s simple plots, which is more than your spreadsheet can display."%len(res)
             mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning, msg, QString(msg))
             mbox.exec_()
-        print '**************************'
-        print 'res: ', res
-        print '**************************'
         ires = 0
         for row in range(Nrows):
             for col in range(Ncolumns):
                print 'displaying cell for row, col: ', row, col
                if ires<len(res):
                   res30 = res[ires]
-                  print 'res[', ires,']: \'', res30,'\''
                else:
                   res30 = None
                self.displayCell(res30, row, col)
@@ -750,29 +703,24 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       from packages.uvcdat_cdms.init import CDMSVariable
       from core.utils import InstanceObject
 
-      # jfp The following section is fix up the title, this works around some graphics system design flaws.
-      # jfp It can be deleted when we have a better way to do it, e.g. using a template.
-      # jfp Note in particular that the present graphics system doesn't have a real title line; it just
-      # jfp writes variable information in various places above the plot.
-      # jfp This approach won't work at all if we have more than 2 variables to plot together.
-      # jfp Then there is no alternative to using the title the diagnostics provide...
-      U = pvars[0]
-      U.title = '\n'+title+'\n'   # The graphics package looks at a title attribute of the variable, not the plot!
-      if hasattr(U,'long_name'):
-         U.long_name = '_'+' '*48+U.long_name
+      import vcs
+      if 'diagnostic' in vcs.listelements('template'):
+         tm = vcs.gettemplate('diagnostic')
       else:
-         U.title = '_'+' '*48+U.title
-      if len(pvars)==2:
-         V = pvars[1]
-         V.id = U.id+' '+V.id  # important to be different, but also we don't want overwriting
-         if hasattr(U,'long_name'):
-            V.long_name = U.long_name
-         if hasattr(U,'units'):
-            V.units = U.units
-         V.title = U.title
-      # jfp ...end of temporary title-fixup section.
-      
+         tm = vcs.createtemplate( 'diagnostic', 'default' )
+         # ...creates a template named 'diagnostic', as a copy of the one named 'default'.
+         tm.title.x = 0.5
+         to = vcs.createtextorientation()
+         to.halign = 'center'
+         tm.title.textorientation = to
+         tm.dataname.priority = 0
+         tm.units.priority = 0
+
       for V in pvars:
+         V.title = title        # VCS looks the title of the variable, not the plot.
+         V.long_name = V.title  # VCS overrides title with long_name!
+         tmplDropInfo = ('diagnostic', sheet, row, column)
+         projectController.template_was_dropped(tmplDropInfo)
          # Until I know better storing vars in tempfile....
          f = tempfile.NamedTemporaryFile()
          filename = f.name
@@ -798,7 +746,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          
          # simulate drop variable
          varDropInfo = (name_in_var_widget, sheet, row, column)
-         print "testing, varDropInfo=",varDropInfo
          projectController.variable_was_dropped(varDropInfo)
          # Trying to add method to plot list....
          #from gui.application import get_vistrails_application
@@ -806,16 +753,12 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          #d = _app.uvcdatWindow.dockPlot
          # simulate drop plot
          pm = projectController.plot_manager
-         #print "pm._plot_list keys=", pm._plot_list.keys()
          V=pm._plot_list["VCS"]
-         #print "V.keys=", V.keys()
          gm = res30.presentation
          from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
          from gui.uvcdat.uvcdatCommons import gmInfos
          Gtype = res30.type
          G = V[Gtype]
-         #print "G:",G.keys()
-         #print get_canvas().listelements(Gtype.lower())
          if not gm.name in G.keys():
             G[gm.name] = pm._registry.add_plot(gm.name,"VCS",None,None,Gtype)
             G[gm.name].varnum = int(gmInfos[Gtype]["nSlabs"])
@@ -849,6 +792,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             self.checkedItem = None
    def itemActivated(self, item):
       print 'ITEM ACTIVATED. SET UP VAR LIST NOW'
+      pass
 
    def itemClicked(self, item, column):
       print 'itemClicked called. This should not have occurred.'
