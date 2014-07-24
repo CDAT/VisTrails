@@ -225,9 +225,9 @@ class QAnimationView(QtGui.QWidget):
             except:
                 max = None
                 
-        animationSignals = self.canvas.animate.signals
-        unique_connect(animationSignals.created, self.animationCreated)
-        unique_connect(animationSignals.canceled, self.stopCreating)
+        #animationSignals = self.canvas.animate.signals
+        #unique_connect(animationSignals.created, self.animationCreated)
+        #unique_connect(animationSignals.canceled, self.stopCreating)
         self.canvas.animate.create(thread_it=1,min=min,max=max)
         
     def stopCreating(self):

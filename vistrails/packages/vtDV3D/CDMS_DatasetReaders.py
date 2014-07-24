@@ -663,11 +663,12 @@ class CDMSDataset(Module):
         lonBounds = args.get( 'lon', None )
         latBounds = args.get( 'lat', None )
         cell_coords = args.get( 'cell', None )
+        pressure_units = [ 'millibar', 'mb', 'pascal' ] 
 
         if levaxis:
             values = levaxis.getValue()
             ascending_values = ( values[-1] > values[0] )
-            invert_z = ( (levaxis.attributes.get( 'positive', '' ) == 'down') and ascending_values ) or ( (levaxis.attributes.get( 'positive', '' ) == 'up') and not ascending_values )
+            invert_z = ( (levaxis.attributes.get( 'positive', '' ) == 'down') and ascending_values ) or ( (levaxis.attributes.get( 'positive', '' ) == 'up') and not ascending_values ) or ( ( levaxis.units.lower() in pressure_units ) and ascending_values )
                
         timeBounds = args.get( 'time', None )
         [ timeValue, timeIndex, useTimeIndex ] = timeBounds if timeBounds else [ None, None, None ]
