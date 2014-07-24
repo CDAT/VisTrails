@@ -3,6 +3,7 @@ from core.modules.basic_modules import new_constant, string_compare, String
 from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry
 from core.utils import getHomeRelativePath, getFullPath
+import sys
 
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:

@@ -11,7 +11,7 @@ from core.utils import InstanceObject
 import core.db.action
 from gui.uvcdat.graphicsMethodsWidgets import QBoxfillEditor, QIsofillEditor,\
    QIsolineEditor, QMeshfillEditor, QOutfillEditor, QOutlineEditor, \
-   QScatterEditor, QTaylorDiagramEditor, QVectorEditor, Q1DPlotEditor
+   QScatterEditor, QTaylorDiagramEditor, QVectorEditor, Q1DPlotEditor, Q3D_ScalarEditor, Q3D_VectorEditor
 from gui.common_widgets import QDockPushButton
 from gui.utils import show_question, SAVE_BUTTON, DISCARD_BUTTON
 class GraphicsMethodConfigurationWidget(QtGui.QWidget):
@@ -43,7 +43,8 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         #default gmName can't be changed
         if str(self.gmName) == "default":
             self.gmEditor.setEnabled(False)
-            self.wrldCoordEditor.setEnabled(False)
+            if self.wrldCoordEditor:
+                self.wrldCoordEditor.setEnabled(False)
             
         if show_buttons:
             self.buttonLayout = QtGui.QHBoxLayout()
@@ -91,6 +92,10 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             return Q1DPlotEditor(self.tabWidget, gmName, type="xyvsy")
         elif plot_type == "Yxvsx":
             return Q1DPlotEditor(self.tabWidget, gmName, type="yxvsx")
+        elif plot_type == "3D_Scalar":
+            return Q3D_ScalarEditor(self.tabWidget, gmName, type="yxvsx")
+        elif plot_type == "3D_Vector":
+            return Q3D_VectorEditor(self.tabWidget, gmName, type="yxvsx")
         
     def setupEditors(self):
         gm = InstanceObject(**self.attributes)
