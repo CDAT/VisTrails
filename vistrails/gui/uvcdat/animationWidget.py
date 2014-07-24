@@ -147,22 +147,22 @@ class QAnimationView(QtGui.QWidget):
         self.stopCreating()
         
     def loopClicked(self, checked):
-        self.canvas.animate.loop = checked
+        self.canvas.animate.playback_params.loop = checked
         
     def horizPanned(self,value):
-        self.canvas.animate.horizontal(value)
-        self.canvas.animate.frame(self.framesSlider.value())
+        self.canvas.animate.playback_params.horizontal(value)
+        self.canvas.animate.draw_frame()
 
     def vertPanned(self,value):
-        self.canvas.animate.vertical(-value)
-        self.canvas.animate.frame(self.framesSlider.value())
+        self.canvas.animate.playback_params.vertical(-value)
+        self.canvas.animate.draw_frame()
         
     def disconnectAnimationSignals(self):
-        self.canvas.animate.signals.drew.disconnect(self.drew)
+        self.canvas.animate.signals.drawn.disconnect(self.drawn)
         self.canvas.animate.signals.paused.disconnect(self.paused)
         
     def connectAnimationSignals(self):
-        unique_connect(self.canvas.animate.signals.drew, self.drew)
+        unique_connect(self.canvas.animate.signals.drawn, self.drawn)
         unique_connect(self.canvas.animate.signals.paused, self.paused)
 
     def setCanvas(self,canvas):
@@ -177,13 +177,13 @@ class QAnimationView(QtGui.QWidget):
         
         self.setEnabled(True)
         
-        #self.connectAnimationSignals()
+        self.connectAnimationSignals()
         
-        self.doLoop.setChecked(canvas.animate.loop)
+        self.doLoop.setChecked(canvas.animate.playback_params.loop)
         
-        self.speedSlider.setValue(canvas.animate.fps())
+        self.speedSlider.setValue(canvas.animate.playback_params.fps())
         
-        created = (canvas.animate.create_flg == 1)
+        created = canvas.animate.created()
         self.createButton.setEnabled(not created)
         self.player.setEnabled(created)
         
@@ -192,15 +192,14 @@ class QAnimationView(QtGui.QWidget):
             self.updatePlayStopIcon()
         
     def changedFrame(self,value):
-        self.canvas.animate.frame(value)
+        self.canvas.animate.draw_frame(value)
     
     def speedChanged(self, value):
-        self.canvas.animate.fps(value)
-        
+        self.canvas.animate.playback_params.fps(value)
 
     def createOrStopClicked(self):
         ### Creates or stops creating animation
-        if self.canvas.animate.create_flg == 1:
+        if self.canvas.animate.created():
             return
         elif self.creatingAnimation:
             self.stopCreating()
@@ -225,10 +224,13 @@ class QAnimationView(QtGui.QWidget):
             except:
                 max = None
                 
-        #animationSignals = self.canvas.animate.signals
-        #unique_connect(animationSignals.created, self.animationCreated)
-        #unique_connect(animationSignals.canceled, self.stopCreating)
-        self.canvas.animate.create(thread_it=1,min=min,max=max)
+        animationSignals = self.canvas.animate.signals
+        unique_connect(animationSignals.created, self.animationCreated)
+        unique_connect(animationSignals.canceled, self.stopCreating)
+        self.canvas.animate.create_params.a_min = min
+        self.canvas.animate.create_params.a_max = max
+        self.canvas.animate.create()
+        # self.canvas.animate.create(thread_it=1,min=min,max=max)
         
     def stopCreating(self):
         self.creatingAnimation = False
@@ -246,25 +248,25 @@ class QAnimationView(QtGui.QWidget):
         sheet.getCellToolBar(coords[0], coords[1]).snapTo(coords[0], coords[1])
 
     def playStopClicked(self):
-        if self.canvas.animate.create_flg == 1:
-            if self.canvas.animate.run_flg == 0:
-                self.canvas.animate.run()
+        if self.canvas.animate.created():
+            if self.canvas.animate.is_playing():
+                self.canvas.animate.playback_stop()
             else:
-                self.canvas.animate.stop()
+                self.canvas.animate.playback()
             self.updatePlayStopIcon()
 
     def updatePlayStopIcon(self):
-        if self.canvas.animate.run_flg == 0:
+        if self.canvas.animate.is_playing():
             self.playstop.setIcon(QAnimationView.PLAY_ICON)
         else:
             self.playstop.setIcon(QAnimationView.STOP_ICON)
 
     def stop(self):
-        self.canvas.animate.pause_run()
+        self.canvas.animate.playback_pause()
 
-    def drew(self):
-        self.framesSlider.setValue(self.canvas.animate.current_frame)
-        self.frameCount.setText("Frame: %d" % self.canvas.animate.current_frame)
+    def drawn(self, frame_num):
+        self.framesSlider.setValue(frame_num)
+        self.frameCount.setText("Frame: %d" % frame_num)
         
     def paused(self):
         self.updatePlayStopIcon()
@@ -281,6 +283,6 @@ class QAnimationView(QtGui.QWidget):
     def zoom(self,value):
         self.zoomFactor=value/4.
         #canvas=int(self.canvas.currentText())-1
-        self.canvas.animate.zoom(self.zoomFactor)
-        self.canvas.animate.frame(self.framesSlider.value())
+        self.canvas.animate.playback_params.zoom(self.zoomFactor)
+        self.canvas.animate.draw_frame()
 
