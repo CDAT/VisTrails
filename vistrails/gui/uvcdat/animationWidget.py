@@ -160,10 +160,13 @@ class QAnimationView(QtGui.QWidget):
     def disconnectAnimationSignals(self):
         self.canvas.animate.signals.drawn.disconnect(self.drawn)
         self.canvas.animate.signals.paused.disconnect(self.paused)
+        self.canvas.animate.signals.stopped.disconnect(self.updatePlayStopIcon)
         
     def connectAnimationSignals(self):
         unique_connect(self.canvas.animate.signals.drawn, self.drawn)
         unique_connect(self.canvas.animate.signals.paused, self.paused)
+        unique_connect(self.canvas.animate.signals.stopped, 
+                       self.updatePlayStopIcon)
 
     def setCanvas(self,canvas):
         #if self.canvas is not None:
@@ -251,12 +254,13 @@ class QAnimationView(QtGui.QWidget):
         if self.canvas.animate.created():
             if self.canvas.animate.is_playing():
                 self.canvas.animate.playback_stop()
+                self.updatePlayStopIcon(True)
             else:
                 self.canvas.animate.playback()
-            self.updatePlayStopIcon()
+                self.updatePlayStopIcon(False)
 
-    def updatePlayStopIcon(self):
-        if self.canvas.animate.is_playing():
+    def updatePlayStopIcon(self, is_stopped=True):
+        if is_stopped:
             self.playstop.setIcon(QAnimationView.PLAY_ICON)
         else:
             self.playstop.setIcon(QAnimationView.STOP_ICON)
