@@ -297,7 +297,7 @@ class PointCollection():
         lev_aliases =  [ "isobaric", "bottom_top", "layers", "interfaces" ]
         lev = var.getLevel()
         if lev == None:
-            for axis_spec in var.domain:
+            for axis_spec in var.getDomain():
                 axis = axis_spec[0]
                 grid_lev = None
                 if self.gf:
