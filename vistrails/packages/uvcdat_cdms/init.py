@@ -1254,7 +1254,7 @@ class QCDATWidget(QVTKWidget):
                         #print k, " = ", getattr(cgm,k)
                             
             kwargs = plot.kwargs
-                    
+            kwargs['cdmsvar'] = plot.var      
             #record commands
             cmd+=" '%s', '%s'" %( plot.template,cgm.name)
             for k in kwargs:
