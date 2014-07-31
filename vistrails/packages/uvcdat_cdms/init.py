@@ -1245,7 +1245,7 @@ class QCDATWidget(QVTKWidget):
                         if k in ['legend']:
                             setattr(cgm,k,eval(getattr(plot,k)))
                         else:
-                            print "cgm=",cgm,"k=",k,"getattr(plot,k)=",getattr(plot,k)
+#                            print "cgm=",cgm,"k=",k,"getattr(plot,k)=",getattr(plot,k)
                             if getattr(plot,k)!=getattr(cgm,k):
                                 try:
                                     setattr(cgm,k,eval(getattr(plot,k)))
