@@ -329,7 +329,6 @@ class QVTKWidget(QCellWidget):
 
             if not self.mRenWin.GetInteractor():
                 #iren = vtk.vtkRenderWindowInteractor()
-                print " ********************** ********************** Set interactor: QVTKRenderWindowInteractor ********************** ********************** "
                 iren = QVTKRenderWindowInteractor()
 #                if system.systemType=='Darwin':
 #                    iren.InstallMessageProcOff()
