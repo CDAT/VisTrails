@@ -332,6 +332,7 @@ class QVTKWidget(QCellWidget):
                 if self.createInteractor:
                     iren = QVTKRenderWindowInteractor()
 #                iren = vtk.vtkGenericRenderWindowInteractor()
+#                iren = vtk.vtkRenderWindowInteractor()
 #                if system.systemType=='Darwin':
 #                    iren.InstallMessageProcOff()
                     iren.SetRenderWindow(self.mRenWin)
