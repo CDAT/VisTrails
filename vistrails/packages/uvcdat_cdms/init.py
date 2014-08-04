@@ -34,7 +34,7 @@ from gui.uvcdat.theme import UVCDATTheme
 from gui.uvcdat.cdmsCache import CdmsCache
 import gui.uvcdat.regionExtractor #for certain toPython commands
 import vtk
-from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
+#from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 
 canvas = None
 original_gm_attributes = {}
@@ -158,7 +158,7 @@ class CDMSVariable(Variable):
         return module        
     
     def to_python(self):
-        from packages.vtDV3D.vtUtilities import memoryLogger
+#        from packages.vtDV3D.vtUtilities import memoryLogger
         if self.source:
             cdmsfile = self.source.var
         elif self.url:
@@ -187,7 +187,7 @@ class CDMSVariable(Variable):
         if isinstance(fvar, cdms2.axis.FileAxis):
             var = cdms2.MV2.array(fvar)
         
-        memoryLogger.log("start cdms variable read") 
+#        memoryLogger.log("start cdms variable read") 
 
         if self.axes is not None:
             #convert string into kwargs
@@ -215,7 +215,7 @@ class CDMSVariable(Variable):
         elif not isinstance(fvar, cdms2.axis.FileAxis):
             var = cdmsfile.__call__(varName)
             
-        memoryLogger.log("finish cdms variable read")    
+#        memoryLogger.log("finish cdms variable read")    
             
         if self.axesOperations is not None:
             var = CDMSVariable.applyAxesOperations(var, self.axesOperations)
@@ -340,8 +340,8 @@ class CDMSVariable(Variable):
         return var
         
     def compute(self):
-        from packages.vtDV3D.vtUtilities import memoryLogger
-        memoryLogger.log("start CDMSVariable.compute")
+#        from packages.vtDV3D.vtUtilities import memoryLogger
+#        memoryLogger.log("start CDMSVariable.compute")
         self.axes = self.forceGetInputFromPort("axes")
         self.axesOperations = self.forceGetInputFromPort("axesOperations")
         self.varNameInFile = self.forceGetInputFromPort("varNameInFile")
@@ -354,7 +354,7 @@ class CDMSVariable(Variable):
 #        print " ---> CDMSVariable-->compute: ", str(self.file), str(self.url), str(self.name)
         self.var = self.to_python()
         self.setResult("self", self)
-        memoryLogger.log("finished CDMSVariable.compute")
+#        memoryLogger.log("finished CDMSVariable.compute")
 
     @staticmethod
     def applyAxesOperations(var, axesOperations):

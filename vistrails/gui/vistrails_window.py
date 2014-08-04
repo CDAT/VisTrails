@@ -1847,12 +1847,12 @@ class QVistrailsWindow(QVistrailViewWindow):
             else:
                 try:
                     import gui.uvcdat.mainwindow
-                    from packages.vtDV3D.VolumeRenderModule import TransferFunctionConfigurationDialog
-                    from packages.vtDV3D.InteractiveConfiguration import ColormapConfigurationDialog
+#                    from packages.vtDV3D.VolumeRenderModule import TransferFunctionConfigurationDialog
+#                    from packages.vtDV3D.InteractiveConfiguration import ColormapConfigurationDialog
                     if (isinstance(window, gui.uvcdat.mainwindow.UVCDATMainWindow) or
-                        isinstance(window, QtGui.QDockWidget) or
-                        isinstance(window, TransferFunctionConfigurationDialog) or
-                        isinstance(window, ColormapConfigurationDialog)):
+                        isinstance(window, QtGui.QDockWidget) ):
+#                        isinstance(window, TransferFunctionConfigurationDialog) or
+#                        isinstance(window, ColormapConfigurationDialog)):
                         return self.stack.currentWidget()
                 except:
                     pass
