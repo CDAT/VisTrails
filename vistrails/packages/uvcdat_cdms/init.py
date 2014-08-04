@@ -1150,7 +1150,7 @@ class QCDATWidget(QVTKWidget):
     def __init__(self, parent=None):
         QVTKWidget.__init__(self, parent)
         #self.toolBarType = QCDATWidgetToolBar
-        self.window = None
+#        self.vcsWindow = None
         self.canvas =  None
         #self.windowId = -1
         self.createCanvas()
