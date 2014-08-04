@@ -137,7 +137,7 @@ class QVTKWidget(QCellWidget):
     """
     save_formats = ["PNG image (*.png)", "PDF files (*.pdf)"]
 
-    def __init__(self, parent=None, f=QtCore.Qt.WindowFlags()):
+    def __init__(self, parent=None, f=QtCore.Qt.WindowFlags(), **args ):
         """ QVTKWidget(parent: QWidget, f: WindowFlags) -> QVTKWidget
         Initialize QVTKWidget with a toolbar with its own device
         context
@@ -147,6 +147,7 @@ class QVTKWidget(QCellWidget):
 
         self.interacting = None
         self.mRenWin = None
+        self.createInteractor = args.get( 'createInteractor', False )
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
         self.setAttribute(QtCore.Qt.WA_PaintOnScreen)
         self.setMouseTracking(True)
@@ -291,7 +292,7 @@ class QVTKWidget(QCellWidget):
         Set a new render window to QVTKWidget and initialize the
         interactor as well
         
-        """
+        """    
         if w == self.mRenWin:
             return
         
@@ -323,17 +324,18 @@ class QVTKWidget(QCellWidget):
                     vp = vp + '\0x00'                
                 self.mRenWin.SetDisplayId(vp)
                 self.resizeWindow(1,1)
-            self.mRenWin.SetWindowInfo(str(int(self.winId())))
+            self.mRenWin.SetWindowInfo(str(int(self.winId())))  
             if self.isVisible():
                 self.mRenWin.Start()
 
             if not self.mRenWin.GetInteractor():
-                #iren = vtk.vtkRenderWindowInteractor()
-                iren = QVTKRenderWindowInteractor()
+                if self.createInteractor:
+                    iren = QVTKRenderWindowInteractor()
+#                iren = vtk.vtkGenericRenderWindowInteractor()
 #                if system.systemType=='Darwin':
 #                    iren.InstallMessageProcOff()
-                iren.SetRenderWindow(self.mRenWin)
-                iren.Initialize()
+                    iren.SetRenderWindow(self.mRenWin)
+                    iren.Initialize()
 #                if system.systemType=='Linux':
 #                    system.XDestroyWindow(self.mRenWin.GetGenericDisplayId(),
 #                                          self.mRenWin.GetGenericWindowId())
