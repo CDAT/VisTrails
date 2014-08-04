@@ -39,7 +39,7 @@ from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.spreadsheet.spreadsheet_cell import QCellWidget, QCellToolBar
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_event import DisplayCellEvent
-from cdatguiwrap import VCSQtManager
+# from cdatguiwrap import VCSQtManager
 import vcs
 import genutil
 import cdutil
@@ -323,7 +323,7 @@ class QCDATWidget(QCellWidget):
     
     def __init__(self, parent=None):
         QCellWidget.__init__(self, parent)        
-        self.window = None
+        self.vcsWindow = None
         self.canvas =  None
         self.windowId = -1
         layout = QtGui.QVBoxLayout()
@@ -361,12 +361,12 @@ Please delete unused CDAT Cells in the spreadsheet.")
                 spreadsheetWindow.setUpdatesEnabled(True)
                 raise e
         #print self.windowId, self.canvas
-        if self.window is not None:
-            self.layout().removeWidget(self.window)
+        if self.vcsWindow is not None:
+            self.layout().removeWidget(self.vcsWindow)
             
-        self.window = VCSQtManager.window(self.windowId)
-        self.layout().addWidget(self.window)
-        self.window.setVisible(True)    
+        self.vcsWindow = VCSQtManager.window(self.windowId)
+        self.layout().addWidget(self.vcsWindow)
+        self.vcsWindow.setVisible(True)    
         # Place the mainwindow that the plot will be displayed in, into this
         # cell widget's layout
            
@@ -398,11 +398,11 @@ Please delete unused CDAT Cells in the spreadsheet.")
         #we need to re-parent self.window or it will be deleted together with
         #this widget. The immediate parent is also deleted, so we will set to
         # parent of the parent widget
-        if self.window is not None:
-            self.window.setParent(self.parent().parent())
-            self.window.setVisible(False)
+        if self.vcsWindow is not None:
+            self.vcsWindow.setParent(self.parent().parent())
+            self.vcsWindow.setVisible(False)
         self.canvas = None
-        self.window = None
+        self.vcsWindow = None
         
         QCDATWidget.usedIndexes.remove(self.windowId)
         QCellWidget.deleteLater(self)    
