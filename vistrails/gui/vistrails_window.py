@@ -2457,7 +2457,8 @@ class QVistrailsWindow(QVistrailViewWindow):
         from gui.mashups.alias_inspector import QAliasInspector
         from gui.mashups.mashup_view import QMashupViewTab
         from packages.spreadsheet.spreadsheet_cell import QCellWidget
-        import sys
+        from packages.cdat.cdat_cell import QCDATWidget
+        import sys, traceback
         def is_or_has_parent_of_types(widget, types):
             while widget is not None:
                 for _type in types:
@@ -2476,6 +2477,7 @@ class QVistrailsWindow(QVistrailViewWindow):
                                    QParamExploreView,
                                    QAliasInspector,
                                    QCellWidget,
+                                   QCDATWidget,
                                    QMashupViewTab]
                 if (self.isAncestorOf(current) or 
                     owner in self.windows.values()):
@@ -2514,8 +2516,10 @@ class QVistrailsWindow(QVistrailViewWindow):
                         self._previous_view = view.get_current_tab()
                         view.set_to_current(current)
                         view.view_changed()
-            except:
+            except Exception, err:
                 print>>sys.stderr," No window in applicationFocusChanged, current = ", str( current )
+                traceback.print_exc()
+                
         else:
             self._focus_owner = None
 _app = None
