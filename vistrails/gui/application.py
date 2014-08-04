@@ -172,7 +172,7 @@ parameters from other instances")
             pkgs.append('ParaView')
             pkgs.append('pvclimate')
             pkgs.append('vtk')
-            pkgs.append('vtDV3D')
+#            pkgs.append('vtDV3D')
             pkgs.append('vis_analytics')
             pkgs.append('scikit_learn')
         except Exception:
