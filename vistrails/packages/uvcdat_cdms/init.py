@@ -2015,8 +2015,8 @@ def initialize(*args, **keywords):
     global original_gm_attributes
 #    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>hello, here I am, uvcdat_cdms/init.py!!!!"
     canvas = get_canvas()
-    app = QtGui.QApplication.instance()
-    app.connect( app,  QtCore.SIGNAL("focusChanged(QWidget*,QWidget*)"), canvas.applicationFocusChanged )
+#    app = QtGui.QApplication.instance()
+#    app.connect( app,  QtCore.SIGNAL("focusChanged(QWidget*,QWidget*)"), canvas.applicationFocusChanged )
     
     for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
