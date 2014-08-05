@@ -2013,11 +2013,14 @@ for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
 
 def initialize(*args, **keywords):
     global original_gm_attributes
-    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>hello, here I am, uvcdat_cdms/init.py!!!!"
+#    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>hello, here I am, uvcdat_cdms/init.py!!!!"
+    canvas = get_canvas()
+    app = QtGui.QApplication.instance()
+    app.connect( app,  QtCore.SIGNAL("focusChanged(QWidget*,QWidget*)"), canvas.applicationFocusChanged )
+    
     for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
                   'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Vector' ]:
-        canvas = get_canvas()
         method_name = "get"+plot_type.lower()
         attributes = get_gm_attributes(plot_type)
         gms = canvas.listelements(str(plot_type).lower())
@@ -2042,5 +2045,8 @@ def initialize(*args, **keywords):
                 elif attr == 'max' and attrs[attr] == None:
                     attrs[attr] = 1
             original_gm_attributes[plot_type][gmname] = InstanceObject(**attrs)
+            
+
+        
    
     
