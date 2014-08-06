@@ -97,9 +97,11 @@ if __name__ == '__main__':
         app = gui.application.get_vistrails_application()
         if app:
             app.finishSession()
-        print "Uncaught exception on initialization: %s" % e
         import traceback
-        traceback.print_exc()
+        print >>sys.stderr, "Uncaught exception on initialization: %s" % (
+                traceback._format_final_exc_line(type(e).__name__, e).strip())
+        traceback.print_exc(None, sys.stderr)
+        sys.exit(255)
  
     ## trying to load up file/var
     print app.uvcdatLoadFileStart,app.uvcdatLoadVariableStart
