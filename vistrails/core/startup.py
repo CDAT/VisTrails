@@ -61,6 +61,8 @@ class VistrailsStartup(object):
     
     """
 
+    first_run = False
+
     def __init__(self, config=None, tempconfig=None):
         """ VistrailsStartup(config, tempconfig: ConfigurationObject,
                              optionsDict: dict) -> None
@@ -339,6 +341,7 @@ by startup.py. This should only be called after init()."""
             try:
                 shutil.copyfile(origin, fname)
                 debug.log('Succeeded!')
+                self.first_run = True
             except:
                 debug.critical("""Failed to copy default configuration
                 file to %s. This could be an indication of a
@@ -565,7 +568,9 @@ by startup.py. This should only be called after init()."""
         Scheme through packages directory and initialize them all
         """
         # Imports standard packages directory
-        self._package_manager.initialize_packages(self._package_dictionary)
+        self._package_manager.initialize_packages(
+                self._package_dictionary,
+                report_missing_dependencies=not self.first_run)
 
         # Enable abstractions
         import core.modules.abstraction
