@@ -431,7 +431,8 @@ Returns true if given package identifier is present."""
         for dep_pkg in reversed(reverse_deps):
             self.late_enable_package(dep_pkg.codepath, prefix_dictionary)
 
-    def initialize_packages(self,prefix_dictionary={}):
+    def initialize_packages(self, prefix_dictionary={},
+                            report_missing_dependencies=True):
         """initialize_packages(prefix_dictionary={}): None
 
         Initializes all installed packages. If prefix_dictionary is
@@ -496,8 +497,10 @@ Returns true if given package identifier is present."""
             try:
                 self.add_dependencies(package)
             except Package.MissingDependency, e:
-                debug.critical("Dependencies of package %s are missing "
-                               "so it will be disabled" % package.name, str(e))
+                if report_missing_dependencies:
+                    debug.critical("Dependencies of package %s are missing "
+                                   "so it will be disabled" % package.name,
+                                   str(e))
                 package.remove_own_dom_element()
                 self._dependency_graph.delete_vertex(package.identifier)
                 del self._package_versions[package.identifier][package.version]
