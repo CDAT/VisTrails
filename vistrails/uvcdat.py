@@ -47,9 +47,9 @@ def execute_vistrail( *args, **kwargs ):
         app = gui.application.get_vistrails_application()
         if app:
             app.finishSession()
-        print>>original_stderr, "Uncaught exception on initialization: %s" % e
+        print>>system_stderr, "Uncaught exception on initialization: %s" % e
         import traceback
-        traceback.print_exc( None, original_stderr )
+        traceback.print_exc( None, system_stderr )
         sys.exit(255)
 
     resource_path = kwargs.get( 'dir', None )
@@ -98,9 +98,9 @@ if __name__ == '__main__':
         if app:
             app.finishSession()
         import traceback
-        print >>sys.stderr, "Uncaught exception on initialization: %s" % (
+        print >>system_stderr, "Uncaught exception on initialization: %s" % (
                 traceback._format_final_exc_line(type(e).__name__, e).strip())
-        traceback.print_exc(None, sys.stderr)
+        traceback.print_exc(None, system_stderr)
         sys.exit(255)
  
     ## trying to load up file/var
