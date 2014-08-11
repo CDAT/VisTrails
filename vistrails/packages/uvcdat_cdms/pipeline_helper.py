@@ -670,17 +670,15 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         """
         pipeline = controller.vistrail.getPipeline(version)
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
-        text = "from PyQt4 import QtCore, QtGui\n"
-        text += "import cdms2, cdutil, genutil\n"
+#        text = "from PyQt4 import QtCore, QtGui\n"
+        text = "import cdms2, cdutil, genutil\n"
         text += "import vcs\n\n"
         text += "if __name__ == '__main__':\n"
         text += "    import sys\n"
-        text += "    app = QtGui.QApplication(sys.argv)\n"
+#        text += "    app = QtGui.QApplication(sys.argv)\n"
         ident = '    '
         
-        var_op_modules = CDMSPipelineHelper.find_topo_sort_modules_by_types(pipeline,
-                                                                            [CDMSVariable, 
-                                                                             CDMSVariableOperation])
+        var_op_modules = CDMSPipelineHelper.find_topo_sort_modules_by_types( pipeline, [CDMSVariable,   CDMSVariableOperation] )
         for m in var_op_modules:
             desc = m.module_descriptor.module
             mobj = desc.from_module(m)
@@ -689,12 +687,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         text += ident + "canvas = vcs.init()\n"
         for mplot in plots:
             plot = mplot.module_descriptor.module.from_module(mplot)
-            text += ident + "gm%s = canvas.get%s('%s')\n"%(plot.plot_type, 
-                                                 plot.plot_type.lower(), 
-                                                 plot.graphics_method_name)
+            text += ident + "gm%s = vcs.get%s('%s')\n" % (plot.plot_type,  plot.plot_type.lower(),  plot.graphics_method_name)
             text += ident + "args = []\n"
             for varm in CDMSPipelineHelper.find_variables_connected_to_plot_module(controller, pipeline, mplot.id):
-                text += ident + "args.append(%s)\n"%CDMSPipelineHelper.get_variable_name_from_module(varm)
+                text += ident + "args.append(%s)\n" % CDMSPipelineHelper.get_variable_name_from_module(varm)
 #                desc = varm.module_descriptor
 #                if issubclass(desc.module, CDMSVariable):
 #                    var = CDMSVariable.from_module(varm)
@@ -723,11 +719,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                     if hasattr(plot,k):
                         kval = getattr(plot,k)
                         if type(kval) == type("str") and k != 'legend':
-                            text += ident + "gm%s.%s = '%s'\n"%(plot.plot_type,
-                                                            k, kval)
+                            text += ident + "gm%s.%s = '%s'\n" % (plot.plot_type,  k, kval)
                         else:
-                            text += ident + "gm%s.%s = %s\n"%(plot.plot_type,
-                                                      k,  kval)
+                            text += ident + "gm%s.%s = %s\n" % (plot.plot_type, k,  kval)
+                            
 #                        if k in ['level_1', 'level_2', 'color_1',
 #                                 'color_2', 'legend', 'levels',
 #                                 'missing', 'datawc_calendar', 'datawc_x1', 
@@ -739,9 +734,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 #                            text += ident + "gm%s.%s = '%s'\n"%(plot.plot_type,
 #                                                            k, getattr(plot,k))
             
-            text += ident + "kwargs = %s\n"%plot.kwargs
-            text += ident + "canvas.plot(gm%s,*args, **kwargs)\n"%(plot.plot_type) 
-        text += '    sys.exit(app.exec_())'           
+            text += ident + "kwargs = %s\n" % plot.kwargs
+            text += ident + "args.append( gm%s )\n" % (plot.plot_type) 
+            text += ident + "canvas.plot( *args, **kwargs )\n"
+        text += ident + 'canvas.interact()'           
         return text
     
     @staticmethod    
