@@ -165,6 +165,7 @@ class StandardWidgetSheetTabInterface(object):
     def __init__(self):
         self.lastCellLocation = (0, 0)
         self.emptyCellToolBar = None
+        self.cellWidgets = {}
 
     def isSheetTabWidget(self):
         """ isSheetTabWidget() -> boolean
@@ -205,7 +206,7 @@ class StandardWidgetSheetTabInterface(object):
         fact return the container widget of a cell
         
         """
-        return None
+        return self.cellWidgets.get( (row, col), None )
 
     def setCellWidget(self, row, col, cellWidget):
         """ setCellWidget(row: int,
@@ -216,7 +217,7 @@ class StandardWidgetSheetTabInterface(object):
         protected from being destroyed when taken out.
         
         """
-        pass
+        self.cellWidgets[ (row, col) ] = cellWidget
 
     def setCellByWidget(self, row, col, cellWidget):
         """ setCellByWidget(row: int,
@@ -772,7 +773,9 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         Get cell at a specific row and column.
         
         """
-        return self.sheet.getCell(row, col)
+        cell = self.sheet.getCell(row, col)
+        if cell == None: cell = StandardWidgetSheetTabInterface.getCellWidget(self, row, col)
+        return cell
 
     def getCellRect(self, row, col):
         """ getCellRect(row: int, col: int) -> QRect
@@ -827,6 +830,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
         
         """
         self.sheet.setCellByWidget(row, col, cellWidget)
+        StandardWidgetSheetTabInterface.setCellWidget(self, row, col, cellWidget)
 
     def dragEnterEvent(self, event):
         """ dragEnterEvent(event: QDragEnterEvent) -> None

@@ -29,7 +29,40 @@ from gui.uvcdat.definedVariableWidget import QDefinedVariableWidget
 from gui.application import get_vistrails_application
 import api
 
+    
 class CDMSPipelineHelper(PlotPipelineHelper):
+    
+    @classmethod
+    def getSheetTabWidget( klass, sheet_index = -1 ):
+        from packages.spreadsheet.spreadsheet_controller import spreadsheetController
+        spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
+        if sheet_index == -1:  
+            try: sheet_index = spreadsheetWindow.get_current_tab_controller().currentIndex () 
+            except: return None
+        return spreadsheetWindow.get_current_tab_controller().tabWidgets[ sheet_index ]
+
+    @classmethod
+    def getCellLoc( klass, pipeline ):
+        cell_module = klass.find_module_by_name(pipeline, 'CDMSCell')
+        cell_location = klass.find_module_by_name(pipeline, 'CellLocation')
+
+        row = 0
+        col = 0
+        for i in xrange(cell_location.getNumFunctions()):
+            if cell_location.functions[i].name == 'Row':
+                row = int( cell_location.functions[i].params[0].strValue ) - 1
+            elif cell_location.functions[i].name == "Column":
+                col = int( cell_location.functions[i].params[0].strValue ) - 1 
+                
+        return ( row, col )
+
+    @classmethod
+    def getPlotApps( klass, pipeline ):               
+        ( row, col ) = klass.getCellLoc( pipeline )         
+        tabWidget = klass.getSheetTabWidget()  
+        cell  = tabWidget.getCellWidget( row, col ).widget()   
+        return cell.canvas.backend.plotApps
+
     @staticmethod
     def show_configuration_widget(controller, version, plot_objs=[]):
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
@@ -78,9 +111,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     
     @staticmethod
     def find_variables_connected_to_unary_operation_module(controller, pipeline, op_id):
-        conns = controller.get_connections_to(pipeline, [op_id], 
-                                              port_name="input_var")
-        
+        conns = controller.get_connections_to( pipeline, [op_id], port_name="input_var")       
         vars = []
         for conn in conns:
             vars.append(pipeline.modules[conn.source.moduleId])
@@ -115,8 +146,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         for pl_module in helper.find_plot_modules(pipeline):
             gmName = helper.get_graphics_method_name_from_module(pl_module)
             ptype = helper.get_plot_type_from_module(pl_module)
-            plot_objs.append(get_plot_manager().new_plot(plot_type, ptype, 
-                                                          gmName))
+            plot_objs.append(get_plot_manager().new_plot(plot_type, ptype, gmName))
         return plot_objs
     
     @staticmethod
@@ -659,8 +689,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 #        controller.perform_action(action)
 #        return action
         
-    @staticmethod
-    def build_python_script_from_pipeline(controller, version, plot_objs=[]):
+    @classmethod
+    def build_python_script_from_pipeline( klass, controller, version, plot_objs=[]):
         """build_python_script_from_pipeline(controller, version, plot_objs) -> str
            
            This will build the corresponding python script for the pipeline
@@ -668,8 +698,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
            plot_objs list is ignored.
            
         """
+
         pipeline = controller.vistrail.getPipeline(version)
-        plots = CDMSPipelineHelper.find_plot_modules(pipeline)
+        plots = klass.find_plot_modules(pipeline)
+       
 #        text = "from PyQt4 import QtCore, QtGui\n"
         text = "import cdms2, cdutil, genutil\n"
         text += "import vcs\n\n"
@@ -713,8 +745,21 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                             text += ident + "canvas.canvas.setcolorcell(%i,%i,%i,%i)\n"%(n,r,g,b)
                         text += ident + "canvas.canvas.updateVCSsegments(canvas.mode)\n" 
                         text += ident + "canvas.flush()\n"
-                
-            if plot.graphics_method_name != 'default':
+             
+            if plot.plot_type.lower().startswith('3d'):
+                plotApps = klass.getPlotApps( pipeline )
+                for pApp in plotApps:
+                    stateData = pApp.getStateData()
+                    for stateDataElem in stateData:
+                        [k,kval]= stateDataElem.split('=') 
+                        text += ident + "gm%s.%s = %s\n" % (plot.plot_type,  k, kval )
+                        
+#                         if type(kval) == type("str"):
+#                             text += ident + "gm%s.%s = '%s'\n" % (plot.plot_type,  k, kval )
+#                         else:
+#                             text += ident + "gm%s.%s = %s\n" % (plot.plot_type,  k, kval )
+                            
+            elif (plot.graphics_method_name != 'default'):
                 for k in plot.gm_attributes:
                     if hasattr(plot,k):
                         kval = getattr(plot,k)
