@@ -46,6 +46,7 @@ import core.modules
 import core.modules.vistrails_module
 from core.modules.module_descriptor import ModuleDescriptor
 from core.modules.package import Package
+from core.requirements import MissingRequirement
 from core.utils import VistrailsInternalError, memo_method, \
      InvalidModuleClass, ModuleAlreadyExists, append_to_dict_of_lists, \
      all, profile, versions_increasing, InvalidPipeline
@@ -1470,6 +1471,8 @@ class ModuleRegistry(DBRegistry):
                     if hasattr(descriptor, 'module'):
                         self.auto_add_ports(descriptor.module)
                         added_descriptors.add(descriptor)
+        except MissingRequirement:
+            raise
         except Exception, e:
             raise package.InitializationFailed(package, 
                                                [traceback.format_exc()])

@@ -355,6 +355,7 @@ class Package(DBPackage):
     def initialize(self, existing_paths=None):
         self._override_import(existing_paths)
         try:
+            self.check_requirements()
             name = self.prefix + self.codepath + '.init'
             try:
                 __import__(name, globals(), locals(), [])
@@ -379,8 +380,7 @@ class Package(DBPackage):
                     if hasattr(self._module, attr):
                         setattr(self._init_module, attr, getattr(self._module, attr))
                 self._module = self._init_module
-            
-            self.check_requirements()
+
             if hasattr(self._init_module, 'initialize'):
                 # override __import__ so that we can track what needs to
                 # be unloaded, try imports, and then stop overriding,
