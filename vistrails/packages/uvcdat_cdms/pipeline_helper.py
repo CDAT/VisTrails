@@ -749,15 +749,16 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             if plot.plot_type.lower().startswith('3d'):
                 plotApps = klass.getPlotApps( pipeline )
                 for pApp in plotApps:
-                    stateData = pApp.getStateData()
-                    for stateDataElem in stateData:
-                        [k,kval]= stateDataElem.split('=') 
-                        text += ident + "gm%s.%s = %s\n" % (plot.plot_type,  k, kval )
-                        
-#                         if type(kval) == type("str"):
-#                             text += ident + "gm%s.%s = '%s'\n" % (plot.plot_type,  k, kval )
-#                         else:
-#                             text += ident + "gm%s.%s = %s\n" % (plot.plot_type,  k, kval )
+                    cData = pApp.getConfigurationData()
+                    for [k,kval] in cData:
+                        param_values = []
+                        if len(kval): 
+                            param_values.append( str(kval) )
+                        state = pApp.getConfigurationState(k)
+                        if state: 
+                            param_values.append( ' vcs.on' if ( state == 1 ) else " {'state' : %d }" % state )  
+                        if len( param_values ):                         
+                            text += ident + "gm%s.%s = %s\n" % (plot.plot_type,  k, ','.join( param_values ) )
                             
             elif (plot.graphics_method_name != 'default'):
                 for k in plot.gm_attributes:
