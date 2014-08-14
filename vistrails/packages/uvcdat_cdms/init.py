@@ -257,9 +257,9 @@ class CDMSVariable(Variable):
             text += ident + "cdmsfile = cdms2.open('%s')\n" % os.path.expanduser(self.file)
             
         if self.varNameInFile is not None:
-            text += ident + "%s = cdmsfile('%s')\n"%(self.name, self.varNameInFile)
+            text += ident + "%s = cdmsfile('%s')\n" % (self.name, self.varNameInFile)
         else:
-            text += ident + "%s = cdmsfile('%s')\n"%(self.name, self.name)
+            text += ident + "%s = cdmsfile('%s')\n" % (self.name, self.name)
         if self.axes is not None:
             text += ident + "%s = %s(%s)\n"% (self.name, self.name, self.axes)
         if self.axesOperations is not None:
@@ -1254,7 +1254,14 @@ class QCDATWidget(QVTKWidget):
                         #print k, " = ", getattr(cgm,k)
                             
             kwargs = plot.kwargs
-            kwargs['cdmsvar'] = plot.var      
+            file_path = None 
+            for fname in [ plot.var.file, plot.var.filename ]:
+                if os.path.isfile(fname):
+                    file_path = fname
+                    break 
+            if not file_path and plot.var.url: 
+                file_path = plot.var.url   
+            if file_path: kwargs['cdmsfile'] =  file_path
             #record commands
             cmd+=" '%s', '%s'" %( plot.template,cgm.name)
             for k in kwargs:

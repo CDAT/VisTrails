@@ -781,10 +781,9 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 #                        else:
 #                            text += ident + "gm%s.%s = '%s'\n"%(plot.plot_type,
 #                                                            k, getattr(plot,k))
-            text += ident + ( "kwargs = { 'cdmsvar':%s" % vnames[0] )
-            for plot_item in plot.kwargs.items():
-               text += ", '%s': '%s'" % ( plot_item[0], plot_item[1] )
-            text += " }\n"
+
+            text += ident + "kwargs = %s\n" % str(plot.kwargs) 
+            text += ident + "kwargs[ 'cdmsfile' ] = cdmsfile.id\n" 
             text += ident + "args.append( gm%s )\n" % (plot.plot_type) 
             text += ident + "canvas.plot( *args, **kwargs )\n"
         text += ident + 'canvas.interact()'           
