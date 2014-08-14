@@ -715,14 +715,16 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             desc = m.module_descriptor.module
             mobj = desc.from_module(m)
             text += mobj.to_python_script(ident=ident)
-                
+        vnames = []        
         text += ident + "canvas = vcs.init()\n"
         for mplot in plots:
             plot = mplot.module_descriptor.module.from_module(mplot)
             text += ident + "gm%s = vcs.get%s('%s')\n" % (plot.plot_type,  plot.plot_type.lower(),  plot.graphics_method_name)
             text += ident + "args = []\n"
             for varm in CDMSPipelineHelper.find_variables_connected_to_plot_module(controller, pipeline, mplot.id):
-                text += ident + "args.append(%s)\n" % CDMSPipelineHelper.get_variable_name_from_module(varm)
+                vname = CDMSPipelineHelper.get_variable_name_from_module(varm)
+                text += ident + "args.append(%s)\n" % vname
+                vnames.append( vname )    
 #                desc = varm.module_descriptor
 #                if issubclass(desc.module, CDMSVariable):
 #                    var = CDMSVariable.from_module(varm)
@@ -779,8 +781,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 #                        else:
 #                            text += ident + "gm%s.%s = '%s'\n"%(plot.plot_type,
 #                                                            k, getattr(plot,k))
-            
-            text += ident + "kwargs = %s\n" % plot.kwargs
+            text += ident + ( "kwargs = { 'cdmsvar':%s" % vnames[0] )
+            for plot_item in plot.kwargs.items():
+               text += ", '%s': '%s'" % ( plot_item[0], plot_item[1] )
+            text += " }\n"
             text += ident + "args.append( gm%s )\n" % (plot.plot_type) 
             text += ident + "canvas.plot( *args, **kwargs )\n"
         text += ident + 'canvas.interact()'           
