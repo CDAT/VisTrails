@@ -11,13 +11,13 @@ from core.modules.module_registry import get_module_registry
 from core.modules.vistrails_module import Module
 from core.uvcdat.plotmanager import get_plot_manager
 from packages.spreadsheet.basic_widgets import CellLocation, SpreadsheetCell
-        
+from core.modules.module_registry import get_module_registry, MissingPort
 import core.db.action
-import core.db.io
+import core.db.io    
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import pyqtSlot, pyqtSignal
 from PyQt4.QtGui import QApplication
-from init import CDMSPlot, CDMSVariable, CDMSCell, CDMSVariableOperation, \
+from init import CDMSPlot, CDMS3DPlot, CDMSVariable, CDMSCell, CDMSVariableOperation, \
        CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, \
        CDMSNaryVariableOperation, CDMSGrowerOperation
 from widgets import GraphicsMethodConfigurationWidget
@@ -27,9 +27,9 @@ from gui.uvcdat.dockplot import PlotTreeWidgetItem
 from gui.uvcdat.uvcdatCommons import plotTypes, gmInfos
 from gui.uvcdat.definedVariableWidget import QDefinedVariableWidget
 from gui.application import get_vistrails_application
-import api
+import api, sys, traceback
 
-    
+ 
 class CDMSPipelineHelper(PlotPipelineHelper):
     
     @classmethod
@@ -344,20 +344,19 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         """
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
+        def_controller = api.get_current_controller()
         if controller is None:
-            controller = api.get_current_controller()
+            controller = def_controller
             version = 0L
         added_vars = []
         reg = get_module_registry()
-        cell_module = controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell'))
+        cell_module = controller.create_module_from_descriptor( reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell') )
         ops = [('add', cell_module)]
         conns = []
         plot_modules = []
         
         for i, plot in enumerate(plot_objs):
-            ops2, new_conns, pm = CDMSPipelineHelper.create_actions_from_plot_obj(
-                    controller, var_modules, cell_module, plot, added_vars, i+1)
+            ops2, new_conns, pm = CDMSPipelineHelper.create_actions_from_plot_obj( controller, var_modules, cell_module, plot, added_vars, i+1 )
             ops.extend(ops2)
             conns.extend(new_conns)
             plot_modules.append(pm)
@@ -428,7 +427,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         version = controller.current_version
         pipeline = controller.vistrail.getPipeline(version)
         ops = []
-        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot,CDMS3DPlot])
         cell_module = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
         conns = []
         new_plot_modules = []
@@ -579,7 +578,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         
         # Update project controller cell information
         pipeline = controller.vistrail.getPipeline(action.id)
-        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot,CDMS3DPlot])
         
         cell.clear()
         for pl_module in plot_modules:
@@ -615,7 +614,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         """
         
         cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
-        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [ CDMSPlot, CDMS3DPlot ])
         
         #sort plot modules based on order
         fn = lambda x: PlotPipelineHelper.get_value_from_function(x, "plotOrder")
@@ -687,7 +686,93 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 #        controller.change_selected_version(version)
 #        controller.add_new_action(action)
 #        controller.perform_action(action)
+
 #        return action
+    @staticmethod
+    def change_parameters( parmRecList, controller=None ):
+        import api
+        """change_parameters(
+                            parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
+                            controller: VistrailController,
+                            ) -> None
+        Note: param_list is a list of strings no matter what the parameter type!
+        """   
+        if controller is None:
+            proj_controller = api.get_current_project_controller()
+            if proj_controller == None:
+                controller = api.get_current_controller()
+                controller.select_latest_version()
+                current_version = controller.current_version
+            else:
+                (sheetName, row, col) = proj_controller.get_current_cell_info()
+                cell = proj_controller.sheet_map[ sheetName ][ (row, col) ]
+                current_version = cell.current_parent_version 
+                controller =  proj_controller.vt_controller 
+                controller.change_selected_version( current_version )
+
+        
+        pipeline = controller.vistrail.getPipeline(current_version)
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot,CDMS3DPlot])
+        if len( plot_modules ):
+                 
+    #
+    #         try:
+    # #            ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
+    #             proj_controller = self.get_current_project_controller()
+    #             if proj_controller == None:
+    #                 controller = self.get_current_controller()
+    #             else:
+    #                 if ( sheetName <> proj_controller.current_sheetName ): return
+    #                 controller =  proj_controller.vt_controller 
+    #                 if self.update_proj_controller:
+    #                     pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+    #                     if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+    #                         proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+    #                     else: pcoords = None 
+    #                 cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
+    #                 current_version = cell.current_parent_version 
+    #                 controller.change_selected_version( current_version )
+    #             pipeline = controller.vistrail.getPipeline( current_version )
+    #         except Exception, err:
+    #             print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
+    #             pipeline = controller.current_pipeline
+    #             proj_controller = None
+    #             current_version = controller.current_version
+    #             cell_address = ( None, None )
+    #             
+    #         try:
+    #             module = pipeline.modules[self.moduleID] 
+    #         except KeyError:
+    #             print>>sys.stderr, "Error changing parameter in module %d (%s), parm: %s: Module not in current controller pipeline." % ( self.moduleID, self.__class__.__name__, str(parmRecList) )  
+    #             return
+            try:
+                ops = []
+                module = plot_modules[0]
+                config_list = []
+                op_list = []
+    #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
+                for parmRec in parmRecList: 
+                    try:
+                        print "Persist parameter: %s-> %s " % ( str(parmRec[0]), str(parmRec[1]) ) 
+                        op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+                        
+                    except MissingPort:
+                        print>>sys.stderr, "Missing input port %s in controller, parmRecList = %s " % ( parmRec[0], str( parmRecList ) )
+                        
+    #                    print>>sys.stderr, "Unrecognized config function %s in module %d (%s)" % ( parmRec[0], self.moduleID, self.__class__.__name__ )
+                action = core.db.action.create_action( op_list ) 
+                controller.add_new_action(action)
+                controller.perform_action(action)
+                controller.select_latest_version()
+                                  
+#                 if self.update_proj_controller and proj_controller:
+#                     proj_controller.cell_was_changed(action)
+#                     if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
+#                 sys.stdout.flush()
+                    
+            except Exception, err:
+                print>>sys.stderr, "Error changing parameter in module %d (%s): parm: %s, error: %s" % ( self.moduleID, self.__class__.__name__, str(parmRecList), str(err) )
+                traceback.print_exc()
         
     @classmethod
     def build_python_script_from_pipeline( klass, controller, version, plot_objs=[]):
@@ -1291,7 +1376,7 @@ class CDMSPlotWidget(QtGui.QWidget):
         # it only examined the pipeline instead of the plot_table
         #
         # pipeline = self.controller.vistrail.getPipeline(version)
-        # for plot in CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot]):
+        # for plot in CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot,CDMS3DPlot]):
         for plot in self.plot_table.get_plots():
             if plot.id not in self.to_be_removed:
                 plot_modules.append(plot)

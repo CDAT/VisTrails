@@ -922,6 +922,119 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
     def to_module(self, controller, pkg_identifier=None):
         module = CDMSVariableOperation.to_module(self, controller)
         return module
+
+class CDMS3DPlot(Plot, NotCacheable):
+    _input_ports = expand_port_specs([("variable", "CDMSVariable"),
+                                      ("variable2", "CDMSVariable", True),
+                                      ("plotOrder", "basic:Integer", True),
+                                      ("graphicsMethodName", "basic:String"),
+                                      ("template", "basic:String") ])
+    _output_ports = expand_port_specs([("self", "CDMS3DPlot")])
+
+    gm_attributes = [ 'projection' ]
+    
+    plot_type = None
+
+    def __init__(self):
+        Plot.__init__(self)
+        NotCacheable.__init__(self)
+        self.template = "starter"
+        self.graphics_method_name = "default"
+        self.kwargs = {}
+        self.plot_order = -1
+        self.default_values = {}
+        self.colorMap = None
+        
+    def compute(self):
+        Plot.compute(self)
+        self.graphics_method_name =  self.forceGetInputFromPort("graphicsMethodName", "default")
+        #self.set_default_values()
+        self.template = self.forceGetInputFromPort("template", "starter")
+        
+        if not self.hasInputFromPort('variable'):
+            raise ModuleError(self, "'variable' is mandatory.")
+        self.var = self.getInputFromPort('variable')
+        
+        self.var2 = None
+        if self.hasInputFromPort('variable2'):
+            self.var2 = self.getInputFromPort('variable2')
+
+        if self.hasInputFromPort("plotOrder"):
+            self.plot_order = self.getInputFromPort("plotOrder")
+            
+        for attr in self.gm_attributes:
+            if self.hasInputFromPort(attr):
+                setattr(self,attr,self.getInputFromPort(attr))
+            
+
+    def to_module(self, controller):
+        module = Plot.to_module(self, controller, identifier)
+        functions = []
+        
+        #only when graphics_method_name is different from default the user can
+        #change the values of the properties
+        if self.graphics_method_name != "default":
+            functions.append(("graphicsMethodName", [self.graphicsMethodName]))
+            for attr in self.gm_attributes:
+                    functions.append((attr, [str(getattr(self,attr))]))
+        if self.template != "starter":
+            functions.append(("template", [self.template]))
+            
+        functions = controller.create_functions(module, functions)
+        for f in functions:
+            module.add_function(f)
+        return module        
+    
+    @classmethod
+    def from_module(klass, module):
+        from pipeline_helper import CDMSPipelineHelper
+        plot = klass()
+        plot.graphics_method_name = CDMSPipelineHelper.get_graphics_method_name_from_module(module)
+        for attr in plot.gm_attributes:
+            setattr(plot,attr, CDMSPipelineHelper.get_value_from_function(module, attr))
+        plot.template = CDMSPipelineHelper.get_template_name_from_module(module)
+        return plot
+
+    def set_default_values(self, gmName=None):
+        self.default_values = {}
+        if gmName is None:
+            gmName = self.graphics_method_name
+        if self.plot_type is not None:
+            canvas = get_canvas()
+            method_name = "get"+str(self.plot_type).lower()
+            gm = getattr(canvas,method_name)(gmName)
+            for attr in self.gm_attributes:
+                setattr(self,attr,getattr(gm,attr))
+                self.default_values[attr] = getattr(gm,attr)
+    
+    @staticmethod
+    def get_canvas_graphics_method( plotType, gmName):
+        method_name = "get"+str(plotType).lower()
+        return getattr(get_canvas(),method_name)(gmName)
+    
+    @classmethod    
+    def get_initial_values(klass, gmName):
+        global original_gm_attributes
+        return original_gm_attributes[klass.plot_type][gmName]
+    
+    @classmethod 
+    def addPlotPorts(cls):
+        from vcs.dv3d import Gfdv3d
+        plist = Gfdv3d.getParameterList()
+        reg = get_module_registry()
+        pkg_identifier = None
+        for pname in plist:
+            cls.gm_attributes.append( pname )
+            cls._input_ports.append( ( pname,  reg.expand_port_spec_string("basic:String",pkg_identifier), True ) )
+#            print " CDMS3DPlot.addPlotPort: ", pname
+            
+CDMS3DPlot.addPlotPorts()  
+          
+#        cgm = CDMSPlot.get_canvas_graphics_method(klass.plot_type, gmName)
+#        attribs = {}
+#        for attr in klass.gm_attributes:
+#            attribs[attr] = getattr(cgm,attr)
+#        return InstanceObject(**attribs)
         
 class CDMSPlot(Plot, NotCacheable):
     _input_ports = expand_port_specs([("variable", "CDMSVariable"),
@@ -1118,8 +1231,7 @@ class CDMSCell(SpreadsheetCell):
     def compute(self):
         input_ports = []
         plots = []
-        for plot in sorted(self.getInputListFromPort('plot'), 
-                           key=lambda obj: obj.plot_order):
+        for plot in sorted(self.getInputListFromPort('plot'),  key=lambda obj: obj.plot_order):
             plots.append(plot)
         input_ports.append(plots)
         self.cellWidget = self.displayAndWait(QCDATWidget, input_ports)
@@ -1157,11 +1269,17 @@ class QCDATWidget(QVTKWidget):
         #layout = QtGui.QVBoxLayout()
         #self.setLayout(layout) 
         
+    def processParameterChange( self, args ):
+        from pipeline_helper import CDMSPipelineHelper
+        print "QCDATWidget.processParameterChange: ", str(args)
+        CDMSPipelineHelper.change_parameters( [ ( args[1], args[2] ), ] )
+        
     def createCanvas(self):
         if self.canvas is not None:
           return
         
         self.canvas = vcs.init(backend=self.GetRenderWindow())
+        self.canvas.ParameterChanged.connect( self.processParameterChange )
         ren = vtk.vtkRenderer()
         r,g,b = self.canvas.backgroundcolor
         ren.SetBackground(r/255.,g/255.,b/255.)
@@ -1239,6 +1357,7 @@ class QCDATWidget(QVTKWidget):
                 cmd+="%s(**%s), " % (args[-1].id,str(k2))
             args.append(plot.template)
             cgm = self.get_graphics_method(plot.plot_type, plot.graphics_method_name)
+#            cgm.setProvinenceHandler( plot.processParameterUpdate )
             if plot.graphics_method_name != 'default':
                 for k in plot.gm_attributes:
                     if hasattr(plot,k):
@@ -1737,7 +1856,7 @@ class QCDATWidgetColormap(QtGui.QAction):
         else:
             self.setVisible(False)
 
-_modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
+_modules = [CDMSVariable, CDMSPlot, CDMS3DPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
             CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, 
             CDMSNaryVariableOperation, CDMSColorMap, CDMSGrowerOperation]
 
@@ -1998,7 +2117,7 @@ def get_canvas():
     
 for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
-                  'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Vector' ]:
+                  'Xyvsy', 'Yxvsx' ]:
     def get_init_method():
         def __init__(self):
             CDMSPlot.__init__(self)
@@ -2010,6 +2129,28 @@ for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
         return is_cacheable
     
     klass = type('CDMS' + plot_type, (CDMSPlot,), 
+                 {'__init__': get_init_method(),
+                  'plot_type': plot_type,
+                  '_input_ports': get_input_ports(plot_type),
+                  'gm_attributes': get_gm_attributes(plot_type),
+                  'is_cacheable': get_is_cacheable_method()})
+    
+    _modules.append((klass,{'configureWidgetType':GraphicsMethodConfigurationWidget}))
+
+
+for plot_type in [ '3D_Scalar', '3D_Vector' ]:
+    
+    def get_init_method():
+        def __init__(self):
+            CDMS3DPlot.__init__(self)
+        return __init__
+    
+    def get_is_cacheable_method():
+        def is_cacheable(self):
+            return False
+        return is_cacheable
+    
+    klass = type('CDMS' + plot_type, (CDMS3DPlot,), 
                  {'__init__': get_init_method(),
                   'plot_type': plot_type,
                   '_input_ports': get_input_ports(plot_type),
