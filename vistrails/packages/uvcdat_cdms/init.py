@@ -1028,7 +1028,7 @@ class CDMS3DPlot(Plot, NotCacheable):
             cls._input_ports.append( ( pname,  reg.expand_port_spec_string("basic:String",pkg_identifier), True ) )
 #            print " CDMS3DPlot.addPlotPort: ", pname
             
-CDMS3DPlot.addPlotPorts()  
+# CDMS3DPlot.addPlotPorts()  
           
 #        cgm = CDMSPlot.get_canvas_graphics_method(klass.plot_type, gmName)
 #        attribs = {}
@@ -1357,7 +1357,7 @@ class QCDATWidget(QVTKWidget):
                 cmd+="%s(**%s), " % (args[-1].id,str(k2))
             args.append(plot.template)
             cgm = self.get_graphics_method(plot.plot_type, plot.graphics_method_name)
-#            cgm.setProvinenceHandler( plot.processParameterUpdate )
+#            cgm.setProvenanceHandler( plot.processParameterUpdate )
             if plot.graphics_method_name != 'default':
                 for k in plot.gm_attributes:
                     if hasattr(plot,k):
@@ -1879,10 +1879,18 @@ def get_input_ports(plot_type):
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
     elif plot_type == "3D_Scalar":
-        return expand_port_specs([('axes', 'basic:String', True),])
+        from DV3D.ConfigurationFunctions import ConfigManager
+        cfgManager = ConfigManager()
+        parameterList = cfgManager.getParameterList( extras=[ 'axes' ])
+        port_specs = [ ( pname, 'basic:String', True ) for pname in parameterList ]
+        return expand_port_specs( port_specs )
 
     elif plot_type == "3D_Vector":
-        return expand_port_specs([('axes', 'basic:String', True),])  
+        from DV3D.ConfigurationFunctions import ConfigManager
+        cfgManager = ConfigManager()
+        parameterList = cfgManager.getParameterList( extras=[ 'axes' ] )
+        port_specs = [ ( pname, 'basic:String', True ) for pname in parameterList ]
+        return expand_port_specs( port_specs )
     
     elif plot_type == "Isofill":
         return expand_port_specs([('levels', 'basic:List', True),
@@ -2019,10 +2027,16 @@ def get_gm_attributes(plot_type):
                     'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
 
     elif plot_type == "3D_Scalar":
-        return  [ 'axes' ]
+        from DV3D.ConfigurationFunctions import ConfigManager
+        cfgManager = ConfigManager()
+        parameterList = cfgManager.getParameterList( extras=[ 'axes'  ] )
+        return  parameterList
 
     elif plot_type == "3D_Vector":
-        return  [ 'axes' ]
+        from DV3D.ConfigurationFunctions import ConfigManager
+        cfgManager = ConfigManager()
+        parameterList = cfgManager.getParameterList( extras=[ 'axes' ] )
+        return  parameterList
         
     elif plot_type == "Isofill":
         return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
