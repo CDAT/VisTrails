@@ -10,7 +10,14 @@
     <package name="spreadsheet"/>
     <package name="dialogs"/>
     <package name="HTTP"/>
-    <package name="pylab"/>
+    <package name="uvcdat"/>
+    <package name="uvcdat_cdms"/>
+    <package name="ParaView"/>
+    <package name="pvclimate"/>
+    <package name="vtDV3D"/>
+    <package name="vis_analytics"/>
+    <package name="scikit_learn"/>
+    <package name="VisIt"/>
   </packages>
   <disabledpackages/>
 </startup>

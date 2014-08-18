@@ -533,6 +533,7 @@ Returns true if given package identifier is present."""
                         debug.critical("Package <codepath %s> is missing a "
                                        "requirement and will be disabled" %
                                        pkg.codepath, str(e))
+                    self.late_disable_package(pkg.codepath)
                 except Package.InitializationFailed, e:
                     debug.critical("Initialization of package <codepath %s> "
                                    "failed and will be disabled" % \
@@ -541,8 +542,6 @@ Returns true if given package identifier is present."""
                     # we know will not be necessary - the only thing needed is
                     # the reference in the package list
                     self.late_disable_package(pkg.codepath)
-#                     pkg.remove_own_dom_element()
-#                     failed.append(package)
                 else:
                     pkg.remove_py_deps(existing_paths)
                     existing_paths.update(pkg.get_py_deps())
