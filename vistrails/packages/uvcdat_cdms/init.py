@@ -1274,7 +1274,6 @@ class QCDATWidget(QVTKWidget):
         
     def processParameterChange( self, args ):
         from pipeline_helper import CDMSPipelineHelper
-        print "QCDATWidget.processParameterChange: ", str(args)
         CDMSPipelineHelper.change_parameters( [ ( args[1], args[2] ), ] )
         
     def createCanvas(self):

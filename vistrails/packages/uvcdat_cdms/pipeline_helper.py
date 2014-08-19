@@ -697,14 +697,15 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                             ) -> None
         Note: param_list is a list of strings no matter what the parameter type!
         """   
+        proj_controller = api.get_current_project_controller()
+        (sheetName, row, col) = proj_controller.get_current_cell_info()
+        
         if controller is None:
-            proj_controller = api.get_current_project_controller()
             if proj_controller == None:
                 controller = api.get_current_controller()
                 controller.select_latest_version()
                 current_version = controller.current_version
             else:
-                (sheetName, row, col) = proj_controller.get_current_cell_info()
                 cell = proj_controller.sheet_map[ sheetName ][ (row, col) ]
                 current_version = cell.current_parent_version 
                 controller =  proj_controller.vt_controller 
@@ -766,10 +767,11 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                 controller.add_new_action(action)
                 controller.perform_action(action)
                                   
-#                 if self.update_proj_controller and proj_controller:
-#                     proj_controller.cell_was_changed(action)
-#                     if pcoords:  proj_controller.current_cell_changed(  sheetName, pcoords[0], pcoords[1]  )
-#                 sys.stdout.flush()
+                if proj_controller:
+                    proj_controller.cell_was_changed(action)
+                    proj_controller.current_cell_changed(  sheetName, row, col )
+
+                print "Performed action, current controller version: ", str( controller.current_version )
                     
             except Exception, err:
                 print>>sys.stderr, "Error changing parameter in module %d (%s): parm: %s, error: %s" % ( self.moduleID, self.__class__.__name__, str(parmRecList), str(err) )
