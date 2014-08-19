@@ -961,10 +961,13 @@ class CDMS3DPlot(Plot, NotCacheable):
 
         if self.hasInputFromPort("plotOrder"):
             self.plot_order = self.getInputFromPort("plotOrder")
-            
+       
+        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes )    
         for attr in self.gm_attributes:
             if self.hasInputFromPort(attr):
-                setattr(self,attr,self.getInputFromPort(attr))
+                value = self.getInputFromPort(attr)
+                print "Set PORT %s value: " % str(attr), str( value )
+                setattr(self,attr,value)
             
 
     def to_module(self, controller):

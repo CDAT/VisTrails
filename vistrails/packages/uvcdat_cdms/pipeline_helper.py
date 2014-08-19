@@ -753,8 +753,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
                 for parmRec in parmRecList: 
                     try:
-                        print "Persist parameter: %s-> %s " % ( str(parmRec[0]), str(parmRec[1]) ) 
-                        op_list.extend( controller.update_function_ops( module, parmRec[0], parmRec[1] ) )
+                        print "Persist parameter: %s-> %s " % ( str(parmRec[0]), str(parmRec[1]) )
+                        function = parmRec[0] 
+                        values = parmRec[1].strip('[]').split(',')
+                        op_list.extend( controller.update_function_ops( module, function, values, should_replace=True ) )
                         
                     except MissingPort:
                         print>>sys.stderr, "Missing input port %s in controller, parmRecList = %s " % ( parmRec[0], str( parmRecList ) )
@@ -763,7 +765,6 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                 action = core.db.action.create_action( op_list ) 
                 controller.add_new_action(action)
                 controller.perform_action(action)
-                controller.select_latest_version()
                                   
 #                 if self.update_proj_controller and proj_controller:
 #                     proj_controller.cell_was_changed(action)
