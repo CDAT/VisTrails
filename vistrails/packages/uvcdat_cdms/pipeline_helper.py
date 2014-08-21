@@ -756,7 +756,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                     try:
                         print "Persist parameter: %s-> %s " % ( str(parmRec[0]), str(parmRec[1]) )
                         function = parmRec[0] 
-                        values = parmRec[1].strip('[]').split(',')
+                        values = [ parmRec[1] ]  # .strip('[]').split(',')
                         op_list.extend( controller.update_function_ops( module, function, values, should_replace=True ) )
                         
                     except MissingPort:

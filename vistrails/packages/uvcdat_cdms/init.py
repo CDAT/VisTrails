@@ -33,12 +33,15 @@ from gui.application import get_vistrails_application
 from gui.uvcdat.theme import UVCDATTheme
 from gui.uvcdat.cdmsCache import CdmsCache
 import gui.uvcdat.regionExtractor #for certain toPython commands
-import vtk
+import vtk, ast
 #from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 
 canvas = None
 original_gm_attributes = {}
 
+def isEmpty( elem ):
+    return ( len( elem ) == 0 ) if isinstance( elem, (list, tuple) ) else ( elem == None )
+    
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
         pkg_identifier = identifier
@@ -946,6 +949,8 @@ class CDMS3DPlot(Plot, NotCacheable):
         self.colorMap = None
         
     def compute(self):
+        import vcs
+#        from packages.uvcdat_cdms.init import get_canvas
         Plot.compute(self)
         self.graphics_method_name =  self.forceGetInputFromPort("graphicsMethodName", "default")
         #self.set_default_values()
@@ -962,12 +967,19 @@ class CDMS3DPlot(Plot, NotCacheable):
         if self.hasInputFromPort("plotOrder"):
             self.plot_order = self.getInputFromPort("plotOrder")
        
-        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes )    
+        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes ) 
+        gm = vcs.elements[ self.plot_type.lower() ][ self.graphics_method_name ] 
+#        canvas = get_canvas()
         for attr in self.gm_attributes:
             if self.hasInputFromPort(attr):
                 value = self.getInputFromPort(attr)
-                print "Set PORT %s value: " % str(attr), str( value )
-                setattr(self,attr,value)
+                if isinstance( value, str ): 
+                    try: value = ast.literal_eval( value )
+                    except ValueError: pass
+                if not isEmpty( value ):
+                    print "Set PORT %s value: " % str(attr), str( value )
+                    setattr(self,attr,value)
+                    gm.setParameter( attr, value )
             
 
     def to_module(self, controller):
@@ -1377,7 +1389,7 @@ class QCDATWidget(QVTKWidget):
             kwargs = plot.kwargs
             file_path = None 
             for fname in [ plot.var.file, plot.var.filename ]:
-                if os.path.isfile(fname):
+                if fname and os.path.isfile(fname):
                     file_path = fname
                     break 
             if not file_path and plot.var.url: 
