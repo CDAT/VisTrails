@@ -839,12 +839,12 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                 ( row, col ) = klass.getCellLoc( pipeline )      
                 plotApps = klass.getPlotApps( row, col )
                 for pApp in plotApps:
-                    cData = pApp.getConfigurationData( filter= str((row,col)) )
+                    cData = pApp.getConfigurationData( cell=(row,col) )
                     for [k,kval] in cData:
                         param_values = []
                         if len(kval): 
                             param_values.append( str(kval) )
-                        state = pApp.getConfigurationState(k)
+                        state = pApp.getConfigurationState( k, cell=(row,col) )
                         if state: 
                             param_values.append( ' vcs.on' if ( state == 1 ) else " {'state' : %d }" % state )  
                         if len( param_values ): 

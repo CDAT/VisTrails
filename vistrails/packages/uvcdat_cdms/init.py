@@ -950,6 +950,7 @@ class CDMS3DPlot(Plot, NotCacheable):
         
     def compute(self):
         import vcs
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
 #        from packages.uvcdat_cdms.init import get_canvas
         Plot.compute(self)
         self.graphics_method_name =  self.forceGetInputFromPort("graphicsMethodName", "default")
@@ -966,6 +967,9 @@ class CDMS3DPlot(Plot, NotCacheable):
 
         if self.hasInputFromPort("plotOrder"):
             self.plot_order = self.getInputFromPort("plotOrder")
+         
+        pipeline = self.moduleInfo[ 'pipeline' ]   
+        cell_coords = CDMSPipelineHelper.getCellLoc(pipeline)
        
         print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes ) 
         gm = vcs.elements[ self.plot_type.lower() ][ self.graphics_method_name ] 
@@ -979,7 +983,7 @@ class CDMS3DPlot(Plot, NotCacheable):
                 if not isEmpty( value ):
                     print "Set PORT %s value: " % str(attr), str( value )
                     setattr(self,attr,value)
-                    gm.setParameter( attr, value )
+                    gm.setParameter( attr, value, cell=cell_coords )
             
 
     def to_module(self, controller):
