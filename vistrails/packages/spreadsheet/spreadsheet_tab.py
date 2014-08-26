@@ -315,6 +315,7 @@ class StandardWidgetSheetTabInterface(object):
             if cellType:
                 newCell = cellType(self)
                 self.setCellByWidget(row, col, newCell)
+                newCell.cell_coordinates = ( row, col )
                 newCell.show()
                 newCell.updateContents(inputPorts)
             else:

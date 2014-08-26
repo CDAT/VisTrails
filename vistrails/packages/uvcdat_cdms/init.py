@@ -1420,6 +1420,7 @@ class QCDATWidget(QVTKWidget):
                     self.canvas.flush() # update the canvas by processing all the X events
             
 #            try:
+            kwargs[ 'cell_coordinates' ] = self.cell_coordinates
             self.canvas.plot(cgm,*args,**kwargs)
 #             except Exception, e:
 #                 print "cgm=",cgm,"args=",args,"kwargs=",kwargs

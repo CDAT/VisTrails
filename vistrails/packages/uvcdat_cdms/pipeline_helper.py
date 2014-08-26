@@ -57,8 +57,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return ( row, col )
 
     @classmethod
-    def getPlotApps( klass, pipeline ):               
-        ( row, col ) = klass.getCellLoc( pipeline )         
+    def getPlotApps( klass, row, col ):                  
         tabWidget = klass.getSheetTabWidget()  
         cell  = tabWidget.getCellWidget( row, col ).widget()   
         return cell.canvas.backend.plotApps
@@ -837,9 +836,10 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                         text += ident + "canvas.flush()\n"
              
             if plot.plot_type.lower().startswith('3d'):
-                plotApps = klass.getPlotApps( pipeline )
+                ( row, col ) = klass.getCellLoc( pipeline )      
+                plotApps = klass.getPlotApps( row, col )
                 for pApp in plotApps:
-                    cData = pApp.getConfigurationData()
+                    cData = pApp.getConfigurationData( filter= str((row,col)) )
                     for [k,kval] in cData:
                         param_values = []
                         if len(kval): 
@@ -847,7 +847,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                         state = pApp.getConfigurationState(k)
                         if state: 
                             param_values.append( ' vcs.on' if ( state == 1 ) else " {'state' : %d }" % state )  
-                        if len( param_values ):                         
+                        if len( param_values ): 
+                            key = k.split('(')[0]                      
                             text += ident + "gm%s.%s = %s\n" % (plot.plot_type,  k, ','.join( param_values ) )
                             
             elif (plot.graphics_method_name != 'default'):
