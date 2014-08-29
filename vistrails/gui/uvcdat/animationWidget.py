@@ -2,7 +2,7 @@ from PyQt4 import QtGui, QtCore
 import vcs
 from gui.uvcdat import customizeUVCDAT
 from gui.uvcdat import uvcdatCommons
-import os
+import os, sys
 
 def unique_connect(signal, handler):
     """Uses new style connect, adding the unique connection bit flag so that

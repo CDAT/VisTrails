@@ -1,0 +1,2817 @@
+<?xml version="1.0"?>
+<!DOCTYPE dataset SYSTEM "http://www-pcmdi.llnl.gov/software/cdms/cdml.dtd">
+<dataset
+	Conventions	=""
+	cdms_filemap	="[[[ACGRDFLX,ACHFX,ACLHF,ALBBCK,ALBEDO,CANWAT,CF1,CF2,CF3,CFN,CFN1,CLAT,CLDFRA,COMDBZ,COSALPHA,CSI,DBZ,DN,DNW,DZS,E,EL_PBL,EMISS,F,FNM,FNP,GLW,GRAUPELNC,GRDFLX,GRPL_MAX,HAILNC,HFX,HFX_FORCE,HFX_FORCE_TEND,HGT,ISLTYP,ITIMESTEP,IVGTYP,LAI,LANDMASK,LAP_HGT,LH,LH_FORCE,LH_FORCE_TEND,LISPOROSITY,LTG1_MAX,LTG2_MAX,LU_INDEX,MAPFAC_M,MAPFAC_MX,MAPFAC_MY,MAPFAC_U,MAPFAC_UX,MAPFAC_UY,MAPFAC_V,MAPFAC_VX,MAPFAC_VY,MAX_MSTFX,MAX_MSTFY,MF_VX_INV,MU,MUB,NEST_POS,NOAHRES,OLR,P,P00,PB,PBLH,PH,PHB,PSFC,P_HYD,P_TOP,Q2,QCLOUD,QFX,QGRAUP,QICE,QRAIN,QSNOW,QVAPOR,RAINC,RAINNC,RAINSH,RDN,RDNW,RDX,RDY,REFD_MAX,REFL_10CM,RESM,SAVE_TOPO_FROM_REAL,SEAICE,SEED1,SEED2,SFROFF,SH2O,SHDMAX,SHDMIN,SINALPHA,SLWDN,SLWUP,SMCREL,SMOIS,SNOALB,SNOW,SNOWC,SNOWH,SNOWNC,SR,SST,SSTSK,SSWDN,SSWUP,SWDOWN,SWNORM,T,T00,T2,TH2,TISO,TKE_PBL,TLP,TLWDN,TLWUP,TMN,TSK,TSK_FORCE,TSK_FORCE_TEND,TSLB,TSWDN,TSWUP,Times,U,U10,UDROFF,UP_HELI_MAX,UST,V,V10,VAR_SSO,VEGFRA,W,WSPD10MAX,W_DN_MAX,W_MEAN,W_UP_MAX,XICEM,XLAND,XLAT,XLAT_U,XLAT_V,XLONG,XLONG_U,XLONG_V,XTIME,ZETATOP,ZNU,ZNW,ZS],[[-,-,-,-,-,wrfout_d01_2013-05-15_14-00-09.nc]]]]"
+	history	="
+[2013-8-2 19:18:25] /Developer/Projects/EclipseWorkspace/vistrails/vistrails/regrid_test.py -x wrfout.xml -d wrfout --time-linear 0,1,hours since 2013-05-15 14:00:00 -i 1 /Users/tpmaxwel/Data/WRF/wrfout_d01_2013-05-15_14-00-09.nc /Users/tpmaxwel/Data/WRF/wrfout_d01_2013-05-15 ..."
+	id	="wrfout"
+	directory	="/Users/tpmaxwel/Data/WRF/"
+	>
+	<attr datatype="Long" name="ISWATER">16</attr>
+	<attr datatype="Long" name="W_DAMPING">1</attr>
+	<attr datatype="Long" name="RA_SW_PHYSICS">5</attr>
+	<attr datatype="Long" name="PARENT_GRID_RATIO">1</attr>
+	<attr datatype="String" name="GRIDTYPE">C</attr>
+	<attr datatype="Double" name="DIFF_6TH_FACTOR">0.12</attr>
+	<attr datatype="Long" name="MAP_PROJ">1</attr>
+	<attr datatype="Long" name="FEEDBACK">1</attr>
+	<attr datatype="Long" name="GRID_FDDA">0</attr>
+	<attr datatype="Long" name="BOTTOM-TOP_PATCH_END_UNSTAG">60</attr>
+	<attr datatype="Long" name="GRID_ID">1</attr>
+	<attr datatype="Long" name="DAMP_OPT">0</attr>
+	<attr datatype="Long" name="HYPSOMETRIC_OPT">2</attr>
+	<attr datatype="String" name="MMINLU">USGS</attr>
+	<attr datatype="Long" name="KM_OPT">4</attr>
+	<attr datatype="Long" name="NUM_LAND_CAT">24</attr>
+	<attr datatype="Double" name="CEN_LON">-100.719</attr>
+	<attr datatype="Long" name="GRID_SFDDA">0</attr>
+	<attr datatype="Long" name="OMLCALL">0</attr>
+	<attr datatype="Long" name="J_PARENT_START">0</attr>
+	<attr datatype="Long" name="ISOILWATER">14</attr>
+	<attr datatype="Long" name="SGFDDA_INTERVAL_M">0</attr>
+	<attr datatype="Long" name="GFDDA_INTERVAL_M">0</attr>
+	<attr datatype="Long" name="JULDAY">135</attr>
+	<attr datatype="Long" name="SOUTH-NORTH_PATCH_START_UNSTAG">1</attr>
+	<attr datatype="Long" name="ISURBAN">1</attr>
+	<attr datatype="Double" name="STAND_LON">-100.719</attr>
+	<attr datatype="Double" name="MOAD_CEN_LAT">38.983</attr>
+	<attr datatype="Long" name="SMOOTH_OPTION">0</attr>
+	<attr datatype="Long" name="TKE_ADV_OPT">1</attr>
+	<attr datatype="Long" name="BOTTOM-TOP_PATCH_START_UNSTAG">1</attr>
+	<attr datatype="Long" name="WEST-EAST_PATCH_END_UNSTAG">547</attr>
+	<attr datatype="Long" name="GFDDA_END_H">0</attr>
+	<attr datatype="Long" name="BOTTOM-TOP_GRID_DIMENSION">61</attr>
+	<attr datatype="Long" name="SOUTH-NORTH_PATCH_END_UNSTAG">401</attr>
+	<attr datatype="Long" name="BOTTOM-TOP_PATCH_START_STAG">1</attr>
+	<attr datatype="String" name="TITLE"> OUTPUT FROM WRF V3.4.1 MODEL</attr>
+	<attr datatype="Long" name="MP_PHYSICS">7</attr>
+	<attr datatype="String" name="SIMULATION_START_DATE">2013-05-15_12:00:00</attr>
+	<attr datatype="Long" name="OBS_NUDGE_OPT">0</attr>
+	<attr datatype="Double" name="POLE_LON">0.0</attr>
+	<attr datatype="Long" name="I_PARENT_START">0</attr>
+	<attr datatype="Double" name="TRUELAT1">38.983</attr>
+	<attr datatype="Double" name="TRUELAT2">38.983</attr>
+	<attr datatype="Double" name="DAMPCOEF">0.2</attr>
+	<attr datatype="Double" name="CEN_LAT">38.983</attr>
+	<attr datatype="Long" name="WEST-EAST_GRID_DIMENSION">548</attr>
+	<attr datatype="Long" name="SOUTH-NORTH_GRID_DIMENSION">402</attr>
+	<attr datatype="Long" name="DIFF_6TH_OPT">2</attr>
+	<attr datatype="Long" name="RA_LW_PHYSICS">5</attr>
+	<attr datatype="Long" name="JULYR">2013</attr>
+	<attr datatype="Long" name="MFSHCONV">0</attr>
+	<attr datatype="String" name="START_DATE">2013-05-15_12:00:00</attr>
+	<attr datatype="Double" name="GMT">12.0</attr>
+	<attr datatype="Double" name="BUCKET_J">-1.0</attr>
+	<attr datatype="Long" name="CU_PHYSICS">3</attr>
+	<attr datatype="Long" name="SCALAR_ADV_OPT">1</attr>
+	<attr datatype="Long" name="WEST-EAST_PATCH_START_STAG">1</attr>
+	<attr datatype="Long" name="SF_SFCLAY_PHYSICS">2</attr>
+	<attr datatype="Long" name="SOUTH-NORTH_PATCH_START_STAG">1</attr>
+	<attr datatype="Long" name="BL_PBL_PHYSICS">2</attr>
+	<attr datatype="Double" name="BUCKET_MM">-1.0</attr>
+	<attr datatype="Double" name="DX">9000.0</attr>
+	<attr datatype="Double" name="DY">9000.0</attr>
+	<attr datatype="Double" name="DT">27.0</attr>
+	<attr datatype="Long" name="ISFTCFLX">0</attr>
+	<attr datatype="Long" name="SURFACE_INPUT_SOURCE">1</attr>
+	<attr datatype="Long" name="DFI_OPT">0</attr>
+	<attr datatype="Long" name="MOIST_ADV_OPT">1</attr>
+	<attr datatype="Long" name="PARENT_ID">0</attr>
+	<attr datatype="Long" name="SGFDDA_END_H">0</attr>
+	<attr datatype="Long" name="ISLAKE">-1</attr>
+	<attr datatype="Double" name="KVDIF">0.0</attr>
+	<attr datatype="Double" name="SWRAD_SCAT">1.0</attr>
+	<attr datatype="Long" name="SF_URBAN_PHYSICS">0</attr>
+	<attr datatype="Long" name="WEST-EAST_PATCH_START_UNSTAG">1</attr>
+	<attr datatype="Long" name="ISICE">24</attr>
+	<attr datatype="Long" name="SOUTH-NORTH_PATCH_END_STAG">402</attr>
+	<attr datatype="Long" name="WEST-EAST_PATCH_END_STAG">548</attr>
+	<attr datatype="Long" name="SST_UPDATE">0</attr>
+	<attr datatype="Double" name="KHDIF">0.0</attr>
+	<attr datatype="Double" name="PREC_ACC_DT">0.0</attr>
+	<attr datatype="Long" name="DIFF_OPT">1</attr>
+	<attr datatype="Long" name="SHCU_PHYSICS">0</attr>
+	<attr datatype="Long" name="ISHALLOW">0</attr>
+	<attr datatype="Double" name="POLE_LAT">90.0</attr>
+	<attr datatype="Long" name="BOTTOM-TOP_PATCH_END_STAG">61</attr>
+	<attr datatype="Long" name="SF_SURFACE_PHYSICS">2</attr>
+	<axis
+		datatype	="Float"
+		units	=""
+		length	="19"
+		id	="DateStrLen"
+		>
+		[  0.   1.   2.   3.   4.   5.   6.   7.   8.   9.  10.  11.  12.  13.  14.
+  15.  16.  17.  18.]
+		</axis>
+	<axis
+		datatype	="Float"
+		units	=""
+		length	="60"
+		id	="bottom_top"
+		>
+		[  0.   1.   2.   3.   4.   5.   6.   7.   8.   9.  10.  11.  12.  13.  14.
+  15.  16.  17.  18.  19.  20.  21.  22.  23.  24.  25.  26.  27.  28.  29.
+  30.  31.  32.  33.  34.  35.  36.  37.  38.  39.  40.  41.  42.  43.  44.
+  45.  46.  47.  48.  49.  50.  51.  52.  53.  54.  55.  56.  57.  58.  59.]
+		</axis>
+	<axis
+		datatype	="Float"
+		units	=""
+		length	="61"
+		id	="bottom_top_stag"
+		>
+		[  0.   1.   2.   3.   4.   5.   6.   7.   8.   9.  10.  11.  12.  13.  14.
+  15.  16.  17.  18.  19.  20.  21.  22.  23.  24.  25.  26.  27.  28.  29.
+  30.  31.  32.  33.  34.  35.  36.  37.  38.  39.  40.  41.  42.  43.  44.
+  45.  46.  47.  48.  49.  50.  51.  52.  53.  54.  55.  56.  57.  58.  59.
+  60.]
+		</axis>
+	<axis
+		datatype	="Float"
+		units	=""
+		length	="4"
+		id	="soil_layers_stag"
+		>
+		[ 0.  1.  2.  3.]
+		</axis>
+	<axis
+		datatype	="Float"
+		units	=""
+		length	="401"
+		id	="south_north"
+		>
+		[   0.    1.    2.    3.    4.    5.    6.    7.    8.    9.   10.   11.
+   12.   13.   14.   15.   16.   17.   18.   19.   20.   21.   22.   23.
+   24.   25.   26.   27.   28.   29.   30.   31.   32.   33.   34.   35.
+   36.   37.   38.   39.   40.   41.   42.   43.   44.   45.   46.   47.
+   48.   49.   50.   51.   52.   53.   54.   55.   56.   57.   58.   59.
+   60.   61.   62.   63.   64.   65.   66.   67.   68.   69.   70.   71.
+   72.   73.   74.   75.   76.   77.   78.   79.   80.   81.   82.   83.
+   84.   85.   86.   87.   88.   89.   90.   91.   92.   93.   94.   95.
+   96.   97.   98.   99.  100.  101.  102.  103.  104.  105.  106.  107.
+  108.  109.  110.  111.  112.  113.  114.  115.  116.  117.  118.  119.
+  120.  121.  122.  123.  124.  125.  126.  127.  128.  129.  130.  131.
+  132.  133.  134.  135.  136.  137.  138.  139.  140.  141.  142.  143.
+  144.  145.  146.  147.  148.  149.  150.  151.  152.  153.  154.  155.
+  156.  157.  158.  159.  160.  161.  162.  163.  164.  165.  166.  167.
+  168.  169.  170.  171.  172.  173.  174.  175.  176.  177.  178.  179.
+  180.  181.  182.  183.  184.  185.  186.  187.  188.  189.  190.  191.
+  192.  193.  194.  195.  196.  197.  198.  199.  200.  201.  202.  203.
+  204.  205.  206.  207.  208.  209.  210.  211.  212.  213.  214.  215.
+  216.  217.  218.  219.  220.  221.  222.  223.  224.  225.  226.  227.
+  228.  229.  230.  231.  232.  233.  234.  235.  236.  237.  238.  239.
+  240.  241.  242.  243.  244.  245.  246.  247.  248.  249.  250.  251.
+  252.  253.  254.  255.  256.  257.  258.  259.  260.  261.  262.  263.
+  264.  265.  266.  267.  268.  269.  270.  271.  272.  273.  274.  275.
+  276.  277.  278.  279.  280.  281.  282.  283.  284.  285.  286.  287.
+  288.  289.  290.  291.  292.  293.  294.  295.  296.  297.  298.  299.
+  300.  301.  302.  303.  304.  305.  306.  307.  308.  309.  310.  311.
+  312.  313.  314.  315.  316.  317.  318.  319.  320.  321.  322.  323.
+  324.  325.  326.  327.  328.  329.  330.  331.  332.  333.  334.  335.
+  336.  337.  338.  339.  340.  341.  342.  343.  344.  345.  346.  347.
+  348.  349.  350.  351.  352.  353.  354.  355.  356.  357.  358.  359.
+  360.  361.  362.  363.  364.  365.  366.  367.  368.  369.  370.  371.
+  372.  373.  374.  375.  376.  377.  378.  379.  380.  381.  382.  383.
+  384.  385.  386.  387.  388.  389.  390.  391.  392.  393.  394.  395.
+  396.  397.  398.  399.  400.]
+		</axis>
+	<axis
+		datatype	="Float"
+		units	=""
+		length	="402"
+		id	="south_north_stag"
+		>
+		[   0.    1.    2.    3.    4.    5.    6.    7.    8.    9.   10.   11.
+   12.   13.   14.   15.   16.   17.   18.   19.   20.   21.   22.   23.
+   24.   25.   26.   27.   28.   29.   30.   31.   32.   33.   34.   35.
+   36.   37.   38.   39.   40.   41.   42.   43.   44.   45.   46.   47.
+   48.   49.   50.   51.   52.   53.   54.   55.   56.   57.   58.   59.
+   60.   61.   62.   63.   64.   65.   66.   67.   68.   69.   70.   71.
+   72.   73.   74.   75.   76.   77.   78.   79.   80.   81.   82.   83.
+   84.   85.   86.   87.   88.   89.   90.   91.   92.   93.   94.   95.
+   96.   97.   98.   99.  100.  101.  102.  103.  104.  105.  106.  107.
+  108.  109.  110.  111.  112.  113.  114.  115.  116.  117.  118.  119.
+  120.  121.  122.  123.  124.  125.  126.  127.  128.  129.  130.  131.
+  132.  133.  134.  135.  136.  137.  138.  139.  140.  141.  142.  143.
+  144.  145.  146.  147.  148.  149.  150.  151.  152.  153.  154.  155.
+  156.  157.  158.  159.  160.  161.  162.  163.  164.  165.  166.  167.
+  168.  169.  170.  171.  172.  173.  174.  175.  176.  177.  178.  179.
+  180.  181.  182.  183.  184.  185.  186.  187.  188.  189.  190.  191.
+  192.  193.  194.  195.  196.  197.  198.  199.  200.  201.  202.  203.
+  204.  205.  206.  207.  208.  209.  210.  211.  212.  213.  214.  215.
+  216.  217.  218.  219.  220.  221.  222.  223.  224.  225.  226.  227.
+  228.  229.  230.  231.  232.  233.  234.  235.  236.  237.  238.  239.
+  240.  241.  242.  243.  244.  245.  246.  247.  248.  249.  250.  251.
+  252.  253.  254.  255.  256.  257.  258.  259.  260.  261.  262.  263.
+  264.  265.  266.  267.  268.  269.  270.  271.  272.  273.  274.  275.
+  276.  277.  278.  279.  280.  281.  282.  283.  284.  285.  286.  287.
+  288.  289.  290.  291.  292.  293.  294.  295.  296.  297.  298.  299.
+  300.  301.  302.  303.  304.  305.  306.  307.  308.  309.  310.  311.
+  312.  313.  314.  315.  316.  317.  318.  319.  320.  321.  322.  323.
+  324.  325.  326.  327.  328.  329.  330.  331.  332.  333.  334.  335.
+  336.  337.  338.  339.  340.  341.  342.  343.  344.  345.  346.  347.
+  348.  349.  350.  351.  352.  353.  354.  355.  356.  357.  358.  359.
+  360.  361.  362.  363.  364.  365.  366.  367.  368.  369.  370.  371.
+  372.  373.  374.  375.  376.  377.  378.  379.  380.  381.  382.  383.
+  384.  385.  386.  387.  388.  389.  390.  391.  392.  393.  394.  395.
+  396.  397.  398.  399.  400.  401.]
+		</axis>
+	<axis
+		datatype	="Float"
+		units	=""
+		length	="547"
+		id	="west_east"
+		>
+		[   0.    1.    2.    3.    4.    5.    6.    7.    8.    9.   10.   11.
+   12.   13.   14.   15.   16.   17.   18.   19.   20.   21.   22.   23.
+   24.   25.   26.   27.   28.   29.   30.   31.   32.   33.   34.   35.
+   36.   37.   38.   39.   40.   41.   42.   43.   44.   45.   46.   47.
+   48.   49.   50.   51.   52.   53.   54.   55.   56.   57.   58.   59.
+   60.   61.   62.   63.   64.   65.   66.   67.   68.   69.   70.   71.
+   72.   73.   74.   75.   76.   77.   78.   79.   80.   81.   82.   83.
+   84.   85.   86.   87.   88.   89.   90.   91.   92.   93.   94.   95.
+   96.   97.   98.   99.  100.  101.  102.  103.  104.  105.  106.  107.
+  108.  109.  110.  111.  112.  113.  114.  115.  116.  117.  118.  119.
+  120.  121.  122.  123.  124.  125.  126.  127.  128.  129.  130.  131.
+  132.  133.  134.  135.  136.  137.  138.  139.  140.  141.  142.  143.
+  144.  145.  146.  147.  148.  149.  150.  151.  152.  153.  154.  155.
+  156.  157.  158.  159.  160.  161.  162.  163.  164.  165.  166.  167.
+  168.  169.  170.  171.  172.  173.  174.  175.  176.  177.  178.  179.
+  180.  181.  182.  183.  184.  185.  186.  187.  188.  189.  190.  191.
+  192.  193.  194.  195.  196.  197.  198.  199.  200.  201.  202.  203.
+  204.  205.  206.  207.  208.  209.  210.  211.  212.  213.  214.  215.
+  216.  217.  218.  219.  220.  221.  222.  223.  224.  225.  226.  227.
+  228.  229.  230.  231.  232.  233.  234.  235.  236.  237.  238.  239.
+  240.  241.  242.  243.  244.  245.  246.  247.  248.  249.  250.  251.
+  252.  253.  254.  255.  256.  257.  258.  259.  260.  261.  262.  263.
+  264.  265.  266.  267.  268.  269.  270.  271.  272.  273.  274.  275.
+  276.  277.  278.  279.  280.  281.  282.  283.  284.  285.  286.  287.
+  288.  289.  290.  291.  292.  293.  294.  295.  296.  297.  298.  299.
+  300.  301.  302.  303.  304.  305.  306.  307.  308.  309.  310.  311.
+  312.  313.  314.  315.  316.  317.  318.  319.  320.  321.  322.  323.
+  324.  325.  326.  327.  328.  329.  330.  331.  332.  333.  334.  335.
+  336.  337.  338.  339.  340.  341.  342.  343.  344.  345.  346.  347.
+  348.  349.  350.  351.  352.  353.  354.  355.  356.  357.  358.  359.
+  360.  361.  362.  363.  364.  365.  366.  367.  368.  369.  370.  371.
+  372.  373.  374.  375.  376.  377.  378.  379.  380.  381.  382.  383.
+  384.  385.  386.  387.  388.  389.  390.  391.  392.  393.  394.  395.
+  396.  397.  398.  399.  400.  401.  402.  403.  404.  405.  406.  407.
+  408.  409.  410.  411.  412.  413.  414.  415.  416.  417.  418.  419.
+  420.  421.  422.  423.  424.  425.  426.  427.  428.  429.  430.  431.
+  432.  433.  434.  435.  436.  437.  438.  439.  440.  441.  442.  443.
+  444.  445.  446.  447.  448.  449.  450.  451.  452.  453.  454.  455.
+  456.  457.  458.  459.  460.  461.  462.  463.  464.  465.  466.  467.
+  468.  469.  470.  471.  472.  473.  474.  475.  476.  477.  478.  479.
+  480.  481.  482.  483.  484.  485.  486.  487.  488.  489.  490.  491.
+  492.  493.  494.  495.  496.  497.  498.  499.  500.  501.  502.  503.
+  504.  505.  506.  507.  508.  509.  510.  511.  512.  513.  514.  515.
+  516.  517.  518.  519.  520.  521.  522.  523.  524.  525.  526.  527.
+  528.  529.  530.  531.  532.  533.  534.  535.  536.  537.  538.  539.
+  540.  541.  542.  543.  544.  545.  546.]
+		</axis>
+	<axis
+		datatype	="Float"
+		units	=""
+		length	="548"
+		id	="west_east_stag"
+		>
+		[   0.    1.    2.    3.    4.    5.    6.    7.    8.    9.   10.   11.
+   12.   13.   14.   15.   16.   17.   18.   19.   20.   21.   22.   23.
+   24.   25.   26.   27.   28.   29.   30.   31.   32.   33.   34.   35.
+   36.   37.   38.   39.   40.   41.   42.   43.   44.   45.   46.   47.
+   48.   49.   50.   51.   52.   53.   54.   55.   56.   57.   58.   59.
+   60.   61.   62.   63.   64.   65.   66.   67.   68.   69.   70.   71.
+   72.   73.   74.   75.   76.   77.   78.   79.   80.   81.   82.   83.
+   84.   85.   86.   87.   88.   89.   90.   91.   92.   93.   94.   95.
+   96.   97.   98.   99.  100.  101.  102.  103.  104.  105.  106.  107.
+  108.  109.  110.  111.  112.  113.  114.  115.  116.  117.  118.  119.
+  120.  121.  122.  123.  124.  125.  126.  127.  128.  129.  130.  131.
+  132.  133.  134.  135.  136.  137.  138.  139.  140.  141.  142.  143.
+  144.  145.  146.  147.  148.  149.  150.  151.  152.  153.  154.  155.
+  156.  157.  158.  159.  160.  161.  162.  163.  164.  165.  166.  167.
+  168.  169.  170.  171.  172.  173.  174.  175.  176.  177.  178.  179.
+  180.  181.  182.  183.  184.  185.  186.  187.  188.  189.  190.  191.
+  192.  193.  194.  195.  196.  197.  198.  199.  200.  201.  202.  203.
+  204.  205.  206.  207.  208.  209.  210.  211.  212.  213.  214.  215.
+  216.  217.  218.  219.  220.  221.  222.  223.  224.  225.  226.  227.
+  228.  229.  230.  231.  232.  233.  234.  235.  236.  237.  238.  239.
+  240.  241.  242.  243.  244.  245.  246.  247.  248.  249.  250.  251.
+  252.  253.  254.  255.  256.  257.  258.  259.  260.  261.  262.  263.
+  264.  265.  266.  267.  268.  269.  270.  271.  272.  273.  274.  275.
+  276.  277.  278.  279.  280.  281.  282.  283.  284.  285.  286.  287.
+  288.  289.  290.  291.  292.  293.  294.  295.  296.  297.  298.  299.
+  300.  301.  302.  303.  304.  305.  306.  307.  308.  309.  310.  311.
+  312.  313.  314.  315.  316.  317.  318.  319.  320.  321.  322.  323.
+  324.  325.  326.  327.  328.  329.  330.  331.  332.  333.  334.  335.
+  336.  337.  338.  339.  340.  341.  342.  343.  344.  345.  346.  347.
+  348.  349.  350.  351.  352.  353.  354.  355.  356.  357.  358.  359.
+  360.  361.  362.  363.  364.  365.  366.  367.  368.  369.  370.  371.
+  372.  373.  374.  375.  376.  377.  378.  379.  380.  381.  382.  383.
+  384.  385.  386.  387.  388.  389.  390.  391.  392.  393.  394.  395.
+  396.  397.  398.  399.  400.  401.  402.  403.  404.  405.  406.  407.
+  408.  409.  410.  411.  412.  413.  414.  415.  416.  417.  418.  419.
+  420.  421.  422.  423.  424.  425.  426.  427.  428.  429.  430.  431.
+  432.  433.  434.  435.  436.  437.  438.  439.  440.  441.  442.  443.
+  444.  445.  446.  447.  448.  449.  450.  451.  452.  453.  454.  455.
+  456.  457.  458.  459.  460.  461.  462.  463.  464.  465.  466.  467.
+  468.  469.  470.  471.  472.  473.  474.  475.  476.  477.  478.  479.
+  480.  481.  482.  483.  484.  485.  486.  487.  488.  489.  490.  491.
+  492.  493.  494.  495.  496.  497.  498.  499.  500.  501.  502.  503.
+  504.  505.  506.  507.  508.  509.  510.  511.  512.  513.  514.  515.
+  516.  517.  518.  519.  520.  521.  522.  523.  524.  525.  526.  527.
+  528.  529.  530.  531.  532.  533.  534.  535.  536.  537.  538.  539.
+  540.  541.  542.  543.  544.  545.  546.  547.]
+		</axis>
+	<variable
+		datatype	="Float"
+		units	="J m-2"
+		id	="ACGRDFLX"
+		>
+		<attr datatype="String" name="description">ACCUMULATED GROUND HEAT FLUX</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="J m-2"
+		id	="ACHFX"
+		>
+		<attr datatype="String" name="description">ACCUMULATED UPWARD HEAT FLUX AT THE SURFACE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="J m-2"
+		id	="ACLHF"
+		>
+		<attr datatype="String" name="description">ACCUMULATED UPWARD LATENT HEAT FLUX AT THE SURFACE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="ALBBCK"
+		>
+		<attr datatype="String" name="description">BACKGROUND ALBEDO</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="-"
+		id	="ALBEDO"
+		>
+		<attr datatype="String" name="description">ALBEDO</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="kg m-2"
+		id	="CANWAT"
+		>
+		<attr datatype="String" name="description">CANOPY WATER</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="CF1"
+		>
+		<attr datatype="String" name="description">2nd order extrapolation constant</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="CF2"
+		>
+		<attr datatype="String" name="description">2nd order extrapolation constant</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="CF3"
+		>
+		<attr datatype="String" name="description">2nd order extrapolation constant</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="CFN"
+		>
+		<attr datatype="String" name="description">extrapolation constant</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="CFN1"
+		>
+		<attr datatype="String" name="description">extrapolation constant</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="degree_north"
+		id	="CLAT"
+		>
+		<attr datatype="String" name="description">COMPUTATIONAL GRID LATITUDE, SOUTH IS NEGATIVE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="CLDFRA"
+		>
+		<attr datatype="String" name="description">CLOUD FRACTION</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="dbz"
+		id	="COMDBZ"
+		>
+		<attr datatype="String" name="description">COMPOSITE RADAR REFLECTIVITIES</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="COSALPHA"
+		>
+		<attr datatype="String" name="description">Local cosine of map rotation</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="CSI"
+		>
+		<attr datatype="String" name="description">CONVECTIVE STRATIFORM REGION INDEX</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="dbz"
+		id	="DBZ"
+		>
+		<attr datatype="String" name="description">RADAR REFLECTIVITIES</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="DN"
+		>
+		<attr datatype="String" name="description">d(eta) values between half (mass) levels</attr>
+		<attr datatype="String" name="MemoryOrder">Z  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="DNW"
+		>
+		<attr datatype="String" name="description">d(eta) values between full (w) levels</attr>
+		<attr datatype="String" name="MemoryOrder">Z  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m"
+		id	="DZS"
+		>
+		<attr datatype="String" name="description">THICKNESSES OF SOIL LAYERS</attr>
+		<attr datatype="String" name="MemoryOrder">Z  </attr>
+		<attr datatype="String" name="stagger">Z</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="4" name="soil_layers_stag"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="s-1"
+		id	="E"
+		>
+		<attr datatype="String" name="description">Coriolis cosine latitude term</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m"
+		id	="EL_PBL"
+		>
+		<attr datatype="String" name="description">Length scale from PBL</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="EMISS"
+		>
+		<attr datatype="String" name="description">SURFACE EMISSIVITY</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="s-1"
+		id	="F"
+		>
+		<attr datatype="String" name="description">Coriolis sine latitude term</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="FNM"
+		>
+		<attr datatype="String" name="description">upper weight for vertical stretching</attr>
+		<attr datatype="String" name="MemoryOrder">Z  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="FNP"
+		>
+		<attr datatype="String" name="description">lower weight for vertical stretching</attr>
+		<attr datatype="String" name="MemoryOrder">Z  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="GLW"
+		>
+		<attr datatype="String" name="description">DOWNWARD LONG WAVE FLUX AT GROUND SURFACE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="mm"
+		id	="GRAUPELNC"
+		>
+		<attr datatype="String" name="description">ACCUMULATED TOTAL GRID SCALE GRAUPEL</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="GRDFLX"
+		>
+		<attr datatype="String" name="description">GROUND HEAT FLUX</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="kg m-2"
+		id	="GRPL_MAX"
+		>
+		<attr datatype="String" name="description">MAX COL INT GRAUPEL</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="mm"
+		id	="HAILNC"
+		>
+		<attr datatype="String" name="description">ACCUMULATED TOTAL GRID SCALE HAIL</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="HFX"
+		>
+		<attr datatype="String" name="description">UPWARD HEAT FLUX AT THE SURFACE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="HFX_FORCE"
+		>
+		<attr datatype="String" name="description">SCM ideal surface sensible heat flux</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2 s-1"
+		id	="HFX_FORCE_TEND"
+		>
+		<attr datatype="String" name="description">SCM ideal surface sensible heat flux tendency</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m"
+		id	="HGT"
+		>
+		<attr datatype="String" name="description">Terrain Height</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Long"
+		units	=""
+		id	="ISLTYP"
+		>
+		<attr datatype="String" name="description">DOMINANT SOIL CATEGORY</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">106</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Long"
+		units	=""
+		id	="ITIMESTEP"
+		>
+		<attr datatype="String" name="description"></attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">106</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Long"
+		units	=""
+		id	="IVGTYP"
+		>
+		<attr datatype="String" name="description">DOMINANT VEGETATION CATEGORY</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">106</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="area/area"
+		id	="LAI"
+		>
+		<attr datatype="String" name="description">Leaf area index</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="LANDMASK"
+		>
+		<attr datatype="String" name="description">LAND MASK (1 FOR LAND, 0 FOR WATER)</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m"
+		id	="LAP_HGT"
+		>
+		<attr datatype="String" name="description">Laplacian of orography</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="LH"
+		>
+		<attr datatype="String" name="description">LATENT HEAT FLUX AT THE SURFACE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="LH_FORCE"
+		>
+		<attr datatype="String" name="description">SCM ideal surface latent heat flux</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2 s-1"
+		id	="LH_FORCE_TEND"
+		>
+		<attr datatype="String" name="description">SCM ideal surface latent heat flux tendency</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="LISPOROSITY"
+		>
+		<attr datatype="String" name="description">2-D Porosity from LIS</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="flashes km-2 5min-1"
+		id	="LTG1_MAX"
+		>
+		<attr datatype="String" name="description">MAX LTG THREAT 1</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="flashes km-2 5min-1"
+		id	="LTG2_MAX"
+		>
+		<attr datatype="String" name="description">MAX LTG THREAT 2</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="LU_INDEX"
+		>
+		<attr datatype="String" name="description">LAND USE CATEGORY</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MAPFAC_M"
+		>
+		<attr datatype="String" name="description">Map scale factor on mass grid</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MAPFAC_MX"
+		>
+		<attr datatype="String" name="description">Map scale factor on mass grid, x direction</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MAPFAC_MY"
+		>
+		<attr datatype="String" name="description">Map scale factor on mass grid, y direction</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MAPFAC_U"
+		>
+		<attr datatype="String" name="description">Map scale factor on u-grid</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG_U XLAT_U</attr>
+		<attr datatype="String" name="stagger">X</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="548" name="west_east_stag"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MAPFAC_UX"
+		>
+		<attr datatype="String" name="description">Map scale factor on u-grid, x direction</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG_U XLAT_U</attr>
+		<attr datatype="String" name="stagger">X</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="548" name="west_east_stag"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MAPFAC_UY"
+		>
+		<attr datatype="String" name="description">Map scale factor on u-grid, y direction</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG_U XLAT_U</attr>
+		<attr datatype="String" name="stagger">X</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="548" name="west_east_stag"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MAPFAC_V"
+		>
+		<attr datatype="String" name="description">Map scale factor on v-grid</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG_V XLAT_V</attr>
+		<attr datatype="String" name="stagger">Y</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="402" name="south_north_stag"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MAPFAC_VX"
+		>
+		<attr datatype="String" name="description">Map scale factor on v-grid, x direction</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG_V XLAT_V</attr>
+		<attr datatype="String" name="stagger">Y</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="402" name="south_north_stag"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MAPFAC_VY"
+		>
+		<attr datatype="String" name="description">Map scale factor on v-grid, y direction</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG_V XLAT_V</attr>
+		<attr datatype="String" name="stagger">Y</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="402" name="south_north_stag"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MAX_MSTFX"
+		>
+		<attr datatype="String" name="description">Max map factor in domain</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MAX_MSTFY"
+		>
+		<attr datatype="String" name="description">Max map factor in domain</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="MF_VX_INV"
+		>
+		<attr datatype="String" name="description">Inverse map scale factor on v-grid, x direction</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG_V XLAT_V</attr>
+		<attr datatype="String" name="stagger">Y</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="402" name="south_north_stag"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="Pa"
+		id	="MU"
+		>
+		<attr datatype="String" name="description">perturbation dry air mass in column</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="Pa"
+		id	="MUB"
+		>
+		<attr datatype="String" name="description">base state dry air mass in column</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="-"
+		id	="NEST_POS"
+		>
+		<attr datatype="String" name="description">-</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m{-2}"
+		id	="NOAHRES"
+		>
+		<attr datatype="String" name="description">RESIDUAL OF THE NOAH SURFACE ENERGY BUDGET</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="OLR"
+		>
+		<attr datatype="String" name="description">TOA OUTGOING LONG WAVE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="Pa"
+		id	="P"
+		>
+		<attr datatype="String" name="description">perturbation pressure</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="Pa"
+		id	="P00"
+		>
+		<attr datatype="String" name="description">BASE STATE PRESURE</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="Pa"
+		id	="PB"
+		>
+		<attr datatype="String" name="description">BASE STATE PRESSURE</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m"
+		id	="PBLH"
+		>
+		<attr datatype="String" name="description">PBL HEIGHT</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m2 s-2"
+		id	="PH"
+		>
+		<attr datatype="String" name="description">perturbation geopotential</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger">Z</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="61" name="bottom_top_stag"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m2 s-2"
+		id	="PHB"
+		>
+		<attr datatype="String" name="description">base-state geopotential</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger">Z</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="61" name="bottom_top_stag"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="Pa"
+		id	="PSFC"
+		>
+		<attr datatype="String" name="description">SFC PRESSURE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="Pa"
+		id	="P_HYD"
+		>
+		<attr datatype="String" name="description">hydrostatic pressure</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="Pa"
+		id	="P_TOP"
+		>
+		<attr datatype="String" name="description">PRESSURE TOP OF THE MODEL</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="kg kg-1"
+		id	="Q2"
+		>
+		<attr datatype="String" name="description">QV at 2 M</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="kg kg-1"
+		id	="QCLOUD"
+		>
+		<attr datatype="String" name="description">Cloud water mixing ratio</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="kg m-2 s-1"
+		id	="QFX"
+		>
+		<attr datatype="String" name="description">UPWARD MOISTURE FLUX AT THE SURFACE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="kg kg-1"
+		id	="QGRAUP"
+		>
+		<attr datatype="String" name="description">Graupel mixing ratio</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="kg kg-1"
+		id	="QICE"
+		>
+		<attr datatype="String" name="description">Ice mixing ratio</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="kg kg-1"
+		id	="QRAIN"
+		>
+		<attr datatype="String" name="description">Rain water mixing ratio</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="kg kg-1"
+		id	="QSNOW"
+		>
+		<attr datatype="String" name="description">Snow mixing ratio</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="kg kg-1"
+		id	="QVAPOR"
+		>
+		<attr datatype="String" name="description">Water vapor mixing ratio</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="mm"
+		id	="RAINC"
+		>
+		<attr datatype="String" name="description">ACCUMULATED TOTAL CUMULUS PRECIPITATION</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="mm"
+		id	="RAINNC"
+		>
+		<attr datatype="String" name="description">ACCUMULATED TOTAL GRID SCALE PRECIPITATION</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="mm"
+		id	="RAINSH"
+		>
+		<attr datatype="String" name="description">ACCUMULATED SHALLOW CUMULUS PRECIPITATION</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="RDN"
+		>
+		<attr datatype="String" name="description">inverse d(eta) values between half (mass) levels</attr>
+		<attr datatype="String" name="MemoryOrder">Z  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="RDNW"
+		>
+		<attr datatype="String" name="description">inverse d(eta) values between full (w) levels</attr>
+		<attr datatype="String" name="MemoryOrder">Z  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="RDX"
+		>
+		<attr datatype="String" name="description">INVERSE X GRID LENGTH</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="RDY"
+		>
+		<attr datatype="String" name="description">INVERSE Y GRID LENGTH</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="dbZ"
+		id	="REFD_MAX"
+		>
+		<attr datatype="String" name="description">MAX DERIVED RADAR REFL</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="dBZ"
+		id	="REFL_10CM"
+		>
+		<attr datatype="String" name="description">Radar reflectivity (lamda = 10 cm)</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="RESM"
+		>
+		<attr datatype="String" name="description">TIME WEIGHT CONSTANT FOR SMALL STEPS</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Long"
+		units	="flag"
+		id	="SAVE_TOPO_FROM_REAL"
+		>
+		<attr datatype="String" name="description">1=original topo from real/0=topo modified by WRF</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">106</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="SEAICE"
+		>
+		<attr datatype="String" name="description">SEA ICE FLAG</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Long"
+		units	=""
+		id	="SEED1"
+		>
+		<attr datatype="String" name="description">RANDOM SEED NUMBER 1</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">106</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Long"
+		units	=""
+		id	="SEED2"
+		>
+		<attr datatype="String" name="description">RANDOM SEED NUMBER 2</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">106</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="mm"
+		id	="SFROFF"
+		>
+		<attr datatype="String" name="description">SURFACE RUNOFF</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m3 m-3"
+		id	="SH2O"
+		>
+		<attr datatype="String" name="description">SOIL LIQUID WATER</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger">Z</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="4" name="soil_layers_stag"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="SHDMAX"
+		>
+		<attr datatype="String" name="description">ANNUAL MAX VEG FRACTION</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="SHDMIN"
+		>
+		<attr datatype="String" name="description">ANNUAL MIN VEG FRACTION</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="SINALPHA"
+		>
+		<attr datatype="String" name="description">Local sine of map rotation</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="SLWDN"
+		>
+		<attr datatype="String" name="description">Surface LW downwelling flux</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="SLWUP"
+		>
+		<attr datatype="String" name="description">Surface LW upwelling flux</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="SMCREL"
+		>
+		<attr datatype="String" name="description">RELATIVE SOIL MOISTURE</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger">Z</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="4" name="soil_layers_stag"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m3 m-3"
+		id	="SMOIS"
+		>
+		<attr datatype="String" name="description">SOIL MOISTURE</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger">Z</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="4" name="soil_layers_stag"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="SNOALB"
+		>
+		<attr datatype="String" name="description">ANNUAL MAX SNOW ALBEDO IN FRACTION</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="kg m-2"
+		id	="SNOW"
+		>
+		<attr datatype="String" name="description">SNOW WATER EQUIVALENT</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="SNOWC"
+		>
+		<attr datatype="String" name="description">FLAG INDICATING SNOW COVERAGE (1 FOR SNOW COVER)</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m"
+		id	="SNOWH"
+		>
+		<attr datatype="String" name="description">PHYSICAL SNOW DEPTH</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="mm"
+		id	="SNOWNC"
+		>
+		<attr datatype="String" name="description">ACCUMULATED TOTAL GRID SCALE SNOW AND ICE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="-"
+		id	="SR"
+		>
+		<attr datatype="String" name="description">fraction of frozen precipitation</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="K"
+		id	="SST"
+		>
+		<attr datatype="String" name="description">SEA SURFACE TEMPERATURE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="K"
+		id	="SSTSK"
+		>
+		<attr datatype="String" name="description">SKIN SEA SURFACE TEMPERATURE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="SSWDN"
+		>
+		<attr datatype="String" name="description">Surface SW downwelling flux</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="SSWUP"
+		>
+		<attr datatype="String" name="description">Surface SW upwelling flux</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="SWDOWN"
+		>
+		<attr datatype="String" name="description">DOWNWARD SHORT WAVE FLUX AT GROUND SURFACE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="SWNORM"
+		>
+		<attr datatype="String" name="description">NORMAL SHORT WAVE FLUX AT GROUND SURFACE (SLOPE-DEPENDENT)</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="K"
+		id	="T"
+		>
+		<attr datatype="String" name="description">perturbation potential temperature (theta-t0)</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="K"
+		id	="T00"
+		>
+		<attr datatype="String" name="description">BASE STATE TEMPERATURE</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="K"
+		id	="T2"
+		>
+		<attr datatype="String" name="description">TEMP at 2 M</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="K"
+		id	="TH2"
+		>
+		<attr datatype="String" name="description">POT TEMP at 2 M</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="K"
+		id	="TISO"
+		>
+		<attr datatype="String" name="description">TEMP AT WHICH THE BASE T TURNS CONST</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m2 s-2"
+		id	="TKE_PBL"
+		>
+		<attr datatype="String" name="description">TKE from PBL</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="TLP"
+		>
+		<attr datatype="String" name="description">BASE STATE LAPSE RATE</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="TLWDN"
+		>
+		<attr datatype="String" name="description">TOA LW downwelling flux</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="TLWUP"
+		>
+		<attr datatype="String" name="description">TOA LW upwelling flux</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="K"
+		id	="TMN"
+		>
+		<attr datatype="String" name="description">SOIL TEMPERATURE AT LOWER BOUNDARY</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="K"
+		id	="TSK"
+		>
+		<attr datatype="String" name="description">SURFACE SKIN TEMPERATURE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="TSK_FORCE"
+		>
+		<attr datatype="String" name="description">SCM ideal surface skin temperature</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2 s-1"
+		id	="TSK_FORCE_TEND"
+		>
+		<attr datatype="String" name="description">SCM ideal surface skin temperature tendency</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="K"
+		id	="TSLB"
+		>
+		<attr datatype="String" name="description">SOIL TEMPERATURE</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger">Z</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="4" name="soil_layers_stag"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="TSWDN"
+		>
+		<attr datatype="String" name="description">TOA SW downwelling flux</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="W m-2"
+		id	="TSWUP"
+		>
+		<attr datatype="String" name="description">TOA SW upwelling flux</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Char"
+		id	="Times"
+		>
+		<domain
+			>
+			<domElem start="0" length="19" name="DateStrLen"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m s-1"
+		id	="U"
+		>
+		<attr datatype="String" name="description">x-wind component</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG_U XLAT_U</attr>
+		<attr datatype="String" name="stagger">X</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="548" name="west_east_stag"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m s-1"
+		id	="U10"
+		>
+		<attr datatype="String" name="description">U at 10 M</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="mm"
+		id	="UDROFF"
+		>
+		<attr datatype="String" name="description">UNDERGROUND RUNOFF</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m2 s-2"
+		id	="UP_HELI_MAX"
+		>
+		<attr datatype="String" name="description">MAX UPDRAFT HELICITY</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m s-1"
+		id	="UST"
+		>
+		<attr datatype="String" name="description">U* IN SIMILARITY THEORY</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m s-1"
+		id	="V"
+		>
+		<attr datatype="String" name="description">y-wind component</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG_V XLAT_V</attr>
+		<attr datatype="String" name="stagger">Y</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			<domElem start="0" length="402" name="south_north_stag"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m s-1"
+		id	="V10"
+		>
+		<attr datatype="String" name="description">V at 10 M</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m2"
+		id	="VAR_SSO"
+		>
+		<attr datatype="String" name="description">variance of subgrid-scale orography</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="VEGFRA"
+		>
+		<attr datatype="String" name="description">VEGETATION FRACTION</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m s-1"
+		id	="W"
+		>
+		<attr datatype="String" name="description">z-wind component</attr>
+		<attr datatype="String" name="MemoryOrder">XYZ</attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger">Z</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="61" name="bottom_top_stag"/>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m s-1"
+		id	="WSPD10MAX"
+		>
+		<attr datatype="String" name="description">WIND SPD MAX 10 M</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m s-1"
+		id	="W_DN_MAX"
+		>
+		<attr datatype="String" name="description">MAX Z-WIND DOWNDRAFT</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m s-1"
+		id	="W_MEAN"
+		>
+		<attr datatype="String" name="description">HOURLY MEAN Z-WIND</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m s-1"
+		id	="W_UP_MAX"
+		>
+		<attr datatype="String" name="description">MAX Z-WIND UPDRAFT</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="XICEM"
+		>
+		<attr datatype="String" name="description">SEA ICE FLAG (PREVIOUS STEP)</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="XLAND"
+		>
+		<attr datatype="String" name="description">LAND MASK (1 FOR LAND, 2 FOR WATER)</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG XLAT</attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="degree_north"
+		id	="XLAT"
+		>
+		<attr datatype="String" name="description">LATITUDE, SOUTH IS NEGATIVE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="degree_north"
+		id	="XLAT_U"
+		>
+		<attr datatype="String" name="description">LATITUDE, SOUTH IS NEGATIVE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG_U XLAT_U</attr>
+		<attr datatype="String" name="stagger">X</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="548" name="west_east_stag"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="degree_north"
+		id	="XLAT_V"
+		>
+		<attr datatype="String" name="description">LATITUDE, SOUTH IS NEGATIVE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG_V XLAT_V</attr>
+		<attr datatype="String" name="stagger">Y</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="402" name="south_north_stag"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="degree_east"
+		id	="XLONG"
+		>
+		<attr datatype="String" name="description">LONGITUDE, WEST IS NEGATIVE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="degree_east"
+		id	="XLONG_U"
+		>
+		<attr datatype="String" name="description">LONGITUDE, WEST IS NEGATIVE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG_U XLAT_U</attr>
+		<attr datatype="String" name="stagger">X</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="401" name="south_north"/>
+			<domElem start="0" length="548" name="west_east_stag"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="degree_east"
+		id	="XLONG_V"
+		>
+		<attr datatype="String" name="description">LONGITUDE, WEST IS NEGATIVE</attr>
+		<attr datatype="String" name="MemoryOrder">XY </attr>
+		<attr datatype="String" name="coordinates">XLONG_V XLAT_V</attr>
+		<attr datatype="String" name="stagger">Y</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="402" name="south_north_stag"/>
+			<domElem start="0" length="547" name="west_east"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="XTIME"
+		>
+		<attr datatype="String" name="description">minutes since simulation start</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="ZETATOP"
+		>
+		<attr datatype="String" name="description">ZETA AT MODEL TOP</attr>
+		<attr datatype="String" name="MemoryOrder">0  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="ZNU"
+		>
+		<attr datatype="String" name="description">eta values on half (mass) levels</attr>
+		<attr datatype="String" name="MemoryOrder">Z  </attr>
+		<attr datatype="String" name="stagger"></attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="60" name="bottom_top"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	=""
+		id	="ZNW"
+		>
+		<attr datatype="String" name="description">eta values on full (w) levels</attr>
+		<attr datatype="String" name="MemoryOrder">Z  </attr>
+		<attr datatype="String" name="stagger">Z</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="61" name="bottom_top_stag"/>
+			</domain>
+		</variable>
+	<variable
+		datatype	="Float"
+		units	="m"
+		id	="ZS"
+		>
+		<attr datatype="String" name="description">DEPTHS OF CENTERS OF SOIL LAYERS</attr>
+		<attr datatype="String" name="MemoryOrder">Z  </attr>
+		<attr datatype="String" name="stagger">Z</attr>
+		<attr datatype="Long" name="FieldType">104</attr>
+		<domain
+			>
+			<domElem start="0" length="4" name="soil_layers_stag"/>
+			</domain>
+		</variable>
+	</dataset>

@@ -1,0 +1,38 @@
+Init package:  edu.utah.sci.vistrails.basic
+Init package:  edu.utah.sci.vistrails.basic
+Init package:  edu.utah.sci.vistrails.pythoncalc
+Init package:  edu.utah.sci.vistrails.spreadsheet
+Init package:  edu.utah.sci.eranders.ParaView
+paraview version 3.11.1, Date: 2011-07-26
+Init package:  edu.utah.sci.vistrails.http
+Init package:  edu.utah.sci.vistrails.dialogs
+Init package:  gov.llnl.uvcdat
+Init package:  gov.llnl.uvcdat.cdms
+Init package:  gov.lbl.visit
+Init package:  edu.utah.sci.vistrails.matplotlib
+Init package:  edu.poly.vis_analytics
+Init package:  edu.poly.scikit_learn
+Init package:  edu.utah.sci.vistrails.vtk
+Init package:  gov.nasa.nccs.vtdv3d
+Init package:  com.kitware.pvclimate
+DV3D plots not loaded.
+Error when loading package_config_file: /Developer/Projects/EclipseWorkspace/vistrails/vistrails/core/uvcdat/plots/DV3D/registry.cfg invalid syntax (PlotPipelineHelper.py, line 752)
+Traceback (most recent call last):
+  File "/Developer/Projects/EclipseWorkspace/vistrails/vistrails/core/uvcdat/plotmanager.py", line 105, in load_plots
+    helper = self.parse_helper_type_str(pkg_parser.get(p, 'helper'))
+  File "/Developer/Projects/EclipseWorkspace/vistrails/vistrails/core/uvcdat/plotmanager.py", line 80, in parse_helper_type_str
+    module = __import__(path, globals(), locals(), [klass_name])
+  File "/Developer/Projects/EclipseWorkspace/vistrails/vistrails/packages/vtDV3D/PlotPipelineHelper.py", line 752
+    xxx=:
+        ^
+SyntaxError: invalid syntax
+   ------ Loaded plot PV Contour Representation, varnum = 1 ------ 
+ Loaded PV Contour Representation version: 15
+   ------ Loaded plot PV Slice Representation, varnum = 1 ------ 
+ Loaded PV Slice Representation version: 20
+   ------ Loaded plot Contour Plot, varnum = 1 ------ 
+   ------ Loaded plot Pseudocolor Plot, varnum = 1 ------ 
+   ------ Loaded plot Histogram, varnum = 1 ------ 
+ Loaded Histogram version: 28
+None None
+quitting
