@@ -33,12 +33,15 @@ from gui.application import get_vistrails_application
 from gui.uvcdat.theme import UVCDATTheme
 from gui.uvcdat.cdmsCache import CdmsCache
 import gui.uvcdat.regionExtractor #for certain toPython commands
-import vtk
-from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
+import vtk, ast
+#from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 
 canvas = None
 original_gm_attributes = {}
 
+def isEmpty( elem ):
+    return ( len( elem ) == 0 ) if isinstance( elem, (list, tuple) ) else ( elem == None )
+    
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
         pkg_identifier = identifier
@@ -158,7 +161,7 @@ class CDMSVariable(Variable):
         return module        
     
     def to_python(self):
-        from packages.vtDV3D.vtUtilities import memoryLogger
+#        from packages.vtDV3D.vtUtilities import memoryLogger
         if self.source:
             cdmsfile = self.source.var
         elif self.url:
@@ -187,7 +190,7 @@ class CDMSVariable(Variable):
         if isinstance(fvar, cdms2.axis.FileAxis):
             var = cdms2.MV2.array(fvar)
         
-        memoryLogger.log("start cdms variable read") 
+#        memoryLogger.log("start cdms variable read") 
 
         if self.axes is not None:
             #convert string into kwargs
@@ -215,7 +218,7 @@ class CDMSVariable(Variable):
         elif not isinstance(fvar, cdms2.axis.FileAxis):
             var = cdmsfile.__call__(varName)
             
-        memoryLogger.log("finish cdms variable read")    
+#        memoryLogger.log("finish cdms variable read")    
             
         if self.axesOperations is not None:
             var = CDMSVariable.applyAxesOperations(var, self.axesOperations)
@@ -257,9 +260,9 @@ class CDMSVariable(Variable):
             text += ident + "cdmsfile = cdms2.open('%s')\n" % os.path.expanduser(self.file)
             
         if self.varNameInFile is not None:
-            text += ident + "%s = cdmsfile('%s')\n"%(self.name, self.varNameInFile)
+            text += ident + "%s = cdmsfile('%s')\n" % (self.name, self.varNameInFile)
         else:
-            text += ident + "%s = cdmsfile('%s')\n"%(self.name, self.name)
+            text += ident + "%s = cdmsfile('%s')\n" % (self.name, self.name)
         if self.axes is not None:
             text += ident + "%s = %s(%s)\n"% (self.name, self.name, self.axes)
         if self.axesOperations is not None:
@@ -340,8 +343,8 @@ class CDMSVariable(Variable):
         return var
         
     def compute(self):
-        from packages.vtDV3D.vtUtilities import memoryLogger
-        memoryLogger.log("start CDMSVariable.compute")
+#        from packages.vtDV3D.vtUtilities import memoryLogger
+#        memoryLogger.log("start CDMSVariable.compute")
         self.axes = self.forceGetInputFromPort("axes")
         self.axesOperations = self.forceGetInputFromPort("axesOperations")
         self.varNameInFile = self.forceGetInputFromPort("varNameInFile")
@@ -354,7 +357,7 @@ class CDMSVariable(Variable):
 #        print " ---> CDMSVariable-->compute: ", str(self.file), str(self.url), str(self.name)
         self.var = self.to_python()
         self.setResult("self", self)
-        memoryLogger.log("finished CDMSVariable.compute")
+#        memoryLogger.log("finished CDMSVariable.compute")
 
     @staticmethod
     def applyAxesOperations(var, axesOperations):
@@ -922,6 +925,135 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
     def to_module(self, controller, pkg_identifier=None):
         module = CDMSVariableOperation.to_module(self, controller)
         return module
+
+class CDMS3DPlot(Plot, NotCacheable):
+    _input_ports = expand_port_specs([("variable", "CDMSVariable"),
+                                      ("variable2", "CDMSVariable", True),
+                                      ("plotOrder", "basic:Integer", True),
+                                      ("graphicsMethodName", "basic:String"),
+                                      ("template", "basic:String") ])
+    _output_ports = expand_port_specs([("self", "CDMS3DPlot")])
+
+    gm_attributes = [ 'projection' ]
+    
+    plot_type = None
+
+    def __init__(self):
+        Plot.__init__(self)
+        NotCacheable.__init__(self)
+        self.template = "starter"
+        self.graphics_method_name = "default"
+        self.kwargs = {}
+        self.plot_order = -1
+        self.default_values = {}
+        self.colorMap = None
+        
+    def compute(self):
+        import vcs
+        from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+#        from packages.uvcdat_cdms.init import get_canvas
+        Plot.compute(self)
+        self.graphics_method_name =  self.forceGetInputFromPort("graphicsMethodName", "default")
+        #self.set_default_values()
+        self.template = self.forceGetInputFromPort("template", "starter")
+        
+        if not self.hasInputFromPort('variable'):
+            raise ModuleError(self, "'variable' is mandatory.")
+        self.var = self.getInputFromPort('variable')
+        
+        self.var2 = None
+        if self.hasInputFromPort('variable2'):
+            self.var2 = self.getInputFromPort('variable2')
+
+        if self.hasInputFromPort("plotOrder"):
+            self.plot_order = self.getInputFromPort("plotOrder")
+         
+        pipeline = self.moduleInfo[ 'pipeline' ]   
+        cell_coords = CDMSPipelineHelper.getCellLoc(pipeline)
+       
+        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes ) 
+        gm = vcs.elements[ self.plot_type.lower() ][ self.graphics_method_name ] 
+#        canvas = get_canvas()
+        for attr in self.gm_attributes:
+            if self.hasInputFromPort(attr):
+                value = self.getInputFromPort(attr)
+                if isinstance( value, str ): 
+                    try: value = ast.literal_eval( value )
+                    except ValueError: pass
+                if not isEmpty( value ):
+                    print "Set PORT %s value: " % str(attr), str( value )
+                    setattr(self,attr,value)
+                    gm.setParameter( attr, value, cell=cell_coords )
+            
+
+    def to_module(self, controller):
+        module = Plot.to_module(self, controller, identifier)
+        functions = []
+        
+        #only when graphics_method_name is different from default the user can
+        #change the values of the properties
+        if self.graphics_method_name != "default":
+            functions.append(("graphicsMethodName", [self.graphicsMethodName]))
+            for attr in self.gm_attributes:
+                    functions.append((attr, [str(getattr(self,attr))]))
+        if self.template != "starter":
+            functions.append(("template", [self.template]))
+            
+        functions = controller.create_functions(module, functions)
+        for f in functions:
+            module.add_function(f)
+        return module        
+    
+    @classmethod
+    def from_module(klass, module):
+        from pipeline_helper import CDMSPipelineHelper
+        plot = klass()
+        plot.graphics_method_name = CDMSPipelineHelper.get_graphics_method_name_from_module(module)
+        for attr in plot.gm_attributes:
+            setattr(plot,attr, CDMSPipelineHelper.get_value_from_function(module, attr))
+        plot.template = CDMSPipelineHelper.get_template_name_from_module(module)
+        return plot
+
+    def set_default_values(self, gmName=None):
+        self.default_values = {}
+        if gmName is None:
+            gmName = self.graphics_method_name
+        if self.plot_type is not None:
+            canvas = get_canvas()
+            method_name = "get"+str(self.plot_type).lower()
+            gm = getattr(canvas,method_name)(gmName)
+            for attr in self.gm_attributes:
+                setattr(self,attr,getattr(gm,attr))
+                self.default_values[attr] = getattr(gm,attr)
+    
+    @staticmethod
+    def get_canvas_graphics_method( plotType, gmName):
+        method_name = "get"+str(plotType).lower()
+        return getattr(get_canvas(),method_name)(gmName)
+    
+    @classmethod    
+    def get_initial_values(klass, gmName):
+        global original_gm_attributes
+        return original_gm_attributes[klass.plot_type][gmName]
+    
+    @classmethod 
+    def addPlotPorts(cls):
+        from vcs.dv3d import Gfdv3d
+        plist = Gfdv3d.getParameterList()
+        reg = get_module_registry()
+        pkg_identifier = None
+        for pname in plist:
+            cls.gm_attributes.append( pname )
+            cls._input_ports.append( ( pname,  reg.expand_port_spec_string("basic:String",pkg_identifier), True ) )
+#            print " CDMS3DPlot.addPlotPort: ", pname
+            
+# CDMS3DPlot.addPlotPorts()  
+          
+#        cgm = CDMSPlot.get_canvas_graphics_method(klass.plot_type, gmName)
+#        attribs = {}
+#        for attr in klass.gm_attributes:
+#            attribs[attr] = getattr(cgm,attr)
+#        return InstanceObject(**attribs)
         
 class CDMSPlot(Plot, NotCacheable):
     _input_ports = expand_port_specs([("variable", "CDMSVariable"),
@@ -1118,8 +1250,7 @@ class CDMSCell(SpreadsheetCell):
     def compute(self):
         input_ports = []
         plots = []
-        for plot in sorted(self.getInputListFromPort('plot'), 
-                           key=lambda obj: obj.plot_order):
+        for plot in sorted(self.getInputListFromPort('plot'),  key=lambda obj: obj.plot_order):
             plots.append(plot)
         input_ports.append(plots)
         self.cellWidget = self.displayAndWait(QCDATWidget, input_ports)
@@ -1157,11 +1288,16 @@ class QCDATWidget(QVTKWidget):
         #layout = QtGui.QVBoxLayout()
         #self.setLayout(layout) 
         
+    def processParameterChange( self, args ):
+        from pipeline_helper import CDMSPipelineHelper
+        CDMSPipelineHelper.change_parameters( [ ( args[1], args[2] ), ] )
+        
     def createCanvas(self):
         if self.canvas is not None:
           return
         
         self.canvas = vcs.init(backend=self.GetRenderWindow())
+        self.canvas.ParameterChanged.connect( self.processParameterChange )
         ren = vtk.vtkRenderer()
         r,g,b = self.canvas.backgroundcolor
         ren.SetBackground(r/255.,g/255.,b/255.)
@@ -1239,13 +1375,14 @@ class QCDATWidget(QVTKWidget):
                 cmd+="%s(**%s), " % (args[-1].id,str(k2))
             args.append(plot.template)
             cgm = self.get_graphics_method(plot.plot_type, plot.graphics_method_name)
+#            cgm.setProvenanceHandler( plot.processParameterUpdate )
             if plot.graphics_method_name != 'default':
                 for k in plot.gm_attributes:
                     if hasattr(plot,k):
                         if k in ['legend']:
                             setattr(cgm,k,eval(getattr(plot,k)))
                         else:
-                            print "cgm=",cgm,"k=",k,"getattr(plot,k)=",getattr(plot,k)
+#                            print "cgm=",cgm,"k=",k,"getattr(plot,k)=",getattr(plot,k)
                             if getattr(plot,k)!=getattr(cgm,k):
                                 try:
                                     setattr(cgm,k,eval(getattr(plot,k)))
@@ -1254,7 +1391,14 @@ class QCDATWidget(QVTKWidget):
                         #print k, " = ", getattr(cgm,k)
                             
             kwargs = plot.kwargs
-                    
+            file_path = None 
+            for fname in [ plot.var.file, plot.var.filename ]:
+                if fname and os.path.isfile(fname):
+                    file_path = fname
+                    break 
+            if not file_path and plot.var.url: 
+                file_path = plot.var.url   
+            if file_path: kwargs['cdmsfile'] =  file_path
             #record commands
             cmd+=" '%s', '%s'" %( plot.template,cgm.name)
             for k in kwargs:
@@ -1280,6 +1424,7 @@ class QCDATWidget(QVTKWidget):
                     self.canvas.flush() # update the canvas by processing all the X events
             
 #            try:
+            kwargs[ 'cell_coordinates' ] = self.cell_coordinates
             self.canvas.plot(cgm,*args,**kwargs)
 #             except Exception, e:
 #                 print "cgm=",cgm,"args=",args,"kwargs=",kwargs
@@ -1730,7 +1875,7 @@ class QCDATWidgetColormap(QtGui.QAction):
         else:
             self.setVisible(False)
 
-_modules = [CDMSVariable, CDMSPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
+_modules = [CDMSVariable, CDMSPlot, CDMS3DPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
             CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, 
             CDMSNaryVariableOperation, CDMSColorMap, CDMSGrowerOperation]
 
@@ -1753,10 +1898,18 @@ def get_input_ports(plot_type):
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
     elif plot_type == "3D_Scalar":
-        return expand_port_specs([('axes', 'basic:String', True),])
+        from DV3D.ConfigurationFunctions import ConfigManager
+        cfgManager = ConfigManager()
+        parameterList = cfgManager.getParameterList( extras=[ 'axes' ])
+        port_specs = [ ( pname, 'basic:String', True ) for pname in parameterList ]
+        return expand_port_specs( port_specs )
 
     elif plot_type == "3D_Vector":
-        return expand_port_specs([('axes', 'basic:String', True),])  
+        from DV3D.ConfigurationFunctions import ConfigManager
+        cfgManager = ConfigManager()
+        parameterList = cfgManager.getParameterList( extras=[ 'axes' ] )
+        port_specs = [ ( pname, 'basic:String', True ) for pname in parameterList ]
+        return expand_port_specs( port_specs )
     
     elif plot_type == "Isofill":
         return expand_port_specs([('levels', 'basic:List', True),
@@ -1893,10 +2046,16 @@ def get_gm_attributes(plot_type):
                     'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
 
     elif plot_type == "3D_Scalar":
-        return  [ 'axes' ]
+        from DV3D.ConfigurationFunctions import ConfigManager
+        cfgManager = ConfigManager()
+        parameterList = cfgManager.getParameterList( extras=[ 'axes'  ] )
+        return  parameterList
 
     elif plot_type == "3D_Vector":
-        return  [ 'axes' ]
+        from DV3D.ConfigurationFunctions import ConfigManager
+        cfgManager = ConfigManager()
+        parameterList = cfgManager.getParameterList( extras=[ 'axes' ] )
+        return  parameterList
         
     elif plot_type == "Isofill":
         return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
@@ -1991,7 +2150,7 @@ def get_canvas():
     
 for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
-                  'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Vector' ]:
+                  'Xyvsy', 'Yxvsx' ]:
     def get_init_method():
         def __init__(self):
             CDMSPlot.__init__(self)
@@ -2011,13 +2170,38 @@ for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
     
     _modules.append((klass,{'configureWidgetType':GraphicsMethodConfigurationWidget}))
 
+
+for plot_type in [ '3D_Scalar', '3D_Vector' ]:
+    
+    def get_init_method():
+        def __init__(self):
+            CDMS3DPlot.__init__(self)
+        return __init__
+    
+    def get_is_cacheable_method():
+        def is_cacheable(self):
+            return False
+        return is_cacheable
+    
+    klass = type('CDMS' + plot_type, (CDMS3DPlot,), 
+                 {'__init__': get_init_method(),
+                  'plot_type': plot_type,
+                  '_input_ports': get_input_ports(plot_type),
+                  'gm_attributes': get_gm_attributes(plot_type),
+                  'is_cacheable': get_is_cacheable_method()})
+    
+    _modules.append((klass,{'configureWidgetType':GraphicsMethodConfigurationWidget}))
+
 def initialize(*args, **keywords):
     global original_gm_attributes
-    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>hello, here I am, uvcdat_cdms/init.py!!!!"
+#    print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>hello, here I am, uvcdat_cdms/init.py!!!!"
+    canvas = get_canvas()
+#    app = QtGui.QApplication.instance()
+#    app.connect( app,  QtCore.SIGNAL("focusChanged(QWidget*,QWidget*)"), canvas.applicationFocusChanged )
+    
     for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
                   'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Vector' ]:
-        canvas = get_canvas()
         method_name = "get"+plot_type.lower()
         attributes = get_gm_attributes(plot_type)
         gms = canvas.listelements(str(plot_type).lower())
@@ -2042,5 +2226,8 @@ def initialize(*args, **keywords):
                 elif attr == 'max' and attrs[attr] == None:
                     attrs[attr] = 1
             original_gm_attributes[plot_type][gmname] = InstanceObject(**attrs)
+            
+
+        
    
     

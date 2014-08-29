@@ -140,6 +140,9 @@ class HTMLCatalogParser(HTMLParser):
     def handle_endtag(self, tag):
         stack_backup = copy.deepcopy( self.state_stack )
         if tag not in self.IgnoredTags:
+#             if tag == 'a':
+#                 if self.state_stack[ -1 ] == 'a': self.state_stack.pop()
+#                 return
             while True: 
                 try:
                     frame = self.state_stack.pop()

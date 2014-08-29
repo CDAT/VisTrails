@@ -600,6 +600,7 @@ class ProjectController(QtCore.QObject):
         
         helper = self.plot_manager.get_plot_helper(plot_type)
         pipeline = controller.vistrail.getPipeline(version)
+        print "Getting pipeline for plot, version = ", str( version )
 
         if controller == self.vt_controller:
             #controllers are the same, just point cell to the version

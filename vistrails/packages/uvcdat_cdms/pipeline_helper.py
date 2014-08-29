@@ -11,13 +11,13 @@ from core.modules.module_registry import get_module_registry
 from core.modules.vistrails_module import Module
 from core.uvcdat.plotmanager import get_plot_manager
 from packages.spreadsheet.basic_widgets import CellLocation, SpreadsheetCell
-        
+from core.modules.module_registry import get_module_registry, MissingPort
 import core.db.action
-import core.db.io
+import core.db.io    
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import pyqtSlot, pyqtSignal
 from PyQt4.QtGui import QApplication
-from init import CDMSPlot, CDMSVariable, CDMSCell, CDMSVariableOperation, \
+from init import CDMSPlot, CDMS3DPlot, CDMSVariable, CDMSCell, CDMSVariableOperation, \
        CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, \
        CDMSNaryVariableOperation, CDMSGrowerOperation
 from widgets import GraphicsMethodConfigurationWidget
@@ -27,9 +27,41 @@ from gui.uvcdat.dockplot import PlotTreeWidgetItem
 from gui.uvcdat.uvcdatCommons import plotTypes, gmInfos
 from gui.uvcdat.definedVariableWidget import QDefinedVariableWidget
 from gui.application import get_vistrails_application
-import api
+import api, sys, traceback
 
+ 
 class CDMSPipelineHelper(PlotPipelineHelper):
+    
+    @classmethod
+    def getSheetTabWidget( klass, sheet_index = -1 ):
+        from packages.spreadsheet.spreadsheet_controller import spreadsheetController
+        spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
+        if sheet_index == -1:  
+            try: sheet_index = spreadsheetWindow.get_current_tab_controller().currentIndex () 
+            except: return None
+        return spreadsheetWindow.get_current_tab_controller().tabWidgets[ sheet_index ]
+
+    @classmethod
+    def getCellLoc( klass, pipeline ):
+        cell_module = klass.find_module_by_name(pipeline, 'CDMSCell')
+        cell_location = klass.find_module_by_name(pipeline, 'CellLocation')
+
+        row = 0
+        col = 0
+        for i in xrange(cell_location.getNumFunctions()):
+            if cell_location.functions[i].name == 'Row':
+                row = int( cell_location.functions[i].params[0].strValue ) - 1
+            elif cell_location.functions[i].name == "Column":
+                col = int( cell_location.functions[i].params[0].strValue ) - 1 
+                
+        return ( row, col )
+
+    @classmethod
+    def getPlotApps( klass, row, col ):                  
+        tabWidget = klass.getSheetTabWidget()  
+        cell  = tabWidget.getCellWidget( row, col ).widget()   
+        return cell.canvas.backend.plotApps
+
     @staticmethod
     def show_configuration_widget(controller, version, plot_objs=[]):
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
@@ -78,9 +110,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     
     @staticmethod
     def find_variables_connected_to_unary_operation_module(controller, pipeline, op_id):
-        conns = controller.get_connections_to(pipeline, [op_id], 
-                                              port_name="input_var")
-        
+        conns = controller.get_connections_to( pipeline, [op_id], port_name="input_var")       
         vars = []
         for conn in conns:
             vars.append(pipeline.modules[conn.source.moduleId])
@@ -115,8 +145,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         for pl_module in helper.find_plot_modules(pipeline):
             gmName = helper.get_graphics_method_name_from_module(pl_module)
             ptype = helper.get_plot_type_from_module(pl_module)
-            plot_objs.append(get_plot_manager().new_plot(plot_type, ptype, 
-                                                          gmName))
+            plot_objs.append(get_plot_manager().new_plot(plot_type, ptype, gmName))
         return plot_objs
     
     @staticmethod
@@ -314,20 +343,19 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         """
         # FIXME want to make sure that nothing changes if var_module
         # or plot_module do not change
+        def_controller = api.get_current_controller()
         if controller is None:
-            controller = api.get_current_controller()
+            controller = def_controller
             version = 0L
         added_vars = []
         reg = get_module_registry()
-        cell_module = controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell'))
+        cell_module = controller.create_module_from_descriptor( reg.get_descriptor_by_name('gov.llnl.uvcdat.cdms', 'CDMSCell') )
         ops = [('add', cell_module)]
         conns = []
         plot_modules = []
         
         for i, plot in enumerate(plot_objs):
-            ops2, new_conns, pm = CDMSPipelineHelper.create_actions_from_plot_obj(
-                    controller, var_modules, cell_module, plot, added_vars, i+1)
+            ops2, new_conns, pm = CDMSPipelineHelper.create_actions_from_plot_obj( controller, var_modules, cell_module, plot, added_vars, i+1 )
             ops.extend(ops2)
             conns.extend(new_conns)
             plot_modules.append(pm)
@@ -398,7 +426,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         version = controller.current_version
         pipeline = controller.vistrail.getPipeline(version)
         ops = []
-        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot,CDMS3DPlot])
         cell_module = CDMSPipelineHelper.find_module_by_name(pipeline, 'CDMSCell')
         conns = []
         new_plot_modules = []
@@ -549,7 +577,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         
         # Update project controller cell information
         pipeline = controller.vistrail.getPipeline(action.id)
-        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot,CDMS3DPlot])
         
         cell.clear()
         for pl_module in plot_modules:
@@ -585,7 +613,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         """
         
         cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
-        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot])
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [ CDMSPlot, CDMS3DPlot ])
         
         #sort plot modules based on order
         fn = lambda x: PlotPipelineHelper.get_value_from_function(x, "plotOrder")
@@ -657,10 +685,99 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 #        controller.change_selected_version(version)
 #        controller.add_new_action(action)
 #        controller.perform_action(action)
+
 #        return action
-        
     @staticmethod
-    def build_python_script_from_pipeline(controller, version, plot_objs=[]):
+    def change_parameters( parmRecList, controller=None ):
+        import api
+        """change_parameters(
+                            parmRecList: [ ( function_name: str, param_list: list(str) ) ] 
+                            controller: VistrailController,
+                            ) -> None
+        Note: param_list is a list of strings no matter what the parameter type!
+        """   
+        proj_controller = api.get_current_project_controller()
+        (sheetName, row, col) = proj_controller.get_current_cell_info()
+        
+        if controller is None:
+            if proj_controller == None:
+                controller = api.get_current_controller()
+                controller.select_latest_version()
+                current_version = controller.current_version
+            else:
+                cell = proj_controller.sheet_map[ sheetName ][ (row, col) ]
+                current_version = cell.current_parent_version 
+                controller =  proj_controller.vt_controller 
+                controller.change_selected_version( current_version )
+
+        
+        pipeline = controller.vistrail.getPipeline(current_version)
+        plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot,CDMS3DPlot])
+        if len( plot_modules ):
+                 
+    #
+    #         try:
+    # #            ( sheetName, cell_address ) = DV3DPipelineHelper.getCellCoordinates( self.moduleID )
+    #             proj_controller = self.get_current_project_controller()
+    #             if proj_controller == None:
+    #                 controller = self.get_current_controller()
+    #             else:
+    #                 if ( sheetName <> proj_controller.current_sheetName ): return
+    #                 controller =  proj_controller.vt_controller 
+    #                 if self.update_proj_controller:
+    #                     pcoords =list( proj_controller.current_cell_coords ) if proj_controller.current_cell_coords else None
+    #                     if not pcoords or ( pcoords[0] <> cell_address[0] ) or ( pcoords[1] <> cell_address[1] ):
+    #                         proj_controller.current_cell_changed(  sheetName, cell_address[0], cell_address[1]  )
+    #                     else: pcoords = None 
+    #                 cell = proj_controller.sheet_map[ sheetName ][ cell_address ]
+    #                 current_version = cell.current_parent_version 
+    #                 controller.change_selected_version( current_version )
+    #             pipeline = controller.vistrail.getPipeline( current_version )
+    #         except Exception, err:
+    #             print>>sys.stderr, "Error getting current pipeline: %s " % str( err )
+    #             pipeline = controller.current_pipeline
+    #             proj_controller = None
+    #             current_version = controller.current_version
+    #             cell_address = ( None, None )
+    #             
+    #         try:
+    #             module = pipeline.modules[self.moduleID] 
+    #         except KeyError:
+    #             print>>sys.stderr, "Error changing parameter in module %d (%s), parm: %s: Module not in current controller pipeline." % ( self.moduleID, self.__class__.__name__, str(parmRecList) )  
+    #             return
+            try:
+                ops = []
+                module = plot_modules[0]
+                config_list = []
+                op_list = []
+    #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
+                for parmRec in parmRecList: 
+                    try:
+                        print "Persist parameter: %s-> %s " % ( str(parmRec[0]), str(parmRec[1]) )
+                        function = parmRec[0] 
+                        values = [ parmRec[1] ]  # .strip('[]').split(',')
+                        op_list.extend( controller.update_function_ops( module, function, values, should_replace=True ) )
+                        
+                    except MissingPort:
+                        print>>sys.stderr, "Missing input port %s in controller, parmRecList = %s " % ( parmRec[0], str( parmRecList ) )
+                        
+    #                    print>>sys.stderr, "Unrecognized config function %s in module %d (%s)" % ( parmRec[0], self.moduleID, self.__class__.__name__ )
+                action = core.db.action.create_action( op_list ) 
+                controller.add_new_action(action)
+                controller.perform_action(action)
+                                  
+                if proj_controller:
+                    proj_controller.cell_was_changed(action)
+                    proj_controller.current_cell_changed(  sheetName, row, col )
+
+                print "Performed action, current controller version: ", str( controller.current_version )
+                    
+            except Exception, err:
+                print>>sys.stderr, "Error changing parameter in module %d (%s): parm: %s, error: %s" % ( self.moduleID, self.__class__.__name__, str(parmRecList), str(err) )
+                traceback.print_exc()
+        
+    @classmethod
+    def build_python_script_from_pipeline( klass, controller, version, plot_objs=[]):
         """build_python_script_from_pipeline(controller, version, plot_objs) -> str
            
            This will build the corresponding python script for the pipeline
@@ -668,33 +785,33 @@ class CDMSPipelineHelper(PlotPipelineHelper):
            plot_objs list is ignored.
            
         """
+
         pipeline = controller.vistrail.getPipeline(version)
-        plots = CDMSPipelineHelper.find_plot_modules(pipeline)
-        text = "from PyQt4 import QtCore, QtGui\n"
-        text += "import cdms2, cdutil, genutil\n"
+        plots = klass.find_plot_modules(pipeline)
+       
+#        text = "from PyQt4 import QtCore, QtGui\n"
+        text = "import cdms2, cdutil, genutil\n"
         text += "import vcs\n\n"
         text += "if __name__ == '__main__':\n"
         text += "    import sys\n"
-        text += "    app = QtGui.QApplication(sys.argv)\n"
+#        text += "    app = QtGui.QApplication(sys.argv)\n"
         ident = '    '
         
-        var_op_modules = CDMSPipelineHelper.find_topo_sort_modules_by_types(pipeline,
-                                                                            [CDMSVariable, 
-                                                                             CDMSVariableOperation])
+        var_op_modules = CDMSPipelineHelper.find_topo_sort_modules_by_types( pipeline, [CDMSVariable,   CDMSVariableOperation] )
         for m in var_op_modules:
             desc = m.module_descriptor.module
             mobj = desc.from_module(m)
             text += mobj.to_python_script(ident=ident)
-                
+        vnames = []        
         text += ident + "canvas = vcs.init()\n"
         for mplot in plots:
             plot = mplot.module_descriptor.module.from_module(mplot)
-            text += ident + "gm%s = canvas.get%s('%s')\n"%(plot.plot_type, 
-                                                 plot.plot_type.lower(), 
-                                                 plot.graphics_method_name)
+            text += ident + "gm%s = vcs.get%s('%s')\n" % (plot.plot_type,  plot.plot_type.lower(),  plot.graphics_method_name)
             text += ident + "args = []\n"
             for varm in CDMSPipelineHelper.find_variables_connected_to_plot_module(controller, pipeline, mplot.id):
-                text += ident + "args.append(%s)\n"%CDMSPipelineHelper.get_variable_name_from_module(varm)
+                vname = CDMSPipelineHelper.get_variable_name_from_module(varm)
+                text += ident + "args.append(%s)\n" % vname
+                vnames.append( vname )    
 #                desc = varm.module_descriptor
 #                if issubclass(desc.module, CDMSVariable):
 #                    var = CDMSVariable.from_module(varm)
@@ -717,17 +834,32 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                             text += ident + "canvas.canvas.setcolorcell(%i,%i,%i,%i)\n"%(n,r,g,b)
                         text += ident + "canvas.canvas.updateVCSsegments(canvas.mode)\n" 
                         text += ident + "canvas.flush()\n"
-                
-            if plot.graphics_method_name != 'default':
+             
+            if plot.plot_type.lower().startswith('3d'):
+                ( row, col ) = klass.getCellLoc( pipeline )      
+                plotApps = klass.getPlotApps( row, col )
+                for pApp in plotApps:
+                    cData = pApp.getConfigurationData( cell=(row,col) )
+                    for [k,kval] in cData:
+                        param_values = []
+                        if len(kval): 
+                            param_values.append( str(kval) )
+                        state = pApp.getConfigurationState( k, cell=(row,col) )
+                        if state: 
+                            param_values.append( ' vcs.on' if ( state == 1 ) else " {'state' : %d }" % state )  
+                        if len( param_values ): 
+                            key = k.split('(')[0]                      
+                            text += ident + "gm%s.%s = %s\n" % (plot.plot_type,  k, ','.join( param_values ) )
+                            
+            elif (plot.graphics_method_name != 'default'):
                 for k in plot.gm_attributes:
                     if hasattr(plot,k):
                         kval = getattr(plot,k)
                         if type(kval) == type("str") and k != 'legend':
-                            text += ident + "gm%s.%s = '%s'\n"%(plot.plot_type,
-                                                            k, kval)
+                            text += ident + "gm%s.%s = '%s'\n" % (plot.plot_type,  k, kval)
                         else:
-                            text += ident + "gm%s.%s = %s\n"%(plot.plot_type,
-                                                      k,  kval)
+                            text += ident + "gm%s.%s = %s\n" % (plot.plot_type, k,  kval)
+                            
 #                        if k in ['level_1', 'level_2', 'color_1',
 #                                 'color_2', 'legend', 'levels',
 #                                 'missing', 'datawc_calendar', 'datawc_x1', 
@@ -738,10 +870,12 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 #                        else:
 #                            text += ident + "gm%s.%s = '%s'\n"%(plot.plot_type,
 #                                                            k, getattr(plot,k))
-            
-            text += ident + "kwargs = %s\n"%plot.kwargs
-            text += ident + "canvas.plot(gm%s,*args, **kwargs)\n"%(plot.plot_type) 
-        text += '    sys.exit(app.exec_())'           
+
+            text += ident + "kwargs = %s\n" % str(plot.kwargs) 
+            text += ident + "kwargs[ 'cdmsfile' ] = cdmsfile.id\n" 
+            text += ident + "args.append( gm%s )\n" % (plot.plot_type) 
+            text += ident + "canvas.plot( *args, **kwargs )\n"
+        text += ident + 'canvas.interact()'           
         return text
     
     @staticmethod    
@@ -1246,7 +1380,7 @@ class CDMSPlotWidget(QtGui.QWidget):
         # it only examined the pipeline instead of the plot_table
         #
         # pipeline = self.controller.vistrail.getPipeline(version)
-        # for plot in CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot]):
+        # for plot in CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSPlot,CDMS3DPlot]):
         for plot in self.plot_table.get_plots():
             if plot.id not in self.to_be_removed:
                 plot_modules.append(plot)

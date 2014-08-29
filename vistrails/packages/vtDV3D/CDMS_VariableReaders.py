@@ -612,6 +612,13 @@ class PM_CDMSDataReader( PersistentVisualizationModule ):
                         md['timeUnits' ] = self.referenceTimeUnits
                         md[ 'attributes' ] = var_md
                         md[ 'plotType' ] = 'zyt' if (self.outputType == CDMSDataType.Hoffmuller) else 'xyz'
+                        if var <> None:
+                            axis = var.getLongitude()
+                            if axis <> None: md[ 'lon' ] =  axis.getValue()
+                            axis = var.getLatitude()
+                            if axis <> None: md[ 'lat' ] =  axis.getValue()
+                            axis = var.getLevel()
+                            if axis <> None: md[ 'lev' ] =  axis.getValue()
                                         
                 self.setCachedData( varDataId, cell_coords, varDataSpecs )  
         

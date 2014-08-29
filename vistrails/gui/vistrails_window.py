@@ -1847,12 +1847,12 @@ class QVistrailsWindow(QVistrailViewWindow):
             else:
                 try:
                     import gui.uvcdat.mainwindow
-                    from packages.vtDV3D.VolumeRenderModule import TransferFunctionConfigurationDialog
-                    from packages.vtDV3D.InteractiveConfiguration import ColormapConfigurationDialog
+#                    from packages.vtDV3D.VolumeRenderModule import TransferFunctionConfigurationDialog
+#                    from packages.vtDV3D.InteractiveConfiguration import ColormapConfigurationDialog
                     if (isinstance(window, gui.uvcdat.mainwindow.UVCDATMainWindow) or
-                        isinstance(window, QtGui.QDockWidget) or
-                        isinstance(window, TransferFunctionConfigurationDialog) or
-                        isinstance(window, ColormapConfigurationDialog)):
+                        isinstance(window, QtGui.QDockWidget) ):
+#                        isinstance(window, TransferFunctionConfigurationDialog) or
+#                        isinstance(window, ColormapConfigurationDialog)):
                         return self.stack.currentWidget()
                 except:
                     pass
@@ -2457,7 +2457,8 @@ class QVistrailsWindow(QVistrailViewWindow):
         from gui.mashups.alias_inspector import QAliasInspector
         from gui.mashups.mashup_view import QMashupViewTab
         from packages.spreadsheet.spreadsheet_cell import QCellWidget
-        import sys
+        from packages.cdat.cdat_cell import QCDATWidget
+        import sys, traceback
         def is_or_has_parent_of_types(widget, types):
             while widget is not None:
                 for _type in types:
@@ -2476,6 +2477,7 @@ class QVistrailsWindow(QVistrailViewWindow):
                                    QParamExploreView,
                                    QAliasInspector,
                                    QCellWidget,
+                                   QCDATWidget,
                                    QMashupViewTab]
                 if (self.isAncestorOf(current) or 
                     owner in self.windows.values()):
@@ -2514,8 +2516,10 @@ class QVistrailsWindow(QVistrailViewWindow):
                         self._previous_view = view.get_current_tab()
                         view.set_to_current(current)
                         view.view_changed()
-            except:
+            except Exception, err:
                 print>>sys.stderr," No window in applicationFocusChanged, current = ", str( current )
+                traceback.print_exc()
+                
         else:
             self._focus_owner = None
 _app = None

@@ -146,6 +146,7 @@ class PlotManager(QtCore.QObject):
                 ## Special section here for VCS GMs they have one more layer
                 self._plot_list[p][pl] = {}
                 for m in get_canvas().listelements(str(pl).lower()):
+#                    print "******************** load_vcs_plot (%s): " % pl.__class__.__name__, str(p), str(pl), str(m)
                     self._plot_list[p][pl][m] = self._registry.add_plot(m,p,
                                                                         None, 
                                                                         None,
