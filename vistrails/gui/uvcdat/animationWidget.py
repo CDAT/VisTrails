@@ -2,7 +2,7 @@ from PyQt4 import QtGui, QtCore
 import vcs
 from gui.uvcdat import customizeUVCDAT
 from gui.uvcdat import uvcdatCommons
-import os
+import os, sys
 
 def unique_connect(signal, handler):
     """Uses new style connect, adding the unique connection bit flag so that
@@ -179,17 +179,22 @@ class QAnimationView(QtGui.QWidget):
         
         #self.connectAnimationSignals()
         
-        self.doLoop.setChecked(canvas.animate.loop)
+        try:
+            self.doLoop.setChecked(canvas.animate.loop)
         
-        self.speedSlider.setValue(canvas.animate.fps())
-        
-        created = (canvas.animate.create_flg == 1)
-        self.createButton.setEnabled(not created)
-        self.player.setEnabled(created)
-        
-        if created:
-            self.framesSlider.setMaximum(canvas.animate.number_of_frames()-1)
-            self.updatePlayStopIcon()
+            self.speedSlider.setValue(canvas.animate.fps())
+            
+            created = (canvas.animate.create_flg == 1)
+            self.createButton.setEnabled(not created)
+            self.player.setEnabled(created)
+            
+            if created:
+                self.framesSlider.setMaximum(canvas.animate.number_of_frames()-1)
+                self.updatePlayStopIcon()
+            
+        except AttributeError, err:
+            print>>sys.stderr, str(err)
+
         
     def changedFrame(self,value):
         self.canvas.animate.frame(value)
