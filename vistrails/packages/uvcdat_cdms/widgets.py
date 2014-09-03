@@ -93,9 +93,9 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
         elif plot_type == "Yxvsx":
             return Q1DPlotEditor(self.tabWidget, gmName, type="yxvsx")
         elif plot_type == "3D_Scalar":
-            return Q3D_ScalarEditor(self.tabWidget, gmName, type="yxvsx")
+            return Q3D_ScalarEditor(self.tabWidget, gmName, type="default")
         elif plot_type == "3D_Vector":
-            return Q3D_VectorEditor(self.tabWidget, gmName, type="yxvsx")
+            return Q3D_VectorEditor(self.tabWidget, gmName, type="default")
         
     def setupEditors(self):
         gm = InstanceObject(**self.attributes)

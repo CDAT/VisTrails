@@ -62,14 +62,18 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         cell  = tabWidget.getCellWidget( row, col ).widget()   
         return cell.canvas.backend.plotApps
 
-    @staticmethod
-    def show_configuration_widget(controller, version, plot_objs=[]):
+    @classmethod
+    def show_configuration_widget( klass, controller, version, plot_objs=[]):
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
-        vars = CDMSPipelineHelper.find_modules_by_type(pipeline, 
-                                                       [CDMSVariable,
-                                                        CDMSVariableOperation])
-        return CDMSPlotWidget(controller,version,plots,vars)
+        vars = CDMSPipelineHelper.find_modules_by_type(pipeline, [CDMSVariable, CDMSVariableOperation] )
+        ( row, col ) = klass.getCellLoc( pipeline )      
+        plotApps = klass.getPlotApps( row, col )
+        configParms = {}
+        for pApp in plotApps.keys():
+            cParms = pApp.getConfigurationParms( cell=(row,col) )
+            configParms.update( cParms )
+        return CDMSPlotWidget( controller, version, plots, vars, parms=configParms )
     
     @staticmethod
     def find_plot_modules(pipeline):
@@ -913,13 +917,14 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return result
     
 class CDMSPlotWidget(QtGui.QWidget):
-    def __init__(self,controller, version, plot_list, var_list, parent=None):
+    def __init__(self,controller, version, plot_list, var_list, parent=None, **args ):
         QtGui.QWidget.__init__(self,parent)
         self.proj_controller = controller
         self.controller = controller.vt_controller
         self.version = version
         self.plots = plot_list
         self.varWidget = None
+        self.configParms = args.get( 'parms', None )
         
         #sort plot modules by order
         fn = lambda x: PlotPipelineHelper.get_value_from_function(x, "plotOrder")
