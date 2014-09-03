@@ -147,7 +147,7 @@ class QVTKWidget(QCellWidget):
 
         self.interacting = None
         self.mRenWin = None
-        self.createInteractor = args.get( 'createInteractor', False )
+        self.createInteractor = args.get( 'createInteractor', True )
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
         self.setAttribute(QtCore.Qt.WA_PaintOnScreen)
         self.setMouseTracking(True)
