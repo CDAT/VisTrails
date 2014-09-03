@@ -10,6 +10,15 @@ def unique_connect(signal, handler):
     """
     connectionType = QtCore.Qt.AutoConnection | QtCore.Qt.UniqueConnection
     signal.connect(handler, connectionType)
+
+class AnimationSignals(QtCore.QObject):
+  """Inner class to hold signals since main object is not a QObject
+  """
+  drawn = QtCore.pyqtSignal(int, name="animationDrawn")
+  created = QtCore.pyqtSignal(name="animationCreated")
+  canceled = QtCore.pyqtSignal(name="animationCanceled")
+  paused = QtCore.pyqtSignal(name="animationPaused")
+  stopped = QtCore.pyqtSignal(bool, name="animationStopped")
     
 class QAnimationView(QtGui.QWidget):
     """ Widget containing plot options: plot button, plot type combobox, cell
@@ -161,16 +170,23 @@ class QAnimationView(QtGui.QWidget):
         self.canvas.animate.signals.drawn.disconnect(self.drawn)
         self.canvas.animate.signals.paused.disconnect(self.paused)
         self.canvas.animate.signals.stopped.disconnect(self.updatePlayStopIcon)
+        self.canvas.animate.signals.created.disconnect(self.animationCreated)
+        self.canvas.animate.signals.canceled.disconnect(self.stopCreating)
         
     def connectAnimationSignals(self):
+        signals = AnimationSignals()
+        self.canvas.animate.set_signals(signals)
         unique_connect(self.canvas.animate.signals.drawn, self.drawn)
         unique_connect(self.canvas.animate.signals.paused, self.paused)
         unique_connect(self.canvas.animate.signals.stopped, 
                        self.updatePlayStopIcon)
+        unique_connect(self.canvas.animate.signals.created,
+                       self.animationCreated)
+        unique_connect(self.canvas.animate.signals.canceled, self.stopCreating)
 
     def setCanvas(self,canvas):
-        #if self.canvas is not None:
-        #    self.disconnectAnimationSignals()
+        # if self.canvas is not None:
+        #     self.disconnectAnimationSignals()
             
         self.canvas = canvas
         
@@ -227,9 +243,6 @@ class QAnimationView(QtGui.QWidget):
             except:
                 max = None
                 
-        animationSignals = self.canvas.animate.signals
-        unique_connect(animationSignals.created, self.animationCreated)
-        unique_connect(animationSignals.canceled, self.stopCreating)
         self.canvas.animate.create_params.a_min = min
         self.canvas.animate.create_params.a_max = max
         self.canvas.animate.create()
