@@ -99,11 +99,11 @@ class DebugPrint:
             self.set_logfile(f)
         
         #then we define a handler to log to the console
-        self.console = logging.StreamHandler()
-        self.console.setFormatter(self.format)
-        self.console.setLevel(logging.CRITICAL)
-        self.logger.addHandler(self.console)
-        self.handlers.append(self.console)
+        # self.console = logging.StreamHandler()
+        # self.console.setFormatter(self.format)
+        # self.console.setLevel(logging.CRITICAL)
+        # self.logger.addHandler(self.console)
+        # self.handlers.append(self.console)
         
 #    if system.python_version() <= (2,4,0,'',0):
 #        raise VersionTooLow('Python', '2.4.0')
