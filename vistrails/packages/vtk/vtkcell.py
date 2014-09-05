@@ -56,7 +56,40 @@ from core.vistrail.module_function import ModuleFunction
 from core.vistrail.module_param import ModuleParam
 from core.vistrail.location import Location
 from core.modules.vistrails_module import ModuleError
-import copy
+import copy, sys
+
+# class QVTKRenderWindowInteractorRevised(QVTKRenderWindowInteractor):
+# 
+#     def __init__(self, parent=None, wflags=QtCore.Qt.WindowFlags(), **kw):
+#         QVTKRenderWindowInteractor.__init__(self, parent=None, wflags=QtCore.Qt.WindowFlags(), **kw)
+#         self.__test_attribute__ = None
+# 
+#     def __getattr__(self, attr):
+#         """Makes the object behave like a vtkGenericRenderWindowInteractor"""
+#         if attr == '__vtk__':
+#             return lambda t=self._Iren: t
+#         else:
+#             try:
+#                 print " ------ RWI get attribute: ", attr
+#                 return getattr(self._Iren, attr)
+#             except AttributeError:
+#                 raise Exception, self.__class__.__name__ +   " has no attribute named " + attr
+#        
+# #     def CreateTimer(self, type, ts ):
+# #         return self._Iren.CreateTimer( type, ts )
+# #     
+#     def CreateOneShotTimer( self, event_duration ):
+#          return self._Iren.CreateOneShotTimer( event_duration )
+# 
+#     def SetTimerEventId( self, AnimationEventId ):
+#         return self._Iren.SetTimerEventId( AnimationEventId )
+# 
+#     def SetTimerEventType( self, AnimationTimerType ):
+#         return self._Iren.SetTimerEventType( AnimationTimerType )
+#     
+#     def AddObserver(self, event, observer ):
+#         self._Iren.AddObserver(self, event, observer )
+    
 
 ################################################################################
 
@@ -147,6 +180,7 @@ class QVTKWidget(QCellWidget):
 
         self.interacting = None
         self.mRenWin = None
+        self.iren = None
         self.createInteractor = args.get( 'createInteractor', True )
         self.setAttribute(QtCore.Qt.WA_OpaquePaintEvent)
         self.setAttribute(QtCore.Qt.WA_PaintOnScreen)
@@ -165,9 +199,8 @@ class QVTKWidget(QCellWidget):
         safely freeing the cell
         
         """
-        iren = self.mRenWin.GetInteractor()
-        if iren:
-            style = iren.GetInteractorStyle()
+        if self.iren:
+            style = self.iren.GetInteractorStyle()
             style.RemoveObservers("InteractionEvent")
             style.RemoveObservers("EndPickEvent")
             style.RemoveObservers("CharEvent")
@@ -179,9 +212,8 @@ class QVTKWidget(QCellWidget):
         Assign observer to the current interactor style
         
         """
-        iren = self.mRenWin.GetInteractor()
-        if iren:
-            style = iren.GetInteractorStyle()
+        if self.iren:
+            style = self.iren.GetInteractorStyle()
             style.AddObserver("InteractionEvent", self.interactionEvent)
             style.AddObserver("EndPickEvent", self.interactionEvent)
             style.AddObserver("CharEvent", self.charEvent)
@@ -250,9 +282,8 @@ class QVTKWidget(QCellWidget):
                 else:
                     vtkInstance.ResetCameraClippingRange()
             
-        iren = renWin.GetInteractor()
         if picker:
-            iren.SetPicker(picker.vtkInstance)
+            self.iren.SetPicker(picker.vtkInstance)
             
         # Update interactor style
         self.removeObserversFromInteractorStyle()
@@ -261,12 +292,12 @@ class QVTKWidget(QCellWidget):
                 iStyleInstance = vtk.vtkInteractorStyleTrackballCamera()
             else:
                 iStyleInstance = iStyle.vtkInstance
-            iren.SetInteractorStyle(iStyleInstance)
+            self.iren.SetInteractorStyle(iStyleInstance)
         self.addObserversToInteractorStyle()
         
         for iHandler in self.iHandlers:
             if iHandler.observer:
-                iHandler.observer.vtkInstance.SetInteractor(iren)
+                iHandler.observer.vtkInstance.SetInteractor(self.iren)
         renWin.Render()
 
         # Capture window into history for playback
@@ -286,7 +317,7 @@ class QVTKWidget(QCellWidget):
             del win
 
         return self.mRenWin
-
+    
     def SetRenderWindow(self,w):
         """ SetRenderWindow(w: vtkRenderWindow)        
         Set a new render window to QVTKWidget and initialize the
@@ -330,12 +361,11 @@ class QVTKWidget(QCellWidget):
 
             if not self.mRenWin.GetInteractor():
                 if self.createInteractor:
-                    iren = QVTKRenderWindowInteractor()
-#                iren = vtk.vtkGenericRenderWindowInteractor()
+                    self.iren = QVTKRenderWindowInteractor(rw=self.mRenWin)
+#                    iren = vtk.vtkGenericRenderWindowInteractor()
 #                if system.systemType=='Darwin':
 #                    iren.InstallMessageProcOff()
-                    iren.SetRenderWindow(self.mRenWin)
-                    iren.Initialize()
+                    self.iren.Initialize()
 #                if system.systemType=='Linux':
 #                    system.XDestroyWindow(self.mRenWin.GetGenericDisplayId(),
 #                                          self.mRenWin.GetGenericWindowId())
@@ -444,11 +474,8 @@ class QVTKWidget(QCellWidget):
         Paint the QVTKWidget with vtkRenderWindow
         
         """
-        iren = None
-        if self.mRenWin:
-            iren = self.mRenWin.GetInteractor()
 
-        if (not iren) or (not iren.GetEnabled()):
+        if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
         if hasattr(self.mRenWin, 'UpdateGLRegion'):
@@ -475,16 +502,12 @@ class QVTKWidget(QCellWidget):
         Echo mouse event to vtkRenderWindowwInteractor
         
         """
-        iren = None
-        if self.mRenWin:
-            iren = self.mRenWin.GetInteractor()
-
-        if (not iren) or (not iren.GetEnabled()):
+        if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
         ctrl = (e.modifiers()&QtCore.Qt.ControlModifier)
         isDoubleClick = e.type()==QtCore.QEvent.MouseButtonDblClick
-        iren.SetEventInformationFlipY(e.x(),e.y(),
+        self.iren.SetEventInformationFlipY(e.x(),e.y(),
                                       ctrl,
                                       (e.modifiers()&QtCore.Qt.ShiftModifier),
                                       chr(0),
@@ -494,78 +517,65 @@ class QVTKWidget(QCellWidget):
                   QtCore.Qt.MidButton:"MiddleButtonPressEvent",
                   QtCore.Qt.RightButton:"RightButtonPressEvent"}
 
-        self.SelectActiveRenderer(iren)
+        self.SelectActiveRenderer(self.iren)
 
         if ctrl:
             e.ignore()
             return
 
-        self.interacting = self.getActiveRenderer(iren)
+        self.interacting = self.getActiveRenderer(self.iren)
         
         if e.button() in invoke:
-            iren.InvokeEvent(invoke[e.button()])
+            self.iren.InvokeEvent(invoke[e.button()])
             
 
     def mouseMoveEvent(self,e):
         """ mouseMoveEvent(e: QMouseEvent) -> None
         Echo mouse event to vtkRenderWindowwInteractor
         
-        """
-        iren = None
-        if self.mRenWin:
-            iren = self.mRenWin.GetInteractor()
-
-        if (not iren) or (not iren.GetEnabled()):
+        """        
+        if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
-        iren.SetEventInformationFlipY(e.x(),e.y(),
+        self.iren.SetEventInformationFlipY(e.x(),e.y(),
                                       (e.modifiers()&QtCore.Qt.ControlModifier),
                                       (e.modifiers()&QtCore.Qt.ShiftModifier),
                                       chr(0), 0, None)
 
-        iren.InvokeEvent("MouseMoveEvent")
+        self.iren.InvokeEvent("MouseMoveEvent")
                   
     def enterEvent(self,e):
         """ enterEvent(e: QEvent) -> None
         Echo mouse event to vtkRenderWindowwInteractor
         
         """
-        iren = None
-        if self.mRenWin:
-            iren = self.mRenWin.GetInteractor()
 
-        if (not iren) or (not iren.GetEnabled()):
+        if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
-        iren.InvokeEvent("EnterEvent")
+        self.iren.InvokeEvent("EnterEvent")
 
     def leaveEvent(self,e):
         """ leaveEvent(e: QEvent) -> None
         Echo mouse event to vtkRenderWindowwInteractor
         
         """
-        iren = None
-        if self.mRenWin:
-            iren = self.mRenWin.GetInteractor()
 
-        if (not iren) or (not iren.GetEnabled()):
+        if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
-        iren.InvokeEvent("LeaveEvent")
+        self.iren.InvokeEvent("LeaveEvent")
 
     def mouseReleaseEvent(self,e):
         """ mouseReleaseEvent(e: QEvent) -> None
         Echo mouse event to vtkRenderWindowwInteractor
         
         """
-        iren = None
-        if self.mRenWin:
-            iren = self.mRenWin.GetInteractor()
 
-        if (not iren) or (not iren.GetEnabled()):
+        if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
-        iren.SetEventInformationFlipY(e.x(),e.y(),
+        self.iren.SetEventInformationFlipY(e.x(),e.y(),
                                       (e.modifiers()&QtCore.Qt.ControlModifier),
                                       (e.modifiers()&QtCore.Qt.ShiftModifier),
                                       chr(0),0,None)
@@ -577,18 +587,14 @@ class QVTKWidget(QCellWidget):
         self.interacting = None
         
         if e.button() in invoke:
-            iren.InvokeEvent(invoke[e.button()])
+            self.iren.InvokeEvent(invoke[e.button()])
 
     def keyPressEvent(self,e):
         """ keyPressEvent(e: QKeyEvent) -> None
         Disallow 'quit' key in vtkRenderWindowwInteractor and sync the others
         
         """
-        iren = None
-        if self.mRenWin:
-            iren = self.mRenWin.GetInteractor()
-
-        if (not iren) or (not iren.GetEnabled()):
+        if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
         ascii_key = None
@@ -609,12 +615,12 @@ class QVTKWidget(QCellWidget):
             e.ignore()
             return
         
-        iren.SetKeyEventInformation(ctrl,shift,ascii_key, e.count(), keysym)
+        self.iren.SetKeyEventInformation(ctrl,shift,ascii_key, e.count(), keysym)
 
-        iren.InvokeEvent("KeyPressEvent")
+        self.iren.InvokeEvent("KeyPressEvent")
 
         if ascii_key:
-            iren.InvokeEvent("CharEvent")
+            self.iren.InvokeEvent("CharEvent")
 
         
     def keyReleaseEvent(self,e):
@@ -622,11 +628,7 @@ class QVTKWidget(QCellWidget):
         Disallow 'quit' key in vtkRenderWindowwInteractor and sync the others
         
         """
-        iren = None
-        if self.mRenWin:
-            iren = self.mRenWin.GetInteractor()
-
-        if (not iren) or (not iren.GetEnabled()):
+        if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
         ascii_key = None
@@ -647,33 +649,30 @@ class QVTKWidget(QCellWidget):
             e.ignore()
             return
         
-        iren.SetKeyEventInformation(ctrl, shift, ascii_key, e.count(), keysym)
+        self.iren.SetKeyEventInformation(ctrl, shift, ascii_key, e.count(), keysym)
 
-        iren.InvokeEvent("KeyReleaseEvent")
+        self.iren.InvokeEvent("KeyReleaseEvent")
 
     def wheelEvent(self,e):
         """ wheelEvent(e: QWheelEvent) -> None
         Zoom in/out while scrolling the mouse
         
         """
-        iren = None
-        if self.mRenWin:
-            iren = self.mRenWin.GetInteractor()
 
-        if (not iren) or (not iren.GetEnabled()):
+        if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
-        iren.SetEventInformationFlipY(e.x(),e.y(),
+        self.iren.SetEventInformationFlipY(e.x(),e.y(),
                                       (e.modifiers()&QtCore.Qt.ControlModifier),
                                       (e.modifiers()&QtCore.Qt.ShiftModifier),
                                       chr(0),0,None)
         
-        self.SelectActiveRenderer(iren)
+        self.SelectActiveRenderer(self.iren)
         
         if e.delta()>0:
-            iren.InvokeEvent("MouseWheelForwardEvent")
+            self.iren.InvokeEvent("MouseWheelForwardEvent")
         else:
-            iren.InvokeEvent("MouseWheelBackwardEvent")
+            self.iren.InvokeEvent("MouseWheelBackwardEvent")
 
     def focusInEvent(self,e):
         """ focusInEvent(e: QFocusEvent) -> None
@@ -695,17 +694,13 @@ class QVTKWidget(QCellWidget):
         event, i.e. also the right click
         
         """
-        iren = None
-        if self.mRenWin:
-            iren = self.mRenWin.GetInteractor()
-
-        if (not iren) or (not iren.GetEnabled()):
+        if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
         ctrl = int(e.modifiers()&QtCore.Qt.ControlModifier)
         shift = int(e.modifiers()&QtCore.Qt.ShiftModifier)
-        iren.SetEventInformationFlipY(e.x(),e.y(),ctrl,shift,chr(0),0,None)
-        iren.InvokeEvent("ContextMenuEvent")
+        self.iren.SetEventInformationFlipY(e.x(),e.y(),ctrl,shift,chr(0),0,None)
+        self.iren.InvokeEvent("ContextMenuEvent")
 
     def ascii_to_key_sym(self,i):
         """ ascii_to_key_sym(i: int) -> str
@@ -872,9 +867,8 @@ class QVTKWidget(QCellWidget):
     def getSelectedCellWidgets(self):
         sheet = self.findSheetTabWidget()
         if sheet:
-            iren = self.mRenWin.GetInteractor()
             ren = self.interacting
-            if not ren: ren = self.getActiveRenderer(iren)
+            if not ren: ren = self.getActiveRenderer(self.iren)
             if ren:
                 cells = sheet.getSelectedLocations()
                 if (ren in self.getRenderersInCellList(sheet, cells)):
