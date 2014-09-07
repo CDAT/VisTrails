@@ -10,7 +10,6 @@ from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
 from core.modules.vistrails_module import Module
 from core.uvcdat.plotmanager import get_plot_manager
-from packages.spreadsheet.basic_widgets import CellLocation, SpreadsheetCell
 from core.modules.module_registry import get_module_registry, MissingPort
 import core.db.action
 import core.db.io    
@@ -361,8 +360,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             plot_modules.append(pm)
             
         loc_module = controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet', 
-                                       'CellLocation'))
+            reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet',  'CellLocation'))
         functions = controller.create_functions(loc_module,
             [('Row', [str(row+1)]), ('Column', [str(col+1)])])
         for f in functions:
@@ -539,8 +537,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         return action
         
     @staticmethod
-    def copy_pipeline_to_other_location(pipeline, controller, sheetName, row, col, 
-                                        plot_type, cell):
+    def copy_pipeline_to_other_location(pipeline, controller, sheetName, row, col, plot_type, cell):
+        from packages.spreadsheet.basic_widgets import CellLocation, SpreadsheetCell
         pip_str = core.db.io.serialize(pipeline)
         controller.change_selected_version(cell.current_parent_version)
         
@@ -558,8 +556,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         cell.current_parent_version = action.id
         
         loc_module = controller.create_module_from_descriptor(
-            reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet', 
-                                       'CellLocation'))
+            reg.get_descriptor_by_name('edu.utah.sci.vistrails.spreadsheet',  'CellLocation'))
         functions = controller.create_functions(loc_module,
             [('Row', [str(row+1)]), ('Column', [str(col+1)])])
         for f in functions:
@@ -611,7 +608,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         this information must also be extracted from the workflow
          
         """
-        
+        from packages.spreadsheet.basic_widgets import CellLocation
         cell_locations = CDMSPipelineHelper.find_modules_by_type(pipeline, [CellLocation])
         plot_modules = CDMSPipelineHelper.find_modules_by_type(pipeline, [ CDMSPlot, CDMS3DPlot ])
         
