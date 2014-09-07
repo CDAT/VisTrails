@@ -36,7 +36,6 @@
 #   SpreadsheetWindow
 ################################################################################
 from PyQt4 import QtCore, QtGui
-from spreadsheet_base import StandardSheetReference
 from spreadsheet_event import BatchDisplayCellEventType, DisplayCellEventType, \
      RepaintCurrentSheetEventType
 from spreadsheet_tabcontroller_stack import TabControllerStack 
@@ -455,6 +454,7 @@ class SpreadsheetWindow(QtGui.QMainWindow):
         Display a cell when receive this event
         
         """
+        from spreadsheet_base import StandardSheetReference
         if self.echoMode:
             self.echoCellEvents.append(e)
             return None
