@@ -580,7 +580,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             
             ### NEEDS EDITED
    def applyClicked(self):
-        from metrics.frontend.uvcdat import setup_filetable, get_plot_data
+        from metrics.frontend.uvcdat import setup_filetable, get_plot_data, diagnostics_template
 
         if self.checkedItem is None:
             msg = "Please choose a diagnostic to plot."
@@ -703,19 +703,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       from packages.uvcdat_cdms.init import CDMSVariable
       from core.utils import InstanceObject
 
-      import vcs
-      if 'diagnostic' in vcs.listelements('template'):
-         tm = vcs.gettemplate('diagnostic')
-      else:
-         tm = vcs.createtemplate( 'diagnostic', 'default' )
-         # ...creates a template named 'diagnostic', as a copy of the one named 'default'.
-         tm.title.x = 0.5
-         to = vcs.createtextorientation()
-         to.halign = 'center'
-         tm.title.textorientation = to
-         tm.dataname.priority = 0
-         tm.units.priority = 0
-
+      from metrics.frontend.uvcdat import diagnostics_template
+      tm = diagnostics_template()  # template name is 'diagnostic'
       for V in pvars:
          V.title = title        # VCS looks the title of the variable, not the plot.
          V.long_name = V.title  # VCS overrides title with long_name!
