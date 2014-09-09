@@ -74,7 +74,7 @@ class QtAnimationStepper( QtCore.QObject ):
     def stepAnimation(self):
         if self.running:
             self.target.stepAnimation()
-            timestep = self.target.getAnimationTimestep()
+            timestep = self.target.getAnimationDelay()
             QtCore.QTimer.singleShot ( timestep, self.stepAnimation )
 
     def stopAnimation(self):
