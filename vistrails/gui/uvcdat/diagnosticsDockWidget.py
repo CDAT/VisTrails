@@ -283,7 +283,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          if type(self.obs1_menu) is dict:
             self.observations1 = self.obs1_menu.keys()
          self.diagnostic_set_name = "Not implemented"
-         if self.observations1==None:
+         if self.obs1_menu==None:
             print "WARNING: No data found for observations directory"
          if type(self.observations1) is list:
             self.observations1.sort()
@@ -324,7 +324,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          if type(self.obs2_menu) is dict:
             self.observations2 = self.obs2_menu.keys()
          self.diagnostic_set_name = "Not implemented"
-         if self.observations2==None:
+         if self.obs2_menu==None:
             print "WARNING: No data found for observations directory"
          if type(self.observations2) is list:
             self.observations2.sort()
@@ -700,6 +700,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       projectController.enable_animation = False  # I (JfP) don't know why I need this, it didn't
                                                   # used to be necessary.
       if res30 is None:
+         return
+      if not hasattr(res30,'presentation') or res30.presentation is None or res30.presentation is "text":
          return
       pvars = res30.vars
       labels = res30.labels
