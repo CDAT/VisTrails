@@ -11,6 +11,7 @@ import metrics.frontend.defines as defines
 
 import metrics.fileio.findfiles
 import metrics.packages.diagnostic_groups
+from metrics.common.utilities import natural_sort
 
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    dg_menu = metrics.packages.diagnostic_groups.diagnostics_menu()  # typical item: 'AMWG':AMWG
@@ -505,7 +506,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.ds_menu = self.DiagnosticGroup.list_diagnostic_sets()
       self.seasons = self.DiagnosticGroup.list_seasons()
       # Note that the following loop calls plotsetchanged()
-      for diagnostic_set in sorted(self.ds_menu.keys()):
+      for diagnostic_set in natural_sort(self.ds_menu.keys()):
          diagnosticItem = QtGui.QTreeWidgetItem(self.treeWidget, [diagnostic_set])
          diagnosticItem.setFlags(diagnosticItem.flags() & (~Qt.ItemIsSelectable))
          diagnosticItem.setCheckState(0, Qt.Unchecked)
