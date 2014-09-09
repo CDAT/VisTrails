@@ -64,21 +64,22 @@ class QtAnimationStepper( QtCore.QObject ):
     def __init__( self, target ):
         QtCore.QObject.__init__( self )
         self.target = target
-        self.event_duration = 0
         self.running = False
     
     def startAnimation(self):
         self.running = True
+        self.target.notifyStartAnimation()
         self.stepAnimation()
         
     def stepAnimation(self):
         if self.running:
             self.target.stepAnimation()
-            QtCore.QTimer.singleShot ( self.event_duration, self.stepAnimation )
+            timestep = self.target.getAnimationTimestep()
+            QtCore.QTimer.singleShot ( timestep, self.stepAnimation )
 
     def stopAnimation(self):
         self.running = False
-        self.target.stopAnimation()
+        self.target.notifyStopAnimation()
         
 class StandardGrid():
     cache={}
