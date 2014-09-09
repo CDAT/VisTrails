@@ -273,8 +273,10 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          print 'No observation directory selected'
       else:
          print 'Processing observation data in ', self.opts._opts['obspath'][0]
-         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
-         self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
+         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0,
+                                                                     path=self.opts['obspath'][0],
+                                                                     filter=self.opts['filter2'])
+         #self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
 
          self.observations1 = None
          self.obs1_menu = self.obsfiles1.check_filespec()
@@ -293,13 +295,15 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          if type(self.observations1) is list:
             self.observation1 = str(self.comboBoxObservation1.currentText())
             if(len(self.observation1) > 0):
-               self.opts._opts['filter'] = self.obs1_menu[self.observation1]
+               self.opts._opts['filter2'] = self.obs1_menu[self.observation1]
             else:
-               self.opts._opts['filter'] = None
+               self.opts._opts['filter2'] = None
          else:
-            self.opts._opts['filter'] = None
+            self.opts._opts['filter2'] = None
 
-         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
+         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0,
+                                                                     path=self.opts['obspath'][0],
+                                                                     filter=self.opts['filter2'])
          self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
          #self.obsft = self.obsfiles.setup_filetable(self.tmppth, "obs")
          # obs should be populated now
@@ -309,8 +313,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          print 'No observation directory selected'
       else:
          print 'Processing observation data in ', self.opts._opts['obspath'][1]
-         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1)
-         self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
+         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1,
+                                                                     path=self.opts['obspath'][1],
+                                                                     filter=self.opts['filter2'])
+         #self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
+
 
          self.observations2 = None
          self.obs2_menu = self.obsfiles2.check_filespec()
@@ -328,11 +335,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
          if type(self.observations2) is list:
             self.observation2 = str(self.comboBoxObservation2.currentText())
-            self.opts._opts['filter'] = self.obs2_menu[self.observation2]
+            self.opts._opts['filter2'] = self.obs2_menu[self.observation2]
          else:
-            self.opts._opts['filter'] = None
+            self.opts._opts['filter2'] = None
 
-         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1)
+         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1,
+                                                                     path=self.opts['obspath'][1],
+                                                                     filter=self.opts['filter2'])
          self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
          #self.obsft = self.obsfiles.setup_filetable(self.tmppth, "obs")
          # obs should be populated now
@@ -386,13 +395,15 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          if type(self.observations1) is list:
             self.observation1 = str(self.comboBoxObservation1.currentText())
             if type(self.observation1) is str and len(self.observation1) > 0:
-               self.opts._opts['filter'] = self.obs1_menu[self.observation1]
+               self.opts._opts['filter2'] = self.obs1_menu[self.observation1]
             else:
-               self.opts._opts['filter'] = None
+               self.opts._opts['filter2'] = None
          else:
-            self.opts._opts['filter'] = None
+            self.opts._opts['filter2'] = None
 
-         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
+         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0,
+                                                                     path=self.opts['obspath'][0],
+                                                                     filter=self.opts['filter2'])
          self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
 #         self.obsft = self.obsfiles.setup_filetable(self.tmppth, "obs")
 
@@ -400,13 +411,15 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          if type(self.observations2) is list:
             self.observation2 = str(self.comboBoxObservation2.currentText())
             if type(self.observation2) is str and len(self.observation2) > 0:
-               self.opts._opts['filter'] = self.obs2_menu[self.observation2]
+               self.opts._opts['filter2'] = self.obs2_menu[self.observation2]
             else:
-               self.opts._opts['filter'] = None
+               self.opts._opts['filter2'] = None
          else:
-            self.opts._opts['filter'] = None
+            self.opts._opts['filter2'] = None
 
-         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1)
+         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1,
+                                                                     path=self.opts['obspath'][1],
+                                                                     filter=self.opts['filter2'])
          self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
 #         self.obsft = self.obsfiles.setup_filetable(self.tmppth, "obs")
 
