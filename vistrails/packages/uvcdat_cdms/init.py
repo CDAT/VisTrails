@@ -59,6 +59,28 @@ def expand_port_specs(port_specs, pkg_identifier=None):
                               port_spec[2])) 
     return out_specs
 
+class QtAnimationStepper( QtCore.QObject ):
+
+    def __init__( self, target ):
+        QtCore.QObject.__init__( self )
+        self.target = target
+        self.running = False
+    
+    def startAnimation(self):
+        self.running = True
+        self.target.notifyStartAnimation()
+        self.stepAnimation()
+        
+    def stepAnimation(self):
+        if self.running:
+            self.target.stepAnimation()
+            timestep = self.target.getAnimationDelay()
+            QtCore.QTimer.singleShot ( timestep, self.stepAnimation )
+
+    def stopAnimation(self):
+        self.running = False
+        self.target.notifyStopAnimation()
+        
 class StandardGrid():
     cache={}
 
@@ -1441,6 +1463,7 @@ class QCDATWidget(QVTKWidget):
             renderers.append(wrapVTKModule('vtkRenderer',r))
             r = vtkRenderers.GetNextItem()
           QVTKWidget.updateContents(self,(renderers,None,[],self.interactorStyle,None))
+        self.canvas.setAnimationStepper( QtAnimationStepper )
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
         

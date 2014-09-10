@@ -39,8 +39,6 @@
 #   SpreadsheetCell
 ################################################################################
 from core.modules.vistrails_module import Module, NotCacheable, ModuleError
-from spreadsheet_base import (StandardSheetReference,
-                              StandardSingleCellSheetReference)
 from spreadsheet_controller import spreadsheetController
 from spreadsheet_event import DisplayCellEvent
 from PyQt4 import QtCore
@@ -106,6 +104,7 @@ class SheetReference(Module):
         needs it
         
         """
+        from spreadsheet_base import StandardSheetReference
         if self.sheetReference==None:
             self.sheetReference = StandardSheetReference()
         ref = self.sheetReference
@@ -259,6 +258,7 @@ class SingleCellSheetReference(SheetReference):
         Store information from input ports into internal structure
         
         """
+        from spreadsheet_base import StandardSingleCellSheetReference
         if self.sheetReference==None:
             self.sheetReference = StandardSingleCellSheetReference()
         self.sheetReference.sheetName = self.forceGetInputFromPort("SheetName")
