@@ -32,25 +32,19 @@
 ##
 ###############################################################################
 
-import core.modules
 import core.modules.module_registry
-from core import debug
 from core.modules.basic_modules import File, String, Boolean
 from core.modules.vistrails_module import Module, NotCacheable, InvalidOutput
 from plot import MplPlot, MplPlotConfigurationWidget
 from cdms_data import CDMSData
-import time
-import urllib
 
 from core.bundles import py_import
-try:
-    mpl_dict = {'linux-ubuntu': 'python-matplotlib',
-                'linux-fedora': 'python-matplotlib'}
-    matplotlib = py_import('matplotlib', mpl_dict)
-    matplotlib.use('Qt4Agg', warn=False)
-    pylab = py_import('pylab', mpl_dict)
-except Exception, e:
-    debug.critical("Exception: %s" % e)
+
+mpl_dict = {'linux-ubuntu': 'python-matplotlib',
+            'linux-fedora': 'python-matplotlib'}
+matplotlib = py_import('matplotlib', mpl_dict)
+matplotlib.use('Qt4Agg', warn=False)
+pylab = py_import('pylab', mpl_dict)
 
 ################################################################################
 
