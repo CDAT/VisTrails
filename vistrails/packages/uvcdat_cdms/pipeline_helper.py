@@ -750,7 +750,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
                 for parmRec in parmRecList: 
                     try:
-                        print "Persist parameter: %s-> %s " % ( str(parmRec[0]), str(parmRec[1]) )
+#                        print "Persist parameter: %s-> %s " % ( str(parmRec[0]), str(parmRec[1]) )
                         function = parmRec[0] 
                         values = [ parmRec[1] ]  # .strip('[]').split(',')
                         op_list.extend( controller.update_function_ops( module, function, values, should_replace=True ) )
@@ -767,7 +767,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                     proj_controller.cell_was_changed(action)
                     proj_controller.current_cell_changed(  sheetName, row, col )
 
-                print "Performed action, current controller version: ", str( controller.current_version )
+#                print "Performed action, current controller version: ", str( controller.current_version )
                     
             except Exception, err:
                 print>>sys.stderr, "Error changing parameter in module %d (%s): parm: %s, error: %s" % ( self.moduleID, self.__class__.__name__, str(parmRecList), str(err) )

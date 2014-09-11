@@ -993,7 +993,7 @@ class CDMS3DPlot(Plot, NotCacheable):
         pipeline = self.moduleInfo[ 'pipeline' ]   
         cell_coords = CDMSPipelineHelper.getCellLoc(pipeline)
        
-        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes ) 
+#        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes ) 
         gm = vcs.elements[ self.plot_type.lower() ][ self.graphics_method_name ] 
 #        canvas = get_canvas()
         for attr in self.gm_attributes:
@@ -1003,7 +1003,7 @@ class CDMS3DPlot(Plot, NotCacheable):
                     try: value = ast.literal_eval( value )
                     except ValueError: pass
                 if not isEmpty( value ):
-                    print "Set PORT %s value: " % str(attr), str( value )
+#                    print "Set PORT %s value: " % str(attr), str( value )
                     setattr(self,attr,value)
                     gm.setParameter( attr, value, cell=cell_coords )
             
