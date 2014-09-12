@@ -1535,21 +1535,32 @@ class QCDATWidgetToolBar(QCellToolBar):
         This will get call initially to add customizable widgets
         
         """
+        use_vcs_toolbar = True
         cell = self.parent().getCell(self.parent().parentRow,self.parent().parentCol)
-        if cell.inputPorts[0][0].var.var.rank()>2:
-            self.prevAction=QCDATWidgetPrev(self)
-            self.prevAction.setEnabled(False)
-            self.appendAction(self.prevAction)
-            self.dimSelector = QCDATDimSelector(self,cell)
-            self.addWidget(self.dimSelector)
-            self.nextAction=QCDATWidgetNext(self)
-            self.addWidget(self.nextAction)
-            self.nextAction.toolBar = self
-            
-
-        self.appendAction(QCDATWidgetPrint(self))
-        self.appendAction(QCDATWidgetColormap(self))
-        self.appendAction(QCDATWidgetAnimation(self))
+        try:
+            gm = cell.canvas.backend.plotApps.keys()[0]
+            if gm.g_name.startswith('3d'):
+                use_vcs_toolbar = False
+        except:
+            pass
+        
+        if use_vcs_toolbar:
+            if cell.inputPorts[0][0].var.var.rank()>2:
+                self.prevAction=QCDATWidgetPrev(self)
+                self.prevAction.setEnabled(False)
+                self.appendAction(self.prevAction)
+                self.dimSelector = QCDATDimSelector(self,cell)
+                self.addWidget(self.dimSelector)
+                self.nextAction=QCDATWidgetNext(self)
+                self.addWidget(self.nextAction)
+                self.nextAction.toolBar = self
+                
+    
+            self.appendAction(QCDATWidgetPrint(self))
+            self.appendAction(QCDATWidgetColormap(self))
+            self.appendAction(QCDATWidgetAnimation(self))
+        else:
+            pass  # TODO: setup toolbar for dv3d
         
     def updateStatus(self, cellWidget):
         if (cellWidget is not None and
