@@ -1372,7 +1372,7 @@ class QCDATWidget(QVTKWidget):
         # Place the mainwindow that the plot will be displayed in, into this
         # cell widget's layout
            
-        #self.canvas.clear()
+        self.canvas.clear()
         if not fromToolBar:
             self.extraDimsNames=inputPorts[0][0].var.var.getAxisIds()[:-2]
             self.extraDimsIndex=[0,]*len(self.extraDimsNames)
