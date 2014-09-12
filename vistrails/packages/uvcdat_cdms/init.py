@@ -128,8 +128,6 @@ class CDMSVariable(Variable):
                      load=False, varNameInFile=None, axes=None, \
                      axesOperations=None, attributes=None, axisAttributes=None,
                      timeBounds=None):
-        import sys
-        print>>sys.stderr,  "CDMSVariable init"; sys.stderr.flush()
         Variable.__init__(self, filename, url, source, name, load)
         self.axes = axes
         self.axesOperations = axesOperations
@@ -1415,7 +1413,7 @@ class QCDATWidget(QVTKWidget):
             kwargs = plot.kwargs
             file_path = None 
             for fname in [ plot.var.file, plot.var.filename ]:
-                if fname and os.path.isfile(fname):
+                if fname and ( os.path.isfile(fname) or fname.startswith('http://') ):
                     file_path = fname
                     break 
             if not file_path and plot.var.url: 
