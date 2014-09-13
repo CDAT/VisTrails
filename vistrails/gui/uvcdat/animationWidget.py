@@ -211,6 +211,11 @@ class QAnimationView(QtGui.QWidget):
             self.updatePlayStopIcon()
         
     def changedFrame(self,value):
+        if not self.canvas.animate.created():
+            return
+        if self.canvas.animate.is_playing():
+            self.canvas.animate.playback_stop()
+            self.updatePlayStopIcon(True)
         self.canvas.animate.draw_frame(value)
     
     def speedChanged(self, value):
