@@ -248,10 +248,7 @@ class QAnimationView(QtGui.QWidget):
             except:
                 max = None
                 
-        self.canvas.animate.create_params.a_min = min
-        self.canvas.animate.create_params.a_max = max
-        self.canvas.animate.create()
-        # self.canvas.animate.create(thread_it=1,min=min,max=max)
+        self.canvas.animate.create(thread_it=1,min=min,max=max)
         
     def stopCreating(self):
         self.creatingAnimation = False
