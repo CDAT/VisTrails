@@ -128,8 +128,6 @@ class CDMSVariable(Variable):
                      load=False, varNameInFile=None, axes=None, \
                      axesOperations=None, attributes=None, axisAttributes=None,
                      timeBounds=None):
-        import sys
-        print>>sys.stderr,  "CDMSVariable init"; sys.stderr.flush()
         Variable.__init__(self, filename, url, source, name, load)
         self.axes = axes
         self.axesOperations = axesOperations
@@ -993,7 +991,7 @@ class CDMS3DPlot(Plot, NotCacheable):
         pipeline = self.moduleInfo[ 'pipeline' ]   
         cell_coords = CDMSPipelineHelper.getCellLoc(pipeline)
        
-        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes ) 
+#        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes ) 
         gm = vcs.elements[ self.plot_type.lower() ][ self.graphics_method_name ] 
 #        canvas = get_canvas()
         for attr in self.gm_attributes:
@@ -1003,7 +1001,7 @@ class CDMS3DPlot(Plot, NotCacheable):
                     try: value = ast.literal_eval( value )
                     except ValueError: pass
                 if not isEmpty( value ):
-                    print "Set PORT %s value: " % str(attr), str( value )
+#                    print "Set PORT %s value: " % str(attr), str( value )
                     setattr(self,attr,value)
                     gm.setParameter( attr, value, cell=cell_coords )
             
@@ -1415,7 +1413,7 @@ class QCDATWidget(QVTKWidget):
             kwargs = plot.kwargs
             file_path = None 
             for fname in [ plot.var.file, plot.var.filename ]:
-                if fname and os.path.isfile(fname):
+                if fname and ( os.path.isfile(fname) or fname.startswith('http://') ):
                     file_path = fname
                     break 
             if not file_path and plot.var.url: 
@@ -1537,21 +1535,32 @@ class QCDATWidgetToolBar(QCellToolBar):
         This will get call initially to add customizable widgets
         
         """
+        use_vcs_toolbar = True
         cell = self.parent().getCell(self.parent().parentRow,self.parent().parentCol)
-        if cell.inputPorts[0][0].var.var.rank()>2:
-            self.prevAction=QCDATWidgetPrev(self)
-            self.prevAction.setEnabled(False)
-            self.appendAction(self.prevAction)
-            self.dimSelector = QCDATDimSelector(self,cell)
-            self.addWidget(self.dimSelector)
-            self.nextAction=QCDATWidgetNext(self)
-            self.addWidget(self.nextAction)
-            self.nextAction.toolBar = self
-            
-
-        self.appendAction(QCDATWidgetPrint(self))
-        self.appendAction(QCDATWidgetColormap(self))
-        self.appendAction(QCDATWidgetAnimation(self))
+        try:
+            gm = cell.canvas.backend.plotApps.keys()[0]
+            if gm.g_name.startswith('3d'):
+                use_vcs_toolbar = False
+        except:
+            pass
+        
+        if use_vcs_toolbar:
+            if cell.inputPorts[0][0].var.var.rank()>2:
+                self.prevAction=QCDATWidgetPrev(self)
+                self.prevAction.setEnabled(False)
+                self.appendAction(self.prevAction)
+                self.dimSelector = QCDATDimSelector(self,cell)
+                self.addWidget(self.dimSelector)
+                self.nextAction=QCDATWidgetNext(self)
+                self.addWidget(self.nextAction)
+                self.nextAction.toolBar = self
+                
+    
+            self.appendAction(QCDATWidgetPrint(self))
+            self.appendAction(QCDATWidgetColormap(self))
+            self.appendAction(QCDATWidgetAnimation(self))
+        else:
+            pass  # TODO: setup toolbar for dv3d
         
     def updateStatus(self, cellWidget):
         if (cellWidget is not None and

@@ -365,7 +365,7 @@ class QVTKWidget(QCellWidget):
 #                    iren = vtk.vtkGenericRenderWindowInteractor()
 #                if system.systemType=='Darwin':
 #                    iren.InstallMessageProcOff()
-                    self.iren.Initialize()
+#                    self.iren.Initialize()
 #                if system.systemType=='Linux':
 #                    system.XDestroyWindow(self.mRenWin.GetGenericDisplayId(),
 #                                          self.mRenWin.GetGenericWindowId())
