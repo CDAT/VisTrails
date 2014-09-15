@@ -154,7 +154,7 @@ class QAnimationView(QtGui.QWidget):
 
         self.setCanvas(canvas)
         self.stopCreating()
-        
+
     def loopClicked(self, checked):
         self.canvas.animate.playback_params.loop = checked
         
@@ -167,6 +167,7 @@ class QAnimationView(QtGui.QWidget):
         self.canvas.animate.draw_frame()
         
     def disconnectAnimationSignals(self):
+        self.canvas.animate.playback_stop()
         self.canvas.animate.signals.drawn.disconnect(self.drawn)
         self.canvas.animate.signals.paused.disconnect(self.paused)
         self.canvas.animate.signals.stopped.disconnect(self.updatePlayStopIcon)
@@ -185,8 +186,8 @@ class QAnimationView(QtGui.QWidget):
         unique_connect(self.canvas.animate.signals.canceled, self.stopCreating)
 
     def setCanvas(self,canvas):
-        # if self.canvas is not None:
-        #     self.disconnectAnimationSignals()
+        if self.canvas is not None and self.canvas.animate is not None:
+            self.disconnectAnimationSignals()
             
         self.canvas = canvas
         

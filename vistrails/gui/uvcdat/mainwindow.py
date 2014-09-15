@@ -283,7 +283,8 @@ class UVCDATMainWindow(QtGui.QMainWindow):
         #ask to save projects
         print "quitting"
         # need to stop animation widget here...
-        self.dockAnimate.widget().canvas.animate.playback_stop()
+        animWidget = self.dockAnimate.widget()
+        animWidget.setCanvas(None)
         if self.preferences.confirmB4Exit.isChecked():
             # put here code to confirm exit
             pass
