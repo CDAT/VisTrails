@@ -294,11 +294,11 @@ class QColormapEditor(QtGui.QColorDialog):
                         self.root.record(rec)
                         #self.activeCanvas.setcolorcell(n,r,g,b)
                         #calling this directly to avoid flushing and updating segments on every cell update
-                        self.activeCanvas.canvas.setcolorcell(n,r,g,b);
+                        self.activeCanvas.setcolorcell(n,r,g,b);
                         cells.append((n,r,g,b))
                     n+=1
             #see vcs.Canvas.setcolorcell
-            self.activeCanvas.canvas.updateVCSsegments(self.activeCanvas.mode) # pass down self and mode to _vcs module
+            self.activeCanvas.update(self.activeCanvas.mode) # pass down self and mode to _vcs module
             self.activeCanvas.flush() # update the canvas by processing all the X events
         
         self.controller.change_selected_version(self.controller.current_version)
