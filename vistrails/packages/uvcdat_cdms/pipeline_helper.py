@@ -750,7 +750,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
                 for parmRec in parmRecList: 
                     try:
-#                        print "Persist parameter: %s-> %s " % ( str(parmRec[0]), str(parmRec[1]) )
+                        print "Persist parameter: %s-> %s " % ( str(parmRec[0]), str(parmRec[1]) )
                         function = parmRec[0] 
                         values = [ parmRec[1] ]  # .strip('[]').split(',')
                         op_list.extend( controller.update_function_ops( module, function, values, should_replace=True ) )

@@ -35,11 +35,13 @@ class ServerType:
     @classmethod    
     def getType( cls, url ):
         tokens = url.split('/')
+        used_tokens = []
         for token in tokens:
-            if token.upper() == 'THREDDS': return cls.THREDDS
-            if token.lower() == 'dods': return cls.DODS
-            if token.lower() == 'opendap': return cls.HYDRAX
-        return QtGui.QTreeWidgetItem.UserType
+            used_tokens.append( token )
+            if token.upper() == 'THREDDS': return cls.THREDDS, '/'.join( used_tokens ) + '/'
+            if token.lower() == 'dods': return cls.DODS, '/'.join( used_tokens ) + '/'
+            if token.lower() == 'opendap': return cls.HYDRAX, '/'.join( used_tokens ) + '/'
+        return QtGui.QTreeWidgetItem.UserType, url
     
 class CatalogNode( QtGui.QTreeWidgetItem ):
     Directory = 0
@@ -48,16 +50,17 @@ class CatalogNode( QtGui.QTreeWidgetItem ):
     
     def __init__( self, url, widget = None ):
          self.parser = None
-         self.server_type = ServerType.getType( url )
-         self.url = url
+         self.server_type, root_url = ServerType.getType( url )
          if widget: 
             QtGui.QTreeWidgetItem.__init__( self, widget, self.server_type  )
             CatalogNode.Style = widget.style() 
+            self.url = root_url
             self.setIcon( 0, CatalogNode.Style.standardIcon( QtGui.QStyle.SP_DriveNetIcon ) ) 
             self.setText( 0, "%s Catalog (%s)" % ( self.getCatalogType(), self.url ) )
             self.node_type = self.Directory
          else: 
              QtGui.QTreeWidgetItem.__init__( self, self.server_type  ) 
+             self.url = url
              
     def isTopLevel(self): 
         return ( self.parent() == None )
@@ -220,7 +223,7 @@ class DodsDirectoryParser(HTMLCatalogParser):
             response = urllib2.urlopen( self.root_node.url )
             self.feed( response.read() )
         except Exception, err:
-            displayMessage( "Error connecting to server:\n%s"  % str(err) )
+            displayMessage( "Error connecting to server (%s):\n%s"  % ( self.root_node.url, str(err) ) )
                     
     def process_start_tag( self, tag, attrs ):       
         if ( tag == 'a' ) :
@@ -251,6 +254,7 @@ class HydraxDirectoryParser(HTMLCatalogParser):
     def execute(self):
         try:
             response = urllib2.urlopen( self.root_node.url )
+#            print "Reading data from url ", str( self.root_node.url )
             self.feed( response.read() )
         except Exception, err:
             displayMessage( "Error connecting to server:\n%s"  % str(err) )
@@ -568,7 +572,7 @@ class RemoteDataBrowser(QtGui.QFrame):
            
     def loadData( self ):
         self.emit(  self.new_data_element, self.data_element_address )
-        print "Loading URL: ", self.data_element_address
+#        print "Loading URL: ", self.data_element_address
 
     def loadMetadata( self ):
         pass
