@@ -47,8 +47,7 @@ import core.db.io
 from core.modules.module_registry import ModuleRegistry, MissingPackage
 from core.modules.package import Package
 from core.requirements import MissingRequirement
-from core.utils import VistrailsInternalError, InstanceObject, \
-    versions_increasing
+from core.utils import VistrailsInternalError, versions_increasing
 ##############################################################################
 
 
