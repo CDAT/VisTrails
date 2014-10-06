@@ -447,10 +447,9 @@ Returns true if given package identifier is present."""
         # import the modules
         existing_paths = set(sys.modules.iterkeys())
         for package in self._package_list.itervalues():
-            # print '+ initializing', package.codepath, id(package)
             if package.initialized():
-                # print '- already initialized'
                 continue
+            debug.log("Initializing %s", package.codepath)
             try:
                 package.load(prefix_dictionary.get(package.codepath, None),
                              existing_paths)
@@ -524,7 +523,6 @@ Returns true if given package identifier is present."""
                                        e.back_edge[1])
 
         for name in sorted_packages:
-            print>>sys.stderr, "Init package: ", name
             pkg = self.get_package(name)
             if not pkg.initialized(): #  and (name <> 'edu.utah.sci.vistrails.cdat'):
                 #check_requirements is now called in pkg.initialize()
