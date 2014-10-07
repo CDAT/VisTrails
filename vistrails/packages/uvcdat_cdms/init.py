@@ -1559,7 +1559,7 @@ class QCDATWidgetToolBar(QCellToolBar):
     
             self.appendAction(QCDATWidgetPrint(self))
             self.appendAction(QCDATWidgetColormap(self))
-            self.appendAction(QCDATWidgetAnimation(self))
+            #self.appendAction(QCDATWidgetAnimation(self))
         else:
             pass  # TODO: setup toolbar for dv3d
         
