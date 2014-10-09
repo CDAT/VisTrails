@@ -1303,7 +1303,7 @@ class QCDATWidget(QVTKWidget):
         # self.window = None
         self.canvas =  None
         #self.windowId = -1
-        self.createCanvas()
+        #self.createCanvas()
         #layout = QtGui.QVBoxLayout()
         #self.setLayout(layout) 
         
@@ -1340,7 +1340,8 @@ class QCDATWidget(QVTKWidget):
     
     def updateContents(self, inputPorts, fromToolBar=False):
         """ Get the vcs canvas, setup the cell's layout, and plot """      
-              
+        self.createCanvas()
+
         spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         spreadsheetWindow.setUpdatesEnabled(False)
         # Set the canvas
