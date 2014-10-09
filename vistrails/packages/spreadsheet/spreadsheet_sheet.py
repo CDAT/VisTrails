@@ -481,6 +481,7 @@ class StandardWidgetSheet(QtGui.QTableWidget):
             cellWidget.setParent(self)
         (row, col) = self.getRealLocation(row, col)
         index = self.model().index(row, col)
+#        print " setCellByWidget: ", str( (row, col) )
         self.setCellWidget(row, col, cellWidget)
         if cellWidget:
             self.delegate.updateEditorGeometry(cellWidget, None, index)
