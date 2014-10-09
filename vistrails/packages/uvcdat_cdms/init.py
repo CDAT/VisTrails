@@ -64,21 +64,20 @@ class QtAnimationStepper( QtCore.QObject ):
     def __init__( self, target ):
         QtCore.QObject.__init__( self )
         self.target = target
-        self.running = False
     
     def startAnimation(self):
-        self.running = True
         self.target.notifyStartAnimation()
+        self.target.animating = True
         self.stepAnimation()
         
     def stepAnimation(self):
-        if self.running:
+        if self.target.animating:
             self.target.stepAnimation()
             timestep = self.target.getAnimationDelay()
             QtCore.QTimer.singleShot ( timestep, self.stepAnimation )
 
     def stopAnimation(self):
-        self.running = False
+        self.target.animating = False
         self.target.notifyStopAnimation()
         
 class StandardGrid():
@@ -1304,7 +1303,7 @@ class QCDATWidget(QVTKWidget):
         # self.window = None
         self.canvas =  None
         #self.windowId = -1
-        self.createCanvas()
+        #self.createCanvas()
         #layout = QtGui.QVBoxLayout()
         #self.setLayout(layout) 
         
@@ -1341,7 +1340,8 @@ class QCDATWidget(QVTKWidget):
     
     def updateContents(self, inputPorts, fromToolBar=False):
         """ Get the vcs canvas, setup the cell's layout, and plot """      
-              
+        self.createCanvas()
+
         spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
         spreadsheetWindow.setUpdatesEnabled(False)
         # Set the canvas
@@ -1489,6 +1489,8 @@ class QCDATWidget(QVTKWidget):
         #        self.window.setParent(QtGui.QApplication.activeWindow())
         #    self.window.setVisible(False)
             #reparentedVCSWindows[self.windowId] = self.window
+        self.canvas.onClosing()
+        
         self.canvas = None
         #self.window = None
         
@@ -1558,7 +1560,7 @@ class QCDATWidgetToolBar(QCellToolBar):
     
             self.appendAction(QCDATWidgetPrint(self))
             self.appendAction(QCDATWidgetColormap(self))
-            self.appendAction(QCDATWidgetAnimation(self))
+            #self.appendAction(QCDATWidgetAnimation(self))
         else:
             pass  # TODO: setup toolbar for dv3d
         
@@ -1931,15 +1933,17 @@ def get_input_ports(plot_type):
                                   ])
     elif plot_type == "3D_Scalar":
         from DV3D.ConfigurationFunctions import ConfigManager
+        from DV3D.DV3DPlot import PlotButtonNames
         cfgManager = ConfigManager()
-        parameterList = cfgManager.getParameterList( extras=[ 'axes' ])
+        parameterList = cfgManager.getParameterList( extras=PlotButtonNames + [ 'axes' ])
         port_specs = [ ( pname, 'basic:String', True ) for pname in parameterList ]
         return expand_port_specs( port_specs )
 
     elif plot_type == "3D_Vector":
         from DV3D.ConfigurationFunctions import ConfigManager
+        from DV3D.DV3DPlot import PlotButtonNames
         cfgManager = ConfigManager()
-        parameterList = cfgManager.getParameterList( extras=[ 'axes' ] )
+        parameterList = cfgManager.getParameterList( extras=PlotButtonNames + [ 'axes' ] )
         port_specs = [ ( pname, 'basic:String', True ) for pname in parameterList ]
         return expand_port_specs( port_specs )
     
