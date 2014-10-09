@@ -756,7 +756,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                         op_list.extend( controller.update_function_ops( module, function, values, should_replace=True ) )
                         
                     except MissingPort:
-                        print>>sys.stderr, "Missing input port %s in controller, parmRecList = %s " % ( parmRec[0], str( parmRecList ) )
+                        print "Need to add input port %s in controller, parmRecList = %s " % ( parmRec[0], str( parmRecList ) )
                         
     #                    print>>sys.stderr, "Unrecognized config function %s in module %d (%s)" % ( parmRec[0], self.moduleID, self.__class__.__name__ )
                 action = core.db.action.create_action( op_list ) 

@@ -1932,15 +1932,17 @@ def get_input_ports(plot_type):
                                   ])
     elif plot_type == "3D_Scalar":
         from DV3D.ConfigurationFunctions import ConfigManager
+        from DV3D.DV3DPlot import PlotButtonNames
         cfgManager = ConfigManager()
-        parameterList = cfgManager.getParameterList( extras=[ 'axes' ])
+        parameterList = cfgManager.getParameterList( extras=PlotButtonNames + [ 'axes' ])
         port_specs = [ ( pname, 'basic:String', True ) for pname in parameterList ]
         return expand_port_specs( port_specs )
 
     elif plot_type == "3D_Vector":
         from DV3D.ConfigurationFunctions import ConfigManager
+        from DV3D.DV3DPlot import PlotButtonNames
         cfgManager = ConfigManager()
-        parameterList = cfgManager.getParameterList( extras=[ 'axes' ] )
+        parameterList = cfgManager.getParameterList( extras=PlotButtonNames + [ 'axes' ] )
         port_specs = [ ( pname, 'basic:String', True ) for pname in parameterList ]
         return expand_port_specs( port_specs )
     
