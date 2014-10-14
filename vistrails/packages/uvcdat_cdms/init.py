@@ -39,8 +39,9 @@ import vtk, ast
 canvas = None
 original_gm_attributes = {}
 
-def isEmpty( elem ):
-    return ( len( elem ) == 0 ) if isinstance( elem, (list, tuple) ) else ( elem == None )
+def getNonEmptyList( elem ):
+    if isinstance( elem, ( list, tuple ) ): return elem if ( len( elem ) > 0 ) else None
+    return [ elem ] if elem else None
     
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
@@ -990,7 +991,7 @@ class CDMS3DPlot(Plot, NotCacheable):
         pipeline = self.moduleInfo[ 'pipeline' ]   
         cell_coords = CDMSPipelineHelper.getCellLoc(pipeline)
        
-        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes ) 
+#        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes ) 
         gm = vcs.elements[ self.plot_type.lower() ][ self.graphics_method_name ] 
 #        canvas = get_canvas()
         for attr in self.gm_attributes:
@@ -999,10 +1000,16 @@ class CDMS3DPlot(Plot, NotCacheable):
                 if isinstance( value, str ): 
                     try: value = ast.literal_eval( value )
                     except ValueError: pass
-                if not isEmpty( value ):
-                    print "Set PORT %s value: " % str(attr), str( value )
-                    setattr(self,attr,value)
-                    gm.setParameter( attr, value, cell=cell_coords )
+                values = getNonEmptyList( value )
+                if values <> None:
+                    print "Set PORT %s value: " % str(attr), str( values )
+                    for value in values:
+                        if   value == "vcs.on":  
+                            gm.setParameter( attr, None, state=1 ) ; print " --> state = 1 "
+                        elif value == "vcs.off": 
+                            gm.setParameter( attr, None, state=0 ) ; print " --> state = 0 " 
+                    setattr(self,attr,values)
+                    gm.setParameter( attr, values, cell=cell_coords )
             
 
     def to_module(self, controller):
