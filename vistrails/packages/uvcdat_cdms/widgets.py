@@ -92,7 +92,7 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             return Q1DPlotEditor(self.tabWidget, gmName, type="xyvsy")
         elif plot_type == "Yxvsx":
             return Q1DPlotEditor(self.tabWidget, gmName, type="yxvsx")
-        elif plot_type == "3D_Scalar":
+        elif ( plot_type == "3D_Scalar" ) or ( plot_type ==  '3D_DualScalar' ):
             return Q3D_ScalarEditor(self.tabWidget, gmName, type="yxvsx")
         elif plot_type == "3D_Vector":
             return Q3D_VectorEditor(self.tabWidget, gmName, type="yxvsx")
