@@ -1938,7 +1938,7 @@ def get_input_ports(plot_type):
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
-    elif ( plot_type == "3D_Scalar" ) or ( plot_type == "3D_DualScalar" ):
+    elif ( plot_type == "3D_Scalar" ) or ( plot_type == "3D_Dual_Scalar" ):
         from DV3D.ConfigurationFunctions import ConfigManager
         from DV3D.DV3DPlot import PlotButtonNames
         cfgManager = ConfigManager()
@@ -2088,7 +2088,7 @@ def get_gm_attributes(plot_type):
                     'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 
                     'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
 
-    elif ( plot_type == "3D_Scalar" ) or ( plot_type == "3D_DualScalar" ):
+    elif ( plot_type == "3D_Scalar" ) or ( plot_type == "3D_Dual_Scalar" ):
         from DV3D.ConfigurationFunctions import ConfigManager
         from DV3D.DV3DPlot import PlotButtonNames
         cfgManager = ConfigManager()
@@ -2216,7 +2216,7 @@ for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
     _modules.append((klass,{'configureWidgetType':GraphicsMethodConfigurationWidget}))
 
 
-for plot_type in [ '3D_Scalar', '3D_DualScalar', '3D_Vector' ]:
+for plot_type in [ '3D_Scalar', '3D_Dual_Scalar', '3D_Vector' ]:
     
     def get_init_method():
         def __init__(self):
@@ -2246,7 +2246,7 @@ def initialize(*args, **keywords):
     
     for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
-                  'Xyvsy', 'Yxvsx', '3D_DualScalar', '3D_Scalar', '3D_Vector' ]:
+                  'Xyvsy', 'Yxvsx', '3D_Dual_Scalar', '3D_Scalar', '3D_Vector' ]:
         method_name = "get"+plot_type.lower()
         attributes = get_gm_attributes(plot_type)
         gms = canvas.listelements(str(plot_type).lower())
