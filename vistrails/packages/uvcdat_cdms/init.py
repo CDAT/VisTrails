@@ -39,8 +39,9 @@ import vtk, ast
 canvas = None
 original_gm_attributes = {}
 
-def isEmpty( elem ):
-    return ( len( elem ) == 0 ) if isinstance( elem, (list, tuple) ) else ( elem == None )
+def getNonEmptyList( elem ):
+    if isinstance( elem, ( list, tuple ) ): return elem if ( len( elem ) > 0 ) else None
+    return [ elem ] if elem else None
     
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
@@ -999,10 +1000,16 @@ class CDMS3DPlot(Plot, NotCacheable):
                 if isinstance( value, str ): 
                     try: value = ast.literal_eval( value )
                     except ValueError: pass
-                if not isEmpty( value ):
-#                    print "Set PORT %s value: " % str(attr), str( value )
-                    setattr(self,attr,value)
-                    gm.setParameter( attr, value, cell=cell_coords )
+                values = getNonEmptyList( value )
+                if values <> None:
+                    print "Set PORT %s value: " % str(attr), str( values )
+                    for value in values:
+                        if   value == "vcs.on":  
+                            gm.setParameter( attr, None, state=1 ) ; print " --> state = 1 "
+                        elif value == "vcs.off": 
+                            gm.setParameter( attr, None, state=0 ) ; print " --> state = 0 " 
+                    setattr(self,attr,values)
+                    gm.setParameter( attr, values, cell=cell_coords )
             
 
     def to_module(self, controller):
@@ -1931,7 +1938,7 @@ def get_input_ports(plot_type):
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
-    elif plot_type == "3D_Scalar":
+    elif ( plot_type == "3D_Scalar" ) or ( plot_type == "3D_Dual_Scalar" ):
         from DV3D.ConfigurationFunctions import ConfigManager
         from DV3D.DV3DPlot import PlotButtonNames
         cfgManager = ConfigManager()
@@ -2081,16 +2088,18 @@ def get_gm_attributes(plot_type):
                     'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 
                     'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
 
-    elif plot_type == "3D_Scalar":
+    elif ( plot_type == "3D_Scalar" ) or ( plot_type == "3D_Dual_Scalar" ):
         from DV3D.ConfigurationFunctions import ConfigManager
+        from DV3D.DV3DPlot import PlotButtonNames
         cfgManager = ConfigManager()
-        parameterList = cfgManager.getParameterList( extras=[ 'axes'  ] )
+        parameterList = cfgManager.getParameterList( extras=[ 'axes'  ]+PlotButtonNames )
         return  parameterList
 
     elif plot_type == "3D_Vector":
         from DV3D.ConfigurationFunctions import ConfigManager
+        from DV3D.DV3DPlot import PlotButtonNames
         cfgManager = ConfigManager()
-        parameterList = cfgManager.getParameterList( extras=[ 'axes' ] )
+        parameterList = cfgManager.getParameterList( extras=[ 'axes' ]+PlotButtonNames )
         return  parameterList
         
     elif plot_type == "Isofill":
@@ -2207,7 +2216,7 @@ for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
     _modules.append((klass,{'configureWidgetType':GraphicsMethodConfigurationWidget}))
 
 
-for plot_type in [ '3D_Scalar', '3D_Vector' ]:
+for plot_type in [ '3D_Scalar', '3D_Dual_Scalar', '3D_Vector' ]:
     
     def get_init_method():
         def __init__(self):
@@ -2237,7 +2246,7 @@ def initialize(*args, **keywords):
     
     for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
                   'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
-                  'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Vector' ]:
+                  'Xyvsy', 'Yxvsx', '3D_Dual_Scalar', '3D_Scalar', '3D_Vector' ]:
         method_name = "get"+plot_type.lower()
         attributes = get_gm_attributes(plot_type)
         gms = canvas.listelements(str(plot_type).lower())
