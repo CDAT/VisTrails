@@ -62,8 +62,8 @@ class QColormapEditor(QtGui.QColorDialog):
             self.colormap.addItem(i)
             
         h.addWidget(self.colormap)
-        le =QtGui.QLineEdit()
-        h.addWidget(le)
+        self.newname = QtGui.QLineEdit()
+        h.addWidget(self.newname)
         b=QtGui.QPushButton("Rename")
         self.connect(b,QtCore.SIGNAL("clicked()"),self.renamed)
         h.addWidget(b)
@@ -106,9 +106,14 @@ class QColormapEditor(QtGui.QColorDialog):
         self.connect(buttons.widget(),QtCore.SIGNAL("accepted()"),self.applyChanges)
         #self.connect(buttons.widget(),QtCore.SIGNAL("rejected()"),self.resetChanges)
         l.addItem(buttons)
+        self.buttons = buttons
         
         ## select the colormap before connecting
         self.colormap.setCurrentIndex(colormaps.index(self.activeCanvas.getcolormapname()))
+
+        ## Need to deactivate if default (not editable)
+        if self.activeCanvas.getcolormapname() == "default":
+            self.buttons.widget().setEnabled(False)
 
         ## SIGNALS
         self.connect(self.colormap,QtCore.SIGNAL("currentIndexChanged(int)"),self.colorMapComboChanged)
@@ -192,6 +197,11 @@ class QColormapEditor(QtGui.QColorDialog):
         
     def setColorsFromMapName(self):
         #n = self.layout().count()
+        ## Need to deactivate if default (not editable)
+        if str(self.colormap.currentText()) == "default":
+            self.buttons.widget().setEnabled(False)
+        else:
+            self.buttons.widget().setEnabled(True)
         self.cellsDirty = False
         cmap = self.activeCanvas.getcolormap(str(self.colormap.currentText()))
         #self.colors=QtGui.QFrame()
@@ -352,6 +362,11 @@ class QColormapEditor(QtGui.QColorDialog):
         cmap.script(out)
 
     def renamed(self):
+        newname = str(self.newname.text())
+        newcmap = self.activeCanvas.createcolormap(newname,str(self.colormap.currentText()))
+        self.colormap.addItem(newname)
+        self.colormap.model().sort(0)
+        self.colormap.setCurrentIndex(self.colormap.findText(newname))
         pass
 
     def colorButtonClicked(self,b):
