@@ -6,6 +6,7 @@ import core
 import core.db
 from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
 from core.modules.module_registry import get_module_registry
+import core.system
 import api
 
 
@@ -73,24 +74,24 @@ class QColormapEditor(QtGui.QColorDialog):
         ## Toolbar section
         self.toolBar = QtGui.QToolBar()
         self.toolBar.setIconSize(QtCore.QSize(customizeUVCDAT.iconsize, customizeUVCDAT.iconsize))
-        actionInfo = [
-            ( core.system.vistrails_root_directory() + '/gui/uvcdat/resources/icons/folder_blue.png',
-              'Save Colormap To File.',self.save,True),
-            (core.system.vistrails_root_directory() + '/gui/uvcdat/resources/icons/blender.png', 'Blend From First To Last Highlighted Colors.',self.blend,True),
-            (core.system.vistrails_root_directory() + '/gui/uvcdat/resources/icons/refresh.png', 'Reset Changes.',self.resetChanges,True),
-            (core.system.vistrails_root_directory() + '/gui/uvcdat/resources/icons/check.png', 'Apply Changes.',self.applyChanges,True),
-            ]
-        for info in actionInfo:
-            icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, info[0]))
+        icons_base = os.path.join(core.system.vistrails_root_directory(),
+                                  'gui/uvcdat/resources/icons')
+        action_info = [
+            (icons_base + '/folder_blue.png', 'Save Colormap To File.', self.save, True),
+            (icons_base + '/blender.png', 'Blend From First To Last Highlighted Colors.', self.blend, True),
+            (icons_base + '/refresh.png', 'Reset Changes.', self.resetChanges, True),
+            (icons_base + '/check.png', 'Apply Changes.', self.applyChanges, True),
+        ]
+        for icon_name, tooltip, callback, enabled in action_info:
+            icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, icon_name))
             action = self.toolBar.addAction(icon, 'help')
-            action.setToolTip(info[1])
-            self.connect(action,QtCore.SIGNAL("triggered()"),info[2])
-            action.setEnabled(info[3])
-        
+            action.setToolTip(tooltip)
+            self.connect(action, QtCore.SIGNAL("triggered()"), callback)
+            action.setEnabled(enabled)
+
         # add combo box to select which plot's colormap to update
         # self.plotCb = QtGui.QComboBox(self)
-        # self.toolBar.addWidget(self.plotCb)    
-        
+        # self.toolBar.addWidget(self.plotCb)
 
         l.addWidget(self.toolBar)
 
