@@ -34,18 +34,15 @@
 
 from PyQt4 import QtGui, QtCore
 from core import get_vistrails_application
+from core.modules.package import Package
 from core.packagemanager import get_package_manager
-from core.utils import InvalidPipeline
-from core.utils.uxml import (named_elements,
-                             elements_filter, enter_named_element)
+from core.requirements import MissingRequirement
 from gui.configuration import (QConfigurationWidget, QGeneralConfiguration,
                                QThumbnailConfiguration)
 from gui.module_palette import QModulePalette
-from gui.pipeline_view import QPipelineView
 from core.configuration import get_vistrails_persistent_configuration, \
     get_vistrails_configuration
 from core import debug
-import os.path
 
 ##############################################################################
 
@@ -312,7 +309,7 @@ class QPackagesWidget(QtGui.QWidget):
             palette.setUpdatesEnabled(False)
             try:
                 pm.late_enable_package(codepath)
-            except self._current_package.InitializationFailed, e:
+            except (Package.InitializationFailed, MissingRequirement), e:
                 debug.critical("Initialization of package '%s' failed" %
                                codepath, str(e))
                 raise

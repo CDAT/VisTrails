@@ -47,8 +47,7 @@ import core.db.io
 from core.modules.module_registry import ModuleRegistry, MissingPackage
 from core.modules.package import Package
 from core.requirements import MissingRequirement
-from core.utils import VistrailsInternalError, InstanceObject, \
-    versions_increasing
+from core.utils import VistrailsInternalError, versions_increasing
 ##############################################################################
 
 
@@ -448,10 +447,9 @@ Returns true if given package identifier is present."""
         # import the modules
         existing_paths = set(sys.modules.iterkeys())
         for package in self._package_list.itervalues():
-            # print '+ initializing', package.codepath, id(package)
             if package.initialized():
-                # print '- already initialized'
                 continue
+            debug.log("Initializing %s", package.codepath)
             try:
                 package.load(prefix_dictionary.get(package.codepath, None),
                              existing_paths)
@@ -463,6 +461,10 @@ Returns true if given package identifier is present."""
                 # the reference in the package list
                 package.remove_own_dom_element()
                 failed.append(package)
+            except MissingRequirement, e:
+                debug.critical("Package <codepath %s> is missing a "
+                               "requirement: %s" % (
+                                   package.codepath, e.requirement), str(e))
             except Package.InitializationFailed, e:
                 debug.critical("Initialization of package <codepath %s> "
                                "failed and will be disabled" % \
@@ -521,7 +523,6 @@ Returns true if given package identifier is present."""
                                        e.back_edge[1])
 
         for name in sorted_packages:
-            print>>sys.stderr, "Init package: ", name
             pkg = self.get_package(name)
             if not pkg.initialized(): #  and (name <> 'edu.utah.sci.vistrails.cdat'):
                 #check_requirements is now called in pkg.initialize()
@@ -531,8 +532,9 @@ Returns true if given package identifier is present."""
                 except MissingRequirement, e:
                     if report_missing_dependencies:
                         debug.critical("Package <codepath %s> is missing a "
-                                       "requirement and will be disabled" %
-                                       pkg.codepath, str(e))
+                                       "requirement: %s" %
+                                           (pkg.codepath, e.requirement),
+                                       str(e))
                     self.late_disable_package(pkg.codepath)
                 except Package.InitializationFailed, e:
                     debug.critical("Initialization of package <codepath %s> "
@@ -612,9 +614,8 @@ Returns true if given package identifier is present."""
                 pkg.load()
                 if pkg.identifier == identifier:
                     return pkg
-            except pkg.LoadFailed:
-                pass
-            except pkg.InitializationFailed:
+            except (pkg.LoadFailed, pkg.InitializationFailed,
+                    MissingRequirement):
                 pass
             except Exception, e:
                 pass

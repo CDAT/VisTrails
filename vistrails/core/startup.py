@@ -428,9 +428,8 @@ by startup.py. This should only be called after init()."""
                         exists, is writable, and ~/.vistrails/startup.py does
                         not exist.""")
                         sys.exit(1)
-                    debug.critical('%s not found' % startup)
-                    debug.critical('Will try to install default '
-                                              'startup file')
+                    debug.log('%s not found\nWill try to install default '
+                              'startup file' % startup)
                     install_default_startup()
                     install_default_startupxml_if_needed()
                     return execDotVistrails(True)

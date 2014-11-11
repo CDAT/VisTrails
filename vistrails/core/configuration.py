@@ -200,7 +200,7 @@ def default():
         'migrateTags': False,
         'minMemory': (None, int),
         'multiHeads': False,
-        'noDebugPopups': True,
+        'noDebugPopups': False,
         'noErrorReporting': False,
         'nologger': True,
         'output': 'uvcdatsession.log',

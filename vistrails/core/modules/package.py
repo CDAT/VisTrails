@@ -254,8 +254,6 @@ class Package(DBPackage):
         return self._imported_paths
 
     def _import(self, name, globals=None, locals=None, fromlist=None, level=-1):
-        # if name != 'core.modules.module_registry':
-        #     print 'running import', name, fromlist
         res = apply(self._real_import, 
                     (name, globals, locals, fromlist, level))
         if len(name) > len(res.__name__):
@@ -267,18 +265,13 @@ class Package(DBPackage):
             qual_name += m
             if qual_name not in self._existing_paths and \
                     not qual_name.endswith('_rc'):
-                # print '  adding', name, qual_name
                 self._imported_paths.add(qual_name)
-            # else:
-            #     if name != 'core.modules.module_registry':
-            #         print '  already exists', name, res.__name__
-	    qual_name += '.'
+            qual_name += '.'
         if fromlist is not None:
             for from_module in fromlist:
                 qual_name = res_name + '.' + from_module
                 if qual_name not in self._existing_paths and \
                         not qual_name.endswith('_rc'):
-                    # print '  adding222', name, qual_name
                     self._imported_paths.add(qual_name)
 
         return res
@@ -299,13 +292,10 @@ class Package(DBPackage):
 
         errors = []
         if self._initialized:
-            # print 'initialized'
             return
 
         def import_from(p_path):
-            # print 'running import_from'
             try:
-                # print p_path + self.codepath
                 module = __import__(p_path+self.codepath,
                                     globals(),
                                     locals(), []),
@@ -395,11 +385,7 @@ class Package(DBPackage):
         
     def unload(self):
         for path in self.py_dependencies:
-            if path not in sys.modules:
-                # print "skipping %s"%path
-                pass
-            else:
-                # print 'deleting path:', path, path in sys.modules
+            if path in sys.modules:
                 del sys.modules[path]
         self.py_dependencies.clear()
 
@@ -687,10 +673,10 @@ class Package(DBPackage):
             configuration = enter_named_element(element, 'configuration')
             if configuration and self.configuration:
                 if self.configuration: self.configuration.set_from_dom_node(configuration)
-                else: print>>sys.stderr, "Error, missing configuration in package"
+                else: debug.warning("Error, missing configuration in package")
             if dom <> None:  dom.unlink()
         else:
-            print>>sys.stderr, "Error reading dom for package"
+            debug.warning("Error reading dom for package")
 
     def set_persistent_configuration(self):
         (dom, element) = self.find_own_dom_element()
@@ -718,7 +704,7 @@ class Package(DBPackage):
             configuration = enter_named_element(oldpackage, 'configuration')
             if configuration:
                 if self.configuration: self.configuration.set_from_dom_node(configuration)
-                else: print>>sys.stderr, "Error, missing configuration in package"
+                else: debug.warning("Error, missing configuration in package")
             get_vistrails_application().vistrailsStartup.write_startup_dom(dom)
         dom.unlink()
 
