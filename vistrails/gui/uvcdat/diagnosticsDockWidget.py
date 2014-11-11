@@ -601,6 +601,14 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning, msg, QString(msg))
             mbox.exec_()
             return None
+
+        # This is one of several cases where we need to get file (or other) information out of
+        # the menus because what we have is stale.  The only other option is to update every time
+        # the user does something in the menus, which is trickier but sometimes necessary...
+        self.observation1 = str(self.comboBoxObservation1.currentText())
+        if(len(self.observation1) > 0):
+           self.opts._opts['filter2'] = self.obs1_menu[self.observation1]
+
         diagnostic = str(self.checkedItem.text(0))
         #group = str(self.checkedItem.parent().text(0))
         #Never name something 'type', it's a reserved word! type = str(self.comboBoxType.currentText())
