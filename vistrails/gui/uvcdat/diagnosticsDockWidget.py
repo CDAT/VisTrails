@@ -256,17 +256,57 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       if self.opts._opts['path'][0] == None:
          print 'No dataset1 path selected'
       else:
-         self.dfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, pathid=0)
-         self.ft1 = metrics.fileio.filetable.basic_filetable(self.dfiles1, self.opts)
+         self.dfiles1 = metrics.fileio.findfiles.dirtree_datafiles(
+            self.opts, pathid=0, filter=self.opts['filter'])
+         #self.ft1 = metrics.fileio.filetable.basic_filetable(self.dfiles1, self.opts)
+         self.ft1 = self.dfiles1.setup_filetable()
          self.setupDiagnosticTree(self.comboBoxType.currentIndex())
 
    def prepareDS2(self):
       if self.opts._opts['path'][1] == None:
          print 'No dataset2 path selected'
       else:
-         self.dfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, pathid=1)
-         self.ft2 = metrics.fileio.filetable.basic_filetable(self.dfiles2, self.opts)
+         # Hey, there's a bug - the same filter, filter, is used for both model (DS) datasets!
+         self.dfiles2 = metrics.fileio.findfiles.dirtree_datafiles(
+            self.opts, pathid=0, filter=self.opts['filter'])
+         #self.ft2 = metrics.fileio.filetable.basic_filetable(self.dfiles2, self.opts)
+         self.ft2 = self.dfiles2.setup_filetable()
          self.setupDiagnosticTree(self.comboBoxType.currentIndex())
+
+   def filefilter_menuitem( self, filefam_menu, comboBox, filtername ):
+      if type(filefam_menu) is dict:
+         filefam = str(comboBox.currentText())
+         if(len(filefam) > 0):
+            self.opts[filtername] = filefam_menu[filefam]
+         else:
+            self.opts[filtername] = None
+      else:  # filefam_menu is True or None
+         filefam = ''
+         self.opts[filtername] = None
+      return filefam
+
+   def filefilter_menu( self, datafiles, comboBox, filtername, default='NCEP' ):
+      """Sets up and initializes a menu for choosing a file filter.
+      The menu comes from the basic_datafiles object, 'datafiles'.
+      The GUI object to contain the menu is comboBox.
+      The initial (default) menu choice is stuck into self.opts[filtername].
+      """
+      filefams = None
+      filefam_menu = self.obsfiles1.check_filespec() # True, None, or a dict
+      if type(filefam_menu) is dict:
+         filefams = filefam_menu.keys()
+      elif filefam_menu==None:
+         print "WARNING: No data found in",datafiles
+      if type(filefams) is list:
+         filefams.sort()
+         comboBox.setDuplicatesEnabled(False)
+         comboBox.addItems(filefams)
+         i = comboBox.findText(default)
+         comboBox.setCurrentIndex(max(i,0)) # 0 if findText didn't find text
+
+      filefam = self.filefilter_menuitem( filefam_menu, comboBox, filtername )
+
+      return filefams, filefam_menu, filefam
 
    def prepareObs1(self):
       if self.opts._opts['obspath'][0] == None:
@@ -278,34 +318,37 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                                                                      filter=self.opts['filter2'])
          #self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
 
-         self.observations1 = None
-         self.obs1_menu = self.obsfiles1.check_filespec()
-         if type(self.obs1_menu) is dict:
-            self.observations1 = self.obs1_menu.keys()
-         self.diagnostic_set_name = "Not implemented"
-         if self.obs1_menu==None:
-            print "WARNING: No data found for observations directory"
-         if type(self.observations1) is list:
-            self.observations1.sort()
-            self.comboBoxObservation1.setDuplicatesEnabled(False)
-            self.comboBoxObservation1.addItems(self.observations1)
-            i = self.comboBoxObservation1.findText("NCEP")
-            self.comboBoxObservation1.setCurrentIndex(i)
+         if "Let's use the old code" == True:
+            self.observations1 = None
+            self.obs1_menu = self.obsfiles1.check_filespec()
+            if type(self.obs1_menu) is dict:
+               self.observations1 = self.obs1_menu.keys()
+            self.diagnostic_set_name = "Not implemented"
+            if self.obs1_menu==None:
+               print "WARNING: No data found for observations directory"
+            if type(self.observations1) is list:
+               self.observations1.sort()
+               self.comboBoxObservation1.setDuplicatesEnabled(False)
+               self.comboBoxObservation1.addItems(self.observations1)
+               i = self.comboBoxObservation1.findText("NCEP")
+               self.comboBoxObservation1.setCurrentIndex(i)
 
-         if type(self.observations1) is list:
-            self.observation1 = str(self.comboBoxObservation1.currentText())
-            if(len(self.observation1) > 0):
-               self.opts._opts['filter2'] = self.obs1_menu[self.observation1]
+            if type(self.observations1) is list:
+               self.observation1 = str(self.comboBoxObservation1.currentText())
+               if(len(self.observation1) > 0):
+                  self.opts._opts['filter2'] = self.obs1_menu[self.observation1]
+               else:
+                  self.opts._opts['filter2'] = None
             else:
                self.opts._opts['filter2'] = None
          else:
-            self.opts._opts['filter2'] = None
+            self.observations1, self.obs1_menu, self.observation1 =\
+                self.filefilter_menu( self.obsfiles1, self.comboBoxObservation1, 'filter2' )
 
-         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0,
-                                                                     path=self.opts['obspath'][0],
-                                                                     filter=self.opts['filter2'])
-         self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
-         #self.obsft = self.obsfiles.setup_filetable(self.tmppth, "obs")
+         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(
+            self.opts, obsid=0, path=self.opts['obspath'][0], filter=self.opts['filter2'])
+         #self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
+         self.obsft1 = self.obsfiles1.setup_filetable()
          # obs should be populated now
 
    def prepareObs2(self):
@@ -318,32 +361,37 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
                                                                      filter=self.opts['filter2'])
          #self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
 
+         if "Let's use the old code" == True:
+            self.observations2 = None
+            self.obs2_menu = self.obsfiles2.check_filespec()
+            if type(self.obs2_menu) is dict:
+               self.observations2 = self.obs2_menu.keys()
+            self.diagnostic_set_name = "Not implemented"
+            if self.obs2_menu==None:
+               print "WARNING: No data found for observations directory"
+            if type(self.observations2) is list:
+               self.observations2.sort()
+               self.comboBoxObservation2.setDuplicatesEnabled(False)
+               self.comboBoxObservation2.addItems(self.observations2)
+               i = self.comboBoxObservation2.findText("NCEP")
+               self.comboBoxObservation2.setCurrentIndex(i)
 
-         self.observations2 = None
-         self.obs2_menu = self.obsfiles2.check_filespec()
-         if type(self.obs2_menu) is dict:
-            self.observations2 = self.obs2_menu.keys()
-         self.diagnostic_set_name = "Not implemented"
-         if self.obs2_menu==None:
-            print "WARNING: No data found for observations directory"
-         if type(self.observations2) is list:
-            self.observations2.sort()
-            self.comboBoxObservation2.setDuplicatesEnabled(False)
-            self.comboBoxObservation2.addItems(self.observations2)
-            i = self.comboBoxObservation2.findText("NCEP")
-            self.comboBoxObservation2.setCurrentIndex(i)
-
-         if type(self.observations2) is list:
-            self.observation2 = str(self.comboBoxObservation2.currentText())
-            self.opts._opts['filter2'] = self.obs2_menu[self.observation2]
+            if type(self.observations2) is list:
+               self.observation2 = str(self.comboBoxObservation2.currentText())
+               self.opts._opts['filter2'] = self.obs2_menu[self.observation2]
+            else:
+               self.opts._opts['filter2'] = None
          else:
-            self.opts._opts['filter2'] = None
+            # Hey, there's a bug - the same filter, filter2, is used for both obs sets!
+            self.observations2, self.obs2_menu, self.observation2 =\
+                self.filefilter_menu( self.obsfiles2, self.comboBoxObservation2, 'filter2' )
 
          self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1,
                                                                      path=self.opts['obspath'][1],
                                                                      filter=self.opts['filter2'])
-         self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
-         #self.obsft = self.obsfiles.setup_filetable(self.tmppth, "obs")
+         #self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
+         self.obsft2 = self.obsfiles2.setup_filetable()
+
          # obs should be populated now
 
 
@@ -404,8 +452,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0,
                                                                      path=self.opts['obspath'][0],
                                                                      filter=self.opts['filter2'])
-         self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
-#         self.obsft = self.obsfiles.setup_filetable(self.tmppth, "obs")
+         #self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
+         self.obsft1 = self.obsfiles1.setup_filetable()
 
       if self.useObs2 == True:
          if type(self.observations2) is list:
@@ -420,8 +468,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1,
                                                                      path=self.opts['obspath'][1],
                                                                      filter=self.opts['filter2'])
-         self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
-#         self.obsft = self.obsfiles.setup_filetable(self.tmppth, "obs")
+         #self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
+         self.obsft2 = setlf.obsfiles2.setup_filetable()
 
       self.diagnostic_set_name = str(item.text(column))
 
@@ -601,6 +649,25 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning, msg, QString(msg))
             mbox.exec_()
             return None
+
+        # These are two of several cases where we need to get file (or other) information out of
+        # the menus because what we have is stale.  The better approach is to update every time the
+        # user does something in the menus, and sometimes there's no alternative.  But this was
+        # quicker to code...
+        self.observation1 = str(self.comboBoxObservation1.currentText())
+        if(len(self.observation1) > 0):
+           if self.opts._opts['filter2'] != self.obs1_menu[self.observation1]:
+              self.observation1 = self.filefilter_menuitem(
+                 self.obs1_menu, self.comboBoxObservation1, 'filter2' )
+              self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(
+                 self.opts, obsid=0, path=self.opts['obspath'][0], filter=self.opts['filter2'])
+              self.obsft1 = self.obsfiles1.setup_filetable()
+        if self.DS1FilterEdit.text() != self.opts['filter']:
+           self.opts['filter'] = self.DS1FilterEdit.text()
+           self.dfiles1 = metrics.fileio.findfiles.dirtree_datafiles(
+              self.opts, pathid=0, filter=self.opts['filter'])
+           self.ft1 = self.dfiles1.setup_filetable()
+
         diagnostic = str(self.checkedItem.text(0))
         #group = str(self.checkedItem.parent().text(0))
         #Never name something 'type', it's a reserved word! type = str(self.comboBoxType.currentText())
