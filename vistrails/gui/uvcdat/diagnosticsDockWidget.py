@@ -256,7 +256,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       if self.opts._opts['path'][0] == None:
          print 'No dataset1 path selected'
       else:
-         self.dfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, pathid=0)
+         self.dfiles1 = metrics.fileio.findfiles.dirtree_datafiles(
+            self.opts, pathid=0, filter=self.opts['filter'])
          #self.ft1 = metrics.fileio.filetable.basic_filetable(self.dfiles1, self.opts)
          self.ft1 = self.dfiles1.setup_filetable()
          self.setupDiagnosticTree(self.comboBoxType.currentIndex())
@@ -265,7 +266,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       if self.opts._opts['path'][1] == None:
          print 'No dataset2 path selected'
       else:
-         self.dfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, pathid=1)
+         # Hey, there's a bug - the same filter, filter, is used for both model (DS) datasets!
+         self.dfiles2 = metrics.fileio.findfiles.dirtree_datafiles(
+            self.opts, pathid=0, filter=self.opts['filter'])
          #self.ft2 = metrics.fileio.filetable.basic_filetable(self.dfiles2, self.opts)
          self.ft2 = self.dfiles2.setup_filetable()
          self.setupDiagnosticTree(self.comboBoxType.currentIndex())
@@ -647,12 +650,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             mbox.exec_()
             return None
 
-        # This is one of several cases where we need to get file (or other) information out of
-        # the menus because what we have is stale.  The other option is to update every time the
-        # user does something in the menus, which is trickier but better and sometimes necessary...
+        # These are two of several cases where we need to get file (or other) information out of
+        # the menus because what we have is stale.  The better approach is to update every time the
+        # user does something in the menus, and sometimes there's no alternative.  But this was
+        # quicker to code...
         self.observation1 = str(self.comboBoxObservation1.currentText())
-        print "jfp obs menu is",self.obs1_menu
-        print "jfp new obs menu choice:",self.observation1
         if(len(self.observation1) > 0):
            if self.opts._opts['filter2'] != self.obs1_menu[self.observation1]:
               self.observation1 = self.filefilter_menuitem(
@@ -660,6 +662,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
               self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(
                  self.opts, obsid=0, path=self.opts['obspath'][0], filter=self.opts['filter2'])
               self.obsft1 = self.obsfiles1.setup_filetable()
+        if self.DS1FilterEdit.text() != self.opts['filter']:
+           self.opts['filter'] = self.DS1FilterEdit.text()
+           self.dfiles1 = metrics.fileio.findfiles.dirtree_datafiles(
+              self.opts, pathid=0, filter=self.opts['filter'])
+           self.ft1 = self.dfiles1.setup_filetable()
 
         diagnostic = str(self.checkedItem.text(0))
         #group = str(self.checkedItem.parent().text(0))
