@@ -9,7 +9,6 @@ from core.modules.module_registry import get_module_registry
 import core.system
 import api
 
-
 def parseLayout(l,prefix=""):
     for i in range(l.count()):
         it=l.itemAt(i)
@@ -28,13 +27,16 @@ def parseLayout(l,prefix=""):
                 print "No Layout"
             else:
                 parseLayout(l2,"%s\t" % prefix)
-                
+
+
 class QColormapEditor(QtGui.QColorDialog):
+
     def __init__(self,parent):
         QtGui.QColorDialog.__init__(self,parent)
         self.parent=parent
         self.root=parent.root
         self.setOption(QtGui.QColorDialog.DontUseNativeDialog,True)
+        self.setOption(QtGui.QColorDialog.NoButtons)
         self.activeCanvas = self.root.canvas[0]
 
         self.vcscolor=[0,0,0]
@@ -48,12 +50,6 @@ class QColormapEditor(QtGui.QColorDialog):
         self.currentPlots = []
         #parseLayout(l)
 
-        editColor = l.itemAt(0)
-        buttons = l.takeAt(1)
-        #l.removeItem(editColor)
-        #l.removeItem(buttons)
-        #l.addItem(editColor)
-
         ## Colormap selection Area
         f = QtGui.QFrame()
         h = QtGui.QHBoxLayout()
@@ -61,7 +57,7 @@ class QColormapEditor(QtGui.QColorDialog):
         self.colormap = QtGui.QComboBox(self)
         for i in colormaps:
             self.colormap.addItem(i)
-            
+
         h.addWidget(self.colormap)
         self.newname = QtGui.QLineEdit()
         h.addWidget(self.newname)
@@ -71,29 +67,46 @@ class QColormapEditor(QtGui.QColorDialog):
         f.setLayout(h)
         l.addWidget(f)
 
-        ## Toolbar section
-        self.toolBar = QtGui.QToolBar()
-        self.toolBar.setIconSize(QtCore.QSize(customizeUVCDAT.iconsize, customizeUVCDAT.iconsize))
-        icons_base = os.path.join(core.system.vistrails_root_directory(),
-                                  'gui/uvcdat/resources/icons')
-        action_info = [
-            (icons_base + '/folder_blue.png', 'Save Colormap To File.', self.save, True),
-            (icons_base + '/blender.png', 'Blend From First To Last Highlighted Colors.', self.blend, True),
-            (icons_base + '/refresh.png', 'Reset Changes.', self.resetChanges, True),
-            (icons_base + '/check.png', 'Apply Changes.', self.applyChanges, True),
-        ]
-        for icon_name, tooltip, callback, enabled in action_info:
-            icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, icon_name))
-            action = self.toolBar.addAction(icon, 'help')
-            action.setToolTip(tooltip)
-            self.connect(action, QtCore.SIGNAL("triggered()"), callback)
-            action.setEnabled(enabled)
+        # Apply/Cancel/Save/Reset/Blend buttons
+        buttons = QtGui.QDialogButtonBox()
+        buttons.layout().addSpacing(30)
+        buttons.addButton(QtGui.QDialogButtonBox.Save).setToolTip("Save Colormap To File")
+        buttons.addButton("Blend", QtGui.QDialogButtonBox.HelpRole)\
+            .setToolTip("Blend From First To Last Highlighted Colors")
+        buttons.addButton(QtGui.QDialogButtonBox.Reset).setToolTip("Reset Changes")
+        buttons.addButton(QtGui.QDialogButtonBox.Apply).setToolTip("Apply Changes")
+        buttons.addButton(QtGui.QDialogButtonBox.Cancel).setToolTip("Close Colormap")
+
+        self.connect(buttons.button(QtGui.QDialogButtonBox.Apply), QtCore.SIGNAL("clicked()"), self.applyChanges)
+        self.connect(buttons.button(QtGui.QDialogButtonBox.Cancel), QtCore.SIGNAL("clicked()"), self.rejectChanges)
+        self.connect(buttons.button(QtGui.QDialogButtonBox.Save), QtCore.SIGNAL("clicked()"), self.save)
+        self.connect(buttons.button(QtGui.QDialogButtonBox.Reset), QtCore.SIGNAL("clicked()"), self.resetChanges)
+        self.connect(buttons, QtCore.SIGNAL("helpRequested()"), self.blend)
+        self.buttons = buttons
+
+        # Toolbar section
+        #self.toolBar = QtGui.QToolBar()
+        #self.toolBar.setIconSize(QtCore.QSize(customizeUVCDAT.iconsize, customizeUVCDAT.iconsize))
+        #icons_base = os.path.join(core.system.vistrails_root_directory(),
+        #                          'gui/uvcdat/resources/icons')
+        #action_info = [
+        #    (icons_base + '/folder_blue.png', 'Save Colormap To File.', self.save, True),
+        #    (icons_base + '/blender.png', 'Blend From First To Last Highlighted Colors.', self.blend, True),
+        #    (icons_base + '/refresh.png', 'Reset Changes.', self.resetChanges, True),
+        #    (icons_base + '/check.png', 'Apply Changes.', self.applyChanges, True),
+        #]
+        #for icon_name, tooltip, callback, enabled in action_info:
+        #    icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, icon_name))
+        #    action = self.toolBar.addAction(icon, 'help')
+        #    action.setToolTip(tooltip)
+        #    self.connect(action, QtCore.SIGNAL("triggered()"), callback)
+        #    action.setEnabled(enabled)
 
         # add combo box to select which plot's colormap to update
         # self.plotCb = QtGui.QComboBox(self)
         # self.toolBar.addWidget(self.plotCb)
 
-        l.addWidget(self.toolBar)
+        #l.addWidget(self.toolBar)
 
         # Color Buttons Are
         self.colors=QtGui.QFrame()
@@ -101,26 +114,31 @@ class QColormapEditor(QtGui.QColorDialog):
         self.grid.setHorizontalSpacing(1)
         self.grid.setVerticalSpacing(1)
         self.colors.setLayout(self.grid)
-        l.addWidget(self.colors)
+        self.scrollArea = QtGui.QScrollArea()
+        self.scrollArea.setWidget(self.colors)
+        self.scrollArea.setWidgetResizable(True)
+        sHeight = int(parent.height()-(parent.height()*0.80))
+        self.scrollArea.setFixedHeight(sHeight)
+        l.addWidget(self.scrollArea)
+        l.addWidget(self.buttons)
 
-        # Ok/Cancel Buttons
-        self.connect(buttons.widget(),QtCore.SIGNAL("accepted()"),self.applyChanges)
-        #self.connect(buttons.widget(),QtCore.SIGNAL("rejected()"),self.resetChanges)
-        l.addItem(buttons)
-        self.buttons = buttons
-        
-        ## select the colormap before connecting
+        # select the colormap before connecting
         self.colormap.setCurrentIndex(colormaps.index(self.activeCanvas.getcolormapname()))
 
-        ## Need to deactivate if default (not editable)
-        if self.activeCanvas.getcolormapname() == "default":
-            self.buttons.widget().setEnabled(False)
+        if str(self.colormap.currentText()) == "default":
+            for b in self.buttons.buttons():
+                if self.buttons.buttonRole(b) == QtGui.QDialogButtonBox.ApplyRole:
+                    b.setEnabled(True)
+                else:
+                    b.setEnabled(False)
 
-        ## SIGNALS
+        # SIGNALS
         self.connect(self.colormap,QtCore.SIGNAL("currentIndexChanged(int)"),self.colorMapComboChanged)
         self.connect(self,QtCore.SIGNAL("currentColorChanged(QColor)"),self.colorChanged)
         #self.connect(self.plotCb,QtCore.SIGNAL("currentIndexChanged(int)"),self.plotsComboChanged)
 
+    def rejectChanges(self):
+        self.close()
 
     def getRgb(self,i,j=None,max=255):
         if j is None:
@@ -200,9 +218,15 @@ class QColormapEditor(QtGui.QColorDialog):
         #n = self.layout().count()
         ## Need to deactivate if default (not editable)
         if str(self.colormap.currentText()) == "default":
-            self.buttons.widget().setEnabled(False)
+            for b in self.buttons.buttons():
+                if self.buttons.buttonRole(b) == QtGui.QDialogButtonBox.ApplyRole:
+                    b.setEnabled(True)
+                else:
+                    b.setEnabled(False)
         else:
-            self.buttons.widget().setEnabled(True)
+            for b in self.buttons.buttons():
+                b.setEnabled(True)
+
         self.cellsDirty = False
         cmap = self.activeCanvas.getcolormap(str(self.colormap.currentText()))
         #self.colors=QtGui.QFrame()
@@ -497,7 +521,7 @@ class QColormapEditor(QtGui.QColorDialog):
         if it is not None:
             self.grid.removeItem(it)
             it.widget().destroy()
-        button = uvcdatCommons.CalcButton("%i" % icolor,styles={},signal="clickedVCSColorButton",minimumXSize=15,minimumYSize=15)
+        button = uvcdatCommons.CalcButton("%i" % icolor,styles={},signal="clickedVCSColorButton",minimumXSize=20,minimumYSize=20)
         stsh = button.styleSheet()
         stsh+=" background-color : rgb(%i,%i,%i)" % (r,g,b)
         if g<200:
@@ -507,6 +531,4 @@ class QColormapEditor(QtGui.QColorDialog):
         self.connect(button,QtCore.SIGNAL("clickedVCSColorButton"),self.colorButtonClicked)
         self.grid.addWidget(button,i,j)
         return button
-        
-        
     
