@@ -1,13 +1,14 @@
 from PyQt4 import QtCore, QtGui
-import customizeUVCDAT
-import os
-import uvcdatCommons
+
+import api
 import core
-import core.db
-from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+import core.db.action
 from core.modules.module_registry import get_module_registry
 import core.system
-import api
+from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+
+import customizeUVCDAT
+import uvcdatCommons
 
 
 def parseLayout(l, prefix=""):
@@ -125,8 +126,8 @@ class QColormapEditor(QtGui.QColorDialog):
         self.scrollArea = QtGui.QScrollArea()
         self.scrollArea.setWidget(self.colors)
         self.scrollArea.setWidgetResizable(True)
-        sHeight = int(parent.height() - (parent.height() * 0.80))
-        self.scrollArea.setFixedHeight(sHeight)
+        s_height = int(parent.height() - (parent.height() * 0.80))
+        self.scrollArea.setFixedHeight(s_height)
         l.addWidget(self.scrollArea)
         l.addWidget(self.buttons)
 
@@ -152,21 +153,21 @@ class QColormapEditor(QtGui.QColorDialog):
     def rejectChanges(self):
         self.close()
 
-    def getRgb(self, i, j=None, max=255):
+    def getRgb(self, i, j=None, maximum=255):
         if j is None:
-            if max >= 100:
-                mx = max / 100.
+            if maximum >= 100:
+                mx = maximum / 100.
             else:
-                mx = max
+                mx = maximum
             nr, ng, nb = self.cmap.index[i]
             nr = int(nr * mx)
             ng = int(ng * mx)
             nb = int(nb * mx)
         else:
-            if max >= 100:
-                mx = max / 255.
+            if maximum >= 100:
+                mx = maximum / 255.
             else:
-                mx = max
+                mx = maximum
             styles = str(
                 self.grid.itemAtPosition(i, j).widget().styleSheet()).split(";")
             for style in styles:
@@ -213,10 +214,10 @@ class QColormapEditor(QtGui.QColorDialog):
     def currentPlot(self):
         return self.plots[0]  # remove this when switch to multi-colormap cells
         if self.plotCb.count() > 0:
-            (localPlotIndex, success) = self.plotCb.itemData(
+            (local_plot_index, success) = self.plotCb.itemData(
                 self.plotCb.currentIndex()).toInt()
             if success:
-                return self.plots[localPlotIndex]
+                return self.plots[local_plot_index]
             else:
                 return self.plots[0]
         else:
@@ -261,8 +262,8 @@ class QColormapEditor(QtGui.QColorDialog):
     def setColorsFromCanvas(self):
         # get current colormapname from canvas
         self.ignoreColorMapComboChange = True
-        newIdx = self.colormap.findText(self.activeCanvas.getcolormapname())
-        self.colormap.setCurrentIndex(newIdx)
+        new_idx = self.colormap.findText(self.activeCanvas.getcolormapname())
+        self.colormap.setCurrentIndex(new_idx)
         self.ignoreColorMapComboChange = False
 
         n = 0
@@ -326,7 +327,7 @@ class QColormapEditor(QtGui.QColorDialog):
         #        self.activeCanvas.setcolormap(cnm)
 
         if not self.mapNameChanged and not self.cellsDirty:
-            return;
+            return
 
         rec = "vcs_canvas[%i].setcolormap(\"%s\")" \
               % (self.activeCanvas.canvasid() - 1, self.colormap.currentText())
@@ -338,15 +339,15 @@ class QColormapEditor(QtGui.QColorDialog):
             n = 0
             for i in range(15):
                 for j in range(16):
-                    r, g, b = self.getRgb(i, j, max=100)
+                    r, g, b = self.getRgb(i, j, maximum=100)
                     ored, og, ob = self.activeCanvas.getcolorcell(n)
                     if r != ored or og != g or ob != b:
-                        rec = "vcs_canvas[%i].setcolorcell(%i,%i,%i,%i)" % (
+                        rec = "vcs_canvas[%i].setcolorcell(%d, %d, %d, %d)" % (
                             self.activeCanvas.canvasid() - 1, n, r, g, b)
                         self.root.record(rec)
                         #self.activeCanvas.setcolorcell(n,r,g,b)
                         #calling this directly to avoid flushing and updating segments on every cell update
-                        self.activeCanvas.setcolorcell(n, r, g, b);
+                        self.activeCanvas.setcolorcell(n, r, g, b)
                         cells.append((n, r, g, b))
                     n += 1
             #see vcs.Canvas.setcolorcell
@@ -356,28 +357,27 @@ class QColormapEditor(QtGui.QColorDialog):
 
         self.controller.change_selected_version(self.controller.current_version)
 
-        functions = [("colorMapName", [str(self.colormap.currentText())])]
-        functions.append(("colorCells", [str(cells)]))
+        functions = [("colorMapName", [str(self.colormap.currentText())]),
+                     ("colorCells", [str(cells)])]
 
-        action = None
-        colorMapModule = self.colorMapModuleFromPlot(plot)
-        if colorMapModule is not None:  #update module
-            action = self.controller.update_functions(colorMapModule, functions)
+        color_map_module = self.colorMapModuleFromPlot(plot)
+        if color_map_module is not None:  #update module
+            action = self.controller.update_functions(color_map_module, functions)
         else:  #create module
             reg = get_module_registry()
             color_descriptor = reg.get_descriptor_by_name(
                 'gov.llnl.uvcdat.cdms',
                 'CDMSColorMap')
-            colorMapModule = self.controller.create_module_from_descriptor(
+            color_map_module = self.controller.create_module_from_descriptor(
                 color_descriptor)
-            module_functions = self.controller.create_functions(colorMapModule,
+            module_functions = self.controller.create_functions(color_map_module,
                                                                 functions)
             for f in module_functions:
-                colorMapModule.add_function(f)
-            conn = self.controller.create_connection(colorMapModule, 'self',
+                color_map_module.add_function(f)
+            conn = self.controller.create_connection(color_map_module, 'self',
                                                      plot, 'colorMap')
 
-            ops = [('add', colorMapModule), ('add', conn)]
+            ops = [('add', color_map_module), ('add', conn)]
             action = core.db.action.create_action(ops)
 
             if action is not None:
@@ -412,12 +412,11 @@ class QColormapEditor(QtGui.QColorDialog):
 
     def renamed(self):
         newname = str(self.newname.text())
-        newcmap = self.activeCanvas.createcolormap(newname, str(
+        self.activeCanvas.createcolormap(newname, str(
             self.colormap.currentText()))
         self.colormap.addItem(newname)
         self.colormap.model().sort(0)
         self.colormap.setCurrentIndex(self.colormap.findText(newname))
-        pass
 
     def colorButtonClicked(self, b):
         # Ben: not sure why this is needed
@@ -436,11 +435,11 @@ class QColormapEditor(QtGui.QColorDialog):
         self.clicks[self.nclicks - 1] = b.vcscolor
 
     def setButtonFrame(self, button):
-        firstButton = self.clicks[0]
-        i0, j0 = firstButton[:2]
-        lastButton = self.clicks[1]
-        if lastButton is not None:  # Not the first time
-            i1, j1 = lastButton[:2]
+        first_button = self.clicks[0]
+        i0, j0 = first_button[:2]
+        last_button = self.clicks[1]
+        if last_button is not None:  # Not the first time
+            i1, j1 = last_button[:2]
             if i1 < i0:
                 tmp1 = i0
                 tmp2 = j0
