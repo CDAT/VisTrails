@@ -498,9 +498,9 @@ class QColormapEditor(QtGui.QColorDialog):
                 n += 1
 
         button = self.grid.itemAtPosition(first[0], first[1]).widget()
-        button.emit(QtCore.SIGNAL("clickedVCSColorButton"), button)
+        button.mousePressEvent(None);
         button = self.grid.itemAtPosition(last[0], last[1]).widget()
-        button.emit(QtCore.SIGNAL("clickedVCSColorButton"), button)
+        button.mousePressEvent(None);
 
     def setAButtonFrame(self, button, on=True):
         if on:
