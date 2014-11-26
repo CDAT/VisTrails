@@ -93,30 +93,6 @@ class QColormapEditor(QtGui.QColorDialog):
         self.connect(buttons, QtCore.SIGNAL("helpRequested()"), self.blend)
         self.buttons = buttons
 
-        # Toolbar section
-        #self.toolBar = QtGui.QToolBar()
-        #self.toolBar.setIconSize(QtCore.QSize(customizeUVCDAT.iconsize, customizeUVCDAT.iconsize))
-        #icons_base = os.path.join(core.system.vistrails_root_directory(),
-        #                          'gui/uvcdat/resources/icons')
-        #action_info = [
-        #    (icons_base + '/folder_blue.png', 'Save Colormap To File.', self.save, True),
-        #    (icons_base + '/blender.png', 'Blend From First To Last Highlighted Colors.', self.blend, True),
-        #    (icons_base + '/refresh.png', 'Reset Changes.', self.resetChanges, True),
-        #    (icons_base + '/check.png', 'Apply Changes.', self.applyChanges, True),
-        #]
-        #for icon_name, tooltip, callback, enabled in action_info:
-        #    icon = QtGui.QIcon(os.path.join(customizeUVCDAT.ICONPATH, icon_name))
-        #    action = self.toolBar.addAction(icon, 'help')
-        #    action.setToolTip(tooltip)
-        #    self.connect(action, QtCore.SIGNAL("triggered()"), callback)
-        #    action.setEnabled(enabled)
-
-        # add combo box to select which plot's colormap to update
-        # self.plotCb = QtGui.QComboBox(self)
-        # self.toolBar.addWidget(self.plotCb)
-
-        #l.addWidget(self.toolBar)
-
         # Color Buttons Are
         self.colors = QtGui.QFrame()
         self.grid = QtGui.QGridLayout()
@@ -152,6 +128,15 @@ class QColormapEditor(QtGui.QColorDialog):
 
     def rejectChanges(self):
         self.close()
+
+    def closeEvent(self, event):
+        if str(self.activeCanvas.getcolormapname()) == "default":
+            for b in self.buttons.buttons():
+                if self.buttons.buttonRole(b) == QtGui.QDialogButtonBox.ApplyRole:
+                    b.setEnabled(True)
+                else:
+                    b.setEnabled(False)
+        event.accept()
 
     def getRgb(self, i, j=None, maximum=255):
         if j is None:
