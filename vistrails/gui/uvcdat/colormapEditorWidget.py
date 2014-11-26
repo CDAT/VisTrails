@@ -460,8 +460,7 @@ class QColormapEditor(QtGui.QColorDialog):
         for i in range(15):
             for j in range(16):
                 b = self.grid.itemAtPosition(i, j).widget()
-                stsh = str(b.styleSheet())
-                if stsh.find(customizeUVCDAT.colorSelectedStyle) > -1:
+                if b.lineWidth() == 3 and b.midLineWidth() == 2:
                     n += 1
                     if first is None:
                         first = b.vcscolor
