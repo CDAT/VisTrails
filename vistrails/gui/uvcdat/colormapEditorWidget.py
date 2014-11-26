@@ -120,23 +120,19 @@ class QColormapEditor(QtGui.QColorDialog):
                     b.setEnabled(False)
 
         # SIGNALS
-        self.connect(self.colormap, QtCore.SIGNAL("currentIndexChanged(int)"),
-                     self.colorMapComboChanged)
-        self.connect(self, QtCore.SIGNAL("currentColorChanged(QColor)"),
-                     self.colorChanged)
-        #self.connect(self.plotCb,QtCore.SIGNAL("currentIndexChanged(int)"),self.plotsComboChanged)
+        self.connect(self.colormap, QtCore.SIGNAL("currentIndexChanged(int)"), self.colorMapComboChanged)
+        self.connect(self, QtCore.SIGNAL("currentColorChanged(QColor)"), self.colorChanged)
 
     def rejectChanges(self):
         self.close()
 
-    def closeEvent(self, event):
+    def showEvent(self, event):
         if str(self.activeCanvas.getcolormapname()) == "default":
             for b in self.buttons.buttons():
                 if self.buttons.buttonRole(b) == QtGui.QDialogButtonBox.ApplyRole:
                     b.setEnabled(True)
                 else:
                     b.setEnabled(False)
-        event.accept()
 
     def getRgb(self, i, j=None, maximum=255):
         if j is None:
@@ -508,32 +504,19 @@ class QColormapEditor(QtGui.QColorDialog):
         button.click()
 
     def setAButtonFrame(self, button, on=True):
-        styles = str(button.styleSheet()).split(";")
-        newstyles = []
-        for style in styles:
-            sp = style.split(":")
-            if sp[0].strip() not in ["border"]:
-                newstyles.append(":".join(sp))
         if on:
-            newstyles.append(customizeUVCDAT.colorSelectedStyle)
+            button.flipFrameShadow(2, 3)
         else:
-            newstyles.append(customizeUVCDAT.colorNotSelectedStyle)
-
-        styles = ";".join(newstyles)
-        button.setStyleSheet(styles)
+            button.flipFrameShadow(0, 0)
 
     def setButton(self, i, j, icolor, r, g, b):
         it = self.grid.itemAtPosition(i, j)
         if it is not None:
             self.grid.removeItem(it)
             it.widget().destroy()
-        button = uvcdatCommons.CalcButton("%i" % icolor, styles={},
-                                          signal="clickedVCSColorButton",
-                                          minimumXSize=20, minimumYSize=20)
+        button = uvcdatCommons.CustomFrame("%i" % icolor, 30, 25, signal="clickedVCSColorButton")
         stsh = button.styleSheet()
         stsh += " background-color : rgb(%i,%i,%i)" % (r, g, b)
-        if g < 200:
-            stsh += ";color : white"
         button.setStyleSheet(stsh)
         button.vcscolor = (i, j, icolor)
         self.connect(button, QtCore.SIGNAL("clickedVCSColorButton"),
