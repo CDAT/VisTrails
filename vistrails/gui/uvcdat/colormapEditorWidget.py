@@ -460,7 +460,7 @@ class QColormapEditor(QtGui.QColorDialog):
         for i in range(15):
             for j in range(16):
                 b = self.grid.itemAtPosition(i, j).widget()
-                if b.lineWidth() == 3 and b.midLineWidth() == 2:
+                if b.lineWidth() == 2 and b.midLineWidth() == 3:
                     n += 1
                     if first is None:
                         first = b.vcscolor
@@ -498,9 +498,9 @@ class QColormapEditor(QtGui.QColorDialog):
                 n += 1
 
         button = self.grid.itemAtPosition(first[0], first[1]).widget()
-        button.click()
+        button.emit(QtCore.SIGNAL("clickedVCSColorButton"), button)
         button = self.grid.itemAtPosition(last[0], last[1]).widget()
-        button.click()
+        button.emit(QtCore.SIGNAL("clickedVCSColorButton"), button)
 
     def setAButtonFrame(self, button, on=True):
         if on:
