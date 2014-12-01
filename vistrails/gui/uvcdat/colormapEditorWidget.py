@@ -39,7 +39,6 @@ class QColormapEditor(QtGui.QColorDialog):
         self.setOption(QtGui.QColorDialog.DontUseNativeDialog, True)
         self.setOption(QtGui.QColorDialog.NoButtons)
         self.activeCanvas = self.root.canvas[0]
-
         self.vcscolor = [0, 0, 0]
         self.ignoreColorMapComboChange = False
         ## l = QtGui.QVBoxLayout()
@@ -103,21 +102,12 @@ class QColormapEditor(QtGui.QColorDialog):
         self.scrollArea.setWidget(self.colors)
         self.scrollArea.setWidgetResizable(True)
         s_height = int(parent.height() - (parent.height() * 0.80))
-        self.scrollArea.setFixedHeight(s_height)
+        self.scrollArea.setMaximumHeight(s_height)
         l.addWidget(self.scrollArea)
         l.addWidget(self.buttons)
 
         # select the colormap before connecting
-        self.colormap.setCurrentIndex(
-            colormaps.index(self.activeCanvas.getcolormapname()))
-
-        if str(self.colormap.currentText()) == "default":
-            for b in self.buttons.buttons():
-                if self.buttons.buttonRole(
-                        b) == QtGui.QDialogButtonBox.ApplyRole:
-                    b.setEnabled(True)
-                else:
-                    b.setEnabled(False)
+        self.colormap.setCurrentIndex(colormaps.index(self.activeCanvas.getcolormapname()))
 
         # SIGNALS
         self.connect(self.colormap, QtCore.SIGNAL("currentIndexChanged(int)"), self.colorMapComboChanged)
@@ -125,14 +115,6 @@ class QColormapEditor(QtGui.QColorDialog):
 
     def rejectChanges(self):
         self.close()
-
-    def showEvent(self, event):
-        if str(self.activeCanvas.getcolormapname()) == "default":
-            for b in self.buttons.buttons():
-                if self.buttons.buttonRole(b) == QtGui.QDialogButtonBox.ApplyRole:
-                    b.setEnabled(True)
-                else:
-                    b.setEnabled(False)
 
     def getRgb(self, i, j=None, maximum=255):
         if j is None:
@@ -210,19 +192,6 @@ class QColormapEditor(QtGui.QColorDialog):
             self.setColorsFromMapName()
 
     def setColorsFromMapName(self):
-        # n = self.layout().count()
-        ## Need to deactivate if default (not editable)
-        if str(self.colormap.currentText()) == "default":
-            for b in self.buttons.buttons():
-                if self.buttons.buttonRole(
-                        b) == QtGui.QDialogButtonBox.ApplyRole:
-                    b.setEnabled(True)
-                else:
-                    b.setEnabled(False)
-        else:
-            for b in self.buttons.buttons():
-                b.setEnabled(True)
-
         self.cellsDirty = False
         cmap = self.activeCanvas.getcolormap(str(self.colormap.currentText()))
         #self.colors=QtGui.QFrame()
