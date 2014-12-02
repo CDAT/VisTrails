@@ -276,8 +276,8 @@ class QFramedWidget(QtGui.QGroupBox):
             spinbox.setMaximum(maxValue)
         if minValue is not None:
             spinbox.setMinimum(minValue)
-	tmp =QtGui.QLabel(text)
-	spinbox.label=tmp
+        tmp = QtGui.QLabel(text)
+        spinbox.label = tmp
         self.addWidget(tmp)
         self.addWidget(spinbox)
         
@@ -583,3 +583,26 @@ class CalcButton(QtGui.QToolButton):
     def clickEvent(self):
         """Emits signal with button text"""
         self.emit(QtCore.SIGNAL(self.sendSignal), self)
+
+
+class CustomFrame(QtGui.QLabel):
+    def __init__(self, text, minimumXSize, minimumYSize, signal="clickedMyButton"):
+        super(CustomFrame, self).__init__()
+        self.setFrameShape(QtGui.QFrame.Panel)
+        self.setFrameShadow(QtGui.QFrame.Plain)
+        self.setLineWidth(0)
+        self.setMidLineWidth(0)
+        self.setText(text)
+        self.setIndent(1)
+        self.setAlignment(QtCore.Qt.AlignCenter)
+        self.setMinimumSize(minimumXSize, minimumYSize)
+        self.setSizePolicy(QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred))
+        self.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.sendSignal = signal
+
+    def mousePressEvent(self, event):
+        self.emit(QtCore.SIGNAL(self.sendSignal), self)
+
+    def flipFrameShadow(self, lineWidth, midLineWidth):
+        self.setLineWidth(lineWidth)
+        self.setMidLineWidth(midLineWidth)
