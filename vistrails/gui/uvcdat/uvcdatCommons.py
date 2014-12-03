@@ -21,7 +21,7 @@ defaultGmsColor = QtGui.QColor(179,140,138)
 
 plotTypes = {"VCS":['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill',
                      'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY',
-                     'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Dual_Scalar', '3D_Vector' ],
+                     'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Vector' ],   # '3D_Dual_Scalar', 
              }
 
 gmInfos= {'Boxfill' :{'nSlabs':1},
