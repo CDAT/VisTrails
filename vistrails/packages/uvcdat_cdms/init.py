@@ -1567,7 +1567,7 @@ class QCDATWidgetToolBar(QCellToolBar):
     
             self.appendAction(QCDATWidgetPrint(self))
             self.appendAction(QCDATWidgetColormap(self))
-            self.appendAction(QCDATWidgetAnimation(self))
+            #self.appendAction(QCDATWidgetAnimation(self))		#Commented out (removed) the animate icon till it works proper
         else:
             pass  # TODO: setup toolbar for dv3d
         
@@ -1828,7 +1828,7 @@ class QCDATWidgetAnimation(QtGui.QAction):
         """
         QtGui.QAction.__init__(self,
                                UVCDATTheme.PLOT_ANIMATION_ICON,
-                               "Animate",
+                               "",
                                parent)
         self.setStatusTip("Animate this plot")
         self.setEnabled(True) 
