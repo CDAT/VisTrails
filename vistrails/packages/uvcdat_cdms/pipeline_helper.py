@@ -159,7 +159,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         initial_values = desc.get_initial_values(plot_gm)
         for attr in desc.gm_attributes:
             plot_functions.append((attr,[getattr(initial_values,attr)]))
-            
+
+        print "\n ~~~~~~~~~~~~ create_plot_module, plot_functions: ", str( plot_functions )
         functions = controller.create_functions(plot_module,plot_functions)
         for f in functions:
             plot_module.add_function(f)
@@ -305,7 +306,8 @@ class CDMSPipelineHelper(PlotPipelineHelper):
                 plot_functions.append((attr,[pickle.dumps(getattr(initial_values,attr))]))
             else:
                 plot_functions.append((attr,[getattr(initial_values,attr)]))
-        
+
+        print " ~~~~~~~~~~~~~~~~~~ create plot functions: ", str( plot_functions )
         functions = controller.create_functions(plot_module,plot_functions)
         for f in functions:
             plot_module.add_function(f)
@@ -743,18 +745,18 @@ class CDMSPipelineHelper(PlotPipelineHelper):
     #             print>>sys.stderr, "Error changing parameter in module %d (%s), parm: %s: Module not in current controller pipeline." % ( self.moduleID, self.__class__.__name__, str(parmRecList) )  
     #             return
             try:
-                ops = []
+                constit_values = []
                 module = plot_modules[0]
                 config_list = []
                 op_list = []
     #            print "Module[%d]: Persist Parameter: %s, controller: %x " % ( self.moduleID, str(parmRecList), id(controller) )
                 for parmRec in parmRecList: 
                     try:
-                        print "Persist parameter: %s-> %s " % ( str(parmRec[0]), str(parmRec[1]) )
-                        function = parmRec[0] 
+                        function = parmRec[0]
+                        print "Persist parameter: %s-> %s " % ( function, str(parmRec[1]) )
                         values = [ parmRec[1] ]  # .strip('[]').split(',')
                         op_list.extend( controller.update_function_ops( module, function, values, should_replace=True ) )
-                        
+
                     except MissingPort:
                         print "Need to add input port %s in controller, parmRecList = %s " % ( parmRec[0], str( parmRecList ) )
                         
@@ -770,7 +772,7 @@ class CDMSPipelineHelper(PlotPipelineHelper):
 #                print "Performed action, current controller version: ", str( controller.current_version )
                     
             except Exception, err:
-                print>>sys.stderr, "Error changing parameter in module %d (%s): parm: %s, error: %s" % ( self.moduleID, self.__class__.__name__, str(parmRecList), str(err) )
+                print>>sys.stderr, "Error changing parameter in plot module. parm: %s, error: %s" % ( str(parmRecList), str(err) )
                 traceback.print_exc()
         
     @classmethod
