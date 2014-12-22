@@ -1,5 +1,0 @@
-high=high/ne_10m_lakes.shp
-medium=medium/ne_50m_lakes.shp
-low=low/ne_110m_lakes.shp
-
-
