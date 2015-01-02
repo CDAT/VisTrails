@@ -1496,7 +1496,7 @@ class QCDATWidget(QVTKWidget):
         #        self.window.setParent(QtGui.QApplication.activeWindow())
         #    self.window.setVisible(False)
             #reparentedVCSWindows[self.windowId] = self.window
-        self.canvas.onClosing()
+        self.canvas.onClosing( self.cell_coordinates )
         
         self.canvas = None
         #self.window = None

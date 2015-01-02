@@ -942,7 +942,7 @@ class CDMSPlotWidget(QtGui.QWidget):
         sheetName = controller.current_sheetName
         (row, col) = controller.current_cell_coords
         cell = controller.sheet_map[sheetName][(row, col)]
-        
+
         main_layout = QtGui.QVBoxLayout()
         main_layout.setMargin(0)
         main_layout.setSpacing(2)
@@ -976,6 +976,9 @@ class CDMSPlotWidget(QtGui.QWidget):
 
         self.btn_save.clicked.connect(self.save_triggered)
         self.btn_reset.clicked.connect(self.reset_triggered)
+
+    def clearWidget(self):
+        print " ------------- clearWidget ------------- "
         
     def update_version(self, version, plot_list, var_list):
         self.version = version
