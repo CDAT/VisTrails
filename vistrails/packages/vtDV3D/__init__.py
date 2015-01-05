@@ -91,10 +91,10 @@ def initialize(*args, **keywords):
     from packages.vtDV3D.WorkflowModule import WorkflowModule
     from packages.vtDV3D.VectorCutPlaneModule import GlyphArrayCutPlane, StreamlineCutPlane 
     from packages.vtDV3D.VectorVolumeModule import VectorVolume 
-    from packages.vtDV3D.CPCViewer import CPCViewer, CPCViewerConfigurationWidget
+#    from packages.vtDV3D.CPCViewer import CPCViewer, CPCViewerConfigurationWidget
     from packages.spreadsheet.basic_widgets import CellLocation
     from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
-    from packages.CPCViewer.PointCloudViewer import CPCPlot, kill_all_zombies
+#    from packages.CPCViewer.PointCloudViewer import CPCPlot, kill_all_zombies
     from core import command_line
     import api
     get = command_line.CommandLineParser().get_option
@@ -193,11 +193,11 @@ def initialize(*args, **keywords):
     reg.add_output_port( CDMS_HoffmullerReader, "volume", AlgorithmOutputModule3D ) 
     CDMS_HoffmullerReader.registerConfigurableFunctions( reg )
 
-    reg.add_module( CPCViewer, configureWidgetType=CPCViewerConfigurationWidget, namespace='vtk' )   
-    reg.add_input_port( CPCViewer, "pointCloud", AlgorithmOutputModule3D )      
-    reg.add_input_port( CPCViewer, "cpcConfigData",   [ ( String, 'serializedConfigData' ), ( Integer, 'version' ) ], True   ) 
-    reg.add_output_port( CPCViewer, "pointCloud", AlgorithmOutputModule3D ) 
-    CPCViewer.registerConfigurableFunctions( reg )
+    # reg.add_module( CPCViewer, configureWidgetType=CPCViewerConfigurationWidget, namespace='vtk' )
+    # reg.add_input_port( CPCViewer, "pointCloud", AlgorithmOutputModule3D )
+    # reg.add_input_port( CPCViewer, "cpcConfigData",   [ ( String, 'serializedConfigData' ), ( Integer, 'version' ) ], True   )
+    # reg.add_output_port( CPCViewer, "pointCloud", AlgorithmOutputModule3D )
+    # CPCViewer.registerConfigurableFunctions( reg )
 
     reg.add_module( CDMS_VolumeReader, configureWidgetType=CDMS_VolumeReaderConfigurationWidget, namespace='cdms' )
     reg.add_input_port( CDMS_VolumeReader, "dataset", CDMSDataset )      
