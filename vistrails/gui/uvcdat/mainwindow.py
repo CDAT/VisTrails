@@ -281,7 +281,7 @@ class UVCDATMainWindow(QtGui.QMainWindow):
     def quit(self):
         #FIXME
         #ask to save projects
-        print "quitting"
+#        print "quitting"
         # need to stop animation widget here...
         animWidget = self.dockAnimate.widget()
         animWidget.setCanvas(None)

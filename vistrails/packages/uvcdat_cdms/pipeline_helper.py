@@ -28,7 +28,6 @@ from gui.uvcdat.definedVariableWidget import QDefinedVariableWidget
 from gui.application import get_vistrails_application
 import api, sys, traceback
 
- 
 class CDMSPipelineHelper(PlotPipelineHelper):
     
     @classmethod
@@ -61,13 +60,19 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         cell  = tabWidget.getCellWidget( row, col ).widget()   
         return cell.canvas.backend.plotApps
 
-    @staticmethod
-    def show_configuration_widget(controller, version, plot_objs=[]):
+    @classmethod
+    def show_configuration_widget(klass, controller, version, plot_objs=[]):
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
         vars = CDMSPipelineHelper.find_modules_by_type(pipeline, 
                                                        [CDMSVariable,
                                                         CDMSVariableOperation])
+        for plot in plots:
+            if plot.name in CDMS3DPlotWidget.PlotNames:
+                (row, col) = controller.current_cell_coords
+                plot_apps = klass.getPlotApps( row, col )
+                return CDMS3DPlotWidget( controller, version, plots, vars, plot_apps )
+
         return CDMSPlotWidget(controller,version,plots,vars)
     
     @staticmethod
@@ -910,7 +915,60 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         else:
             result = None
         return result
-    
+
+class CDMS3DPlotWidget(QtGui.QWidget):
+
+    PlotNames = [ 'CDMS3D_Scalar', 'CDMS3D_Vector' ]
+
+    def __init__(self,controller, version, plot_list, var_list, plot_apps, parent=None):
+        QtGui.QWidget.__init__(self,parent)
+        self.proj_controller = controller
+        self.controller = controller.vt_controller
+        self.version = version
+        self.plots = plot_list
+        self.plot_apps = plot_apps
+        plot = self.plot_apps.keys()[0]
+        self.cfgMgr = plot.cfgManager
+        app = self.plot_apps[plot]
+        self.buttonBarHandler = app.plot.buttonBarHandler
+
+        sheetName = controller.current_sheetName
+        (row, col) = controller.current_cell_coords
+        cell = controller.sheet_map[sheetName][(row, col)]
+
+        self.main_layout = QtGui.QVBoxLayout()
+        self.main_layout.setMargin(0)
+        self.main_layout.setSpacing(2)
+        self.setLayout(self.main_layout)
+
+        bbarWidget = self.buttonBarHandler.getButtonBar( 'Interaction')
+        istate = bbarWidget.InteractionState
+        cf = bbarWidget.getConfigFunction( istate )
+        if cf.type == 'slider':
+            self.addConfigPanel( cf.label, cf.sliderLabels, cf.value.getValues() )
+
+    def askToSaveChanges(self):
+        pass
+
+    def addConfigPanel(self, title, param_names, param_values ):
+        print "Adding ConfigPanel %s: %s -> %s" % ( title, str(param_names), str(param_values) )
+        panel_layout = QtGui.QVBoxLayout()
+        title_lbl = QtGui.QLabel( title )
+        panel_layout.addWidget( title_lbl )
+
+        for param_index in range( len( param_names ) ):
+            param_name = param_names[ param_index ]
+            param_value = param_values[ param_index ]
+            parameter_lbl = QtGui.QLabel( param_name )
+            parameter_edt = QtGui.QLineEdit()
+            parameter_edt.setText( str( param_value ) )
+            parameter_layout = QtGui.QHBoxLayout()
+            parameter_layout.addWidget(parameter_lbl)
+            parameter_layout.addWidget(parameter_edt)
+            panel_layout.addLayout(parameter_layout)
+
+        self.main_layout.addLayout(panel_layout)
+
 class CDMSPlotWidget(QtGui.QWidget):
     def __init__(self,controller, version, plot_list, var_list, parent=None):
         QtGui.QWidget.__init__(self,parent)
