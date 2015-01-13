@@ -259,10 +259,10 @@ class QCLToolsWizard(QtGui.QWidget):
         self.setTitle()
     
     def openFile(self):
-        fileName = QtGui.QFileDialog.getOpenFileName(self,
+        fileName = str(QtGui.QFileDialog.getOpenFileName(self,
                 "Open Wrapper",
                 self.file if self.file else default_dir(),
-                "Wrappers (*%s)" % SUFFIX)
+                "Wrappers (*%s)" % SUFFIX))
         if not fileName:
             return
         try:
@@ -333,7 +333,7 @@ class QCLToolsWizard(QtGui.QWidget):
                             "Save Wrapper as",
                             self.file if self.file else default_dir(),
                             "Wrappers (*%s)" % SUFFIX)
-        if fileName:
+        if not fileName.isEmpty():
             self.file = str(fileName)
             if not self.file.endswith(SUFFIX):
                 self.file += SUFFIX

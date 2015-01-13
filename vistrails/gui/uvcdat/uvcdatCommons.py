@@ -484,7 +484,7 @@ class QCommandsFileWidget(QtGui.QDialog):
     def saveAs(self):
         cont = True
         while cont is True:
-            fnm = QtGui.QFileDialog.getSaveFileName()
+            fnm = str(QtGui.QFileDialog.getSaveFileName())
             try:
                 f=open(fnm,'w')
                 cont=False

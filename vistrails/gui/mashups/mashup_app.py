@@ -284,7 +284,6 @@ Pipeline results: %s' % (len(cellEvents), self.numberOfCells, errors))
         if not folder.isEmpty():
             self.dumpcells = str(folder)
             self.saveAll()
-            self.lastExportPath
     
     def saveAndExport(self, clicked=True):
         self.saveAll()

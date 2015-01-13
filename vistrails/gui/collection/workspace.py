@@ -218,11 +218,11 @@ class QCollectionWidget(QtGui.QTreeWidget):
         self.collection.commit()
 
     def add_file(self):
-        s = QtGui.QFileDialog.getOpenFileName(
+        s = str(QtGui.QFileDialog.getOpenFileName(
                     self, "Choose a file",
-                    "", "Vistrail files (*.vt *.xml)");
-        if str(s):
-            locator = FileLocator(str(s))
+                    "", "Vistrail files (*.vt *.xml)"))
+        if s:
+            locator = FileLocator(s)
             url = locator.to_url()
             entity = self.collection.updateVistrail(url)
             # add to relevant workspace categories
@@ -230,11 +230,11 @@ class QCollectionWidget(QtGui.QTreeWidget):
             self.collection.commit()
         
     def add_dir(self):
-        s = QtGui.QFileDialog.getExistingDirectory(
+        s = str(QtGui.QFileDialog.getExistingDirectory(
                     self, "Choose a directory",
-                    "", QtGui.QFileDialog.ShowDirsOnly);
-        if str(s):
-            self.update_from_directory(str(s))
+                    "", QtGui.QFileDialog.ShowDirsOnly))
+        if s:
+            self.update_from_directory(s)
         
     def update_from_directory(self, s):
         filenames = glob.glob(os.path.join(s, '*.vt,*.xml'))
