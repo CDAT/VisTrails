@@ -998,30 +998,33 @@ class CDMS3DPlotWidget(QtGui.QWidget):
         (row, col) = controller.current_cell_coords
         cell = controller.sheet_map[sheetName][(row, col)]
 
-        self.main_layout = QtGui.QVBoxLayout()
-        self.main_layout.setMargin(0)
-        self.main_layout.setSpacing(2)
-        self.setLayout(self.main_layout)
+        main_layout = QtGui.QVBoxLayout()
+        main_layout.setMargin(0)
+        main_layout.setSpacing(2)
+        self.setLayout(main_layout)
+        self.cfgPanel = None
+        self.cfg_widget = None
         self.build()
 
-    def build(self):
+    def build(self, istate = None ):
         self.param_panels = []
-        istate = None
         bbarWidget = None
-        self.cfgPanel = None
         bbarWidgets = [ self.buttonBarHandler.getButtonBar( btype ) for btype in ( 'Interaction', 'Plot' ) ]
         for bbw in bbarWidgets:
             bbw.StateChangedSignal.connect( self.processStateChange )
             if istate == None:
                 istate = bbw.InteractionState
-                bbarWidget = bbw
+                if istate <> None: bbarWidget = bbw
+            else:
+                cf = bbw.getConfigFunction( istate )
+                if cf <> None: bbarWidget = bbw
+            if ( bbarWidget <> None ): break
         if bbarWidget.name == 'Interaction':
             cf = bbarWidget.getConfigFunction( istate )
             if cf.type == 'slider':
                 self.createConfigPanel( cf.label, cf.sliderLabels, cf.value.getValues() )
-                self.connect( self.cfgPanel, QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
+                self.connect( self.cfg_widget, QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
         else:
-            cfs = bbarWidget.getConfigFunctions()
             cfkeys = [ 'XSlider', 'YSlider', 'ZSlider' ]
             sliderLabels = [ 'X Slice', 'Y Slice', 'Z Slice' ]
             sliderValues = []
@@ -1031,21 +1034,39 @@ class CDMS3DPlotWidget(QtGui.QWidget):
                 if state == 0: sliderValues.append( None )
                 else: sliderValues.append( cf.value.getValue(0) )
             self.createConfigPanel( "Slice Positions", sliderLabels, sliderValues )
-            self.connect( self.cfgPanel, QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
+            self.connect( self.cfg_widget, QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
 
     def askToSaveChanges(self):
         pass
 
     def processStateChange( self, button_id, key, state ):
         print " Process State Change: ", str( ( button_id, key, state ) )
-        if (state > 0):
-            w = self.window()
-            w.close()
+        if self.isVisible():
+            if state > 0:
+                self.build( button_id )
+            else:
+                self.build()
+
+    def clear(self):
+        if self.cfgPanel:
+            self.cfgPanel.setVisible(False)
+            self.cfgPanel.close()
+            self.layout().removeWidget(self.cfgPanel)
+            self.cfgPanel.deleteLater()
+        self.cfgPanel = None
+        self.cfg_widget = None
 
     def createConfigPanel( self, title, param_names, param_values ):
-        self.cfgPanel = CDMS3DParamCfgPanel( title, param_names, param_values )
-        self.main_layout.addWidget( self.cfgPanel )
-        self.main_layout.addStretch(1)
+        self.clear()
+        self.cfgPanel = QtGui.QWidget()
+        cfg_layout = QtGui.QVBoxLayout()
+        cfg_layout.setMargin(0)
+        cfg_layout.setSpacing(2)
+        self.cfg_widget = CDMS3DParamCfgPanel( title, param_names, param_values )
+        cfg_layout.addWidget( self.cfg_widget )
+        cfg_layout.addSpacing( 1 )
+        self.cfgPanel.setLayout( cfg_layout )
+        self.layout().addWidget( self.cfgPanel )
 
 class CDMSPlotWidget(QtGui.QWidget):
 
