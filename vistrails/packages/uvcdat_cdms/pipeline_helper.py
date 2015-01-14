@@ -928,15 +928,18 @@ class CDMS3DParamCfgPanel(QtGui.QGroupBox):
             param_name = param_names[ param_index ]
             param_value = param_values[ param_index ]
             self.init_values.append( param_value )
-            parameter_lbl = QtGui.QLabel( param_name )
-            parameter_edt = QtGui.QLineEdit()
-            parameter_edt.setText( str( param_value ) )
-            parameter_layout = QtGui.QHBoxLayout()
-            parameter_layout.addWidget(parameter_lbl)
-            parameter_layout.addWidget(parameter_edt)
-            parameter_edt.returnPressed.connect( self.apply_parameters )
-            panel_layout.addLayout(parameter_layout)
-            self.param_editors[ param_name ] = parameter_edt
+            if param_value == None:
+                self.param_editors[ param_name ] = None
+            else:
+                parameter_lbl = QtGui.QLabel( param_name )
+                parameter_edt = QtGui.QLineEdit()
+                parameter_edt.setText( str( param_value ) )
+                parameter_layout = QtGui.QHBoxLayout()
+                parameter_layout.addWidget(parameter_lbl)
+                parameter_layout.addWidget(parameter_edt)
+                parameter_edt.returnPressed.connect( self.apply_parameters )
+                panel_layout.addLayout(parameter_layout)
+                self.param_editors[ param_name ] = parameter_edt
 
         b_layout = QtGui.QHBoxLayout()
         b_layout.setMargin(5)
@@ -962,7 +965,7 @@ class CDMS3DParamCfgPanel(QtGui.QGroupBox):
         values = []
         try:
             for iparm, p_editor in enumerate( self.param_editors.values() ):
-                values.append( float( p_editor.text() ))
+                values.append( float( p_editor.text() ) if ( p_editor <> None ) else None )
         except ValueError, err:
             errDIALOG = QtGui.QMessageBox()
             errDIALOG.setText( str(err) )
@@ -999,45 +1002,50 @@ class CDMS3DPlotWidget(QtGui.QWidget):
         self.main_layout.setMargin(0)
         self.main_layout.setSpacing(2)
         self.setLayout(self.main_layout)
-        self.param_panels = []
-        self.cfgPanel = None
-        self.refresh()
+        self.build()
 
-    def refresh(self):
-        bbarWidget = self.buttonBarHandler.getButtonBar( 'Interaction' )
-        istate = bbarWidget.InteractionState
-        if istate == None:
-            bbarWidget = self.buttonBarHandler.getButtonBar( 'Plot')
-            istate = bbarWidget.InteractionState
-        cf = bbarWidget.getConfigFunction( istate )
-        if cf.type == 'slider':
-            self.updateConfigPanel( cf.label, cf.sliderLabels, cf.value.getValues() )
-            self.connect( self.cfgPanel.widget(), QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
-            bbarWidget.StateChangedSignal.connect( self.processStateChange )
+    def build(self):
+        self.param_panels = []
+        istate = None
+        bbarWidget = None
+        self.cfgPanel = None
+        bbarWidgets = [ self.buttonBarHandler.getButtonBar( btype ) for btype in ( 'Interaction', 'Plot' ) ]
+        for bbw in bbarWidgets:
+            bbw.StateChangedSignal.connect( self.processStateChange )
+            if istate == None:
+                istate = bbw.InteractionState
+                bbarWidget = bbw
+        if bbarWidget.name == 'Interaction':
+            cf = bbarWidget.getConfigFunction( istate )
+            if cf.type == 'slider':
+                self.createConfigPanel( cf.label, cf.sliderLabels, cf.value.getValues() )
+                self.connect( self.cfgPanel, QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
+        else:
+            cfs = bbarWidget.getConfigFunctions()
+            cfkeys = [ 'XSlider', 'YSlider', 'ZSlider' ]
+            sliderLabels = [ 'X Slice', 'Y Slice', 'Z Slice' ]
+            sliderValues = []
+            for cfkey in cfkeys:
+                cf = bbarWidget.getConfigFunction( cfkey )
+                state = cf.getState()
+                if state == 0: sliderValues.append( None )
+                else: sliderValues.append( cf.value.getValue(0) )
+            self.createConfigPanel( "Slice Positions", sliderLabels, sliderValues )
+            self.connect( self.cfgPanel, QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
 
     def askToSaveChanges(self):
         pass
 
     def processStateChange( self, button_id, key, state ):
         print " Process State Change: ", str( ( button_id, key, state ) )
-        if (state > 0): self.refresh()
+        if (state > 0):
+            w = self.window()
+            w.close()
 
-    def updateConfigPanel( self, title, param_names, param_values ):
-        initialize = self.clearConfigPanel()
-        cfg_widget = CDMS3DParamCfgPanel( title, param_names, param_values )
-        self.cfgPanel = QtGui.QWidgetItem( cfg_widget )
-        print " updateConfigPanel: ", title
-        self.main_layout.addItem( self.cfgPanel )
-#        if initialize: self.main_layout.insertStretch(1)
-
-    def clearConfigPanel(self):
-        if self.cfgPanel <> None:
-            self.main_layout.removeItem( self.cfgPanel )
-            del self.cfgPanel
-            self.cfgPanel = None
-            return False
-        return True
-
+    def createConfigPanel( self, title, param_names, param_values ):
+        self.cfgPanel = CDMS3DParamCfgPanel( title, param_names, param_values )
+        self.main_layout.addWidget( self.cfgPanel )
+        self.main_layout.addStretch(1)
 
 class CDMSPlotWidget(QtGui.QWidget):
 
