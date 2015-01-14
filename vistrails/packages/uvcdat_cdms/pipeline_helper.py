@@ -26,7 +26,7 @@ from gui.uvcdat.dockplot import PlotTreeWidgetItem
 from gui.uvcdat.uvcdatCommons import plotTypes, gmInfos
 from gui.uvcdat.definedVariableWidget import QDefinedVariableWidget
 from gui.application import get_vistrails_application
-import api, sys, traceback
+import api, sys, traceback, collections
 
 class CDMSPipelineHelper(PlotPipelineHelper):
     
@@ -916,11 +916,70 @@ class CDMSPipelineHelper(PlotPipelineHelper):
             result = None
         return result
 
+class CDMS3DParamCfgPanel(QtGui.QGroupBox):
+
+    def __init__( self, title, param_names, param_values, parent=None  ):
+        QtGui.QGroupBox.__init__( self, title, parent )
+        panel_layout = QtGui.QVBoxLayout()
+        self.param_editors = collections.OrderedDict()
+        self.init_values = []
+
+        for param_index in range( len( param_names ) ):
+            param_name = param_names[ param_index ]
+            param_value = param_values[ param_index ]
+            self.init_values.append( param_value )
+            parameter_lbl = QtGui.QLabel( param_name )
+            parameter_edt = QtGui.QLineEdit()
+            parameter_edt.setText( str( param_value ) )
+            parameter_layout = QtGui.QHBoxLayout()
+            parameter_layout.addWidget(parameter_lbl)
+            parameter_layout.addWidget(parameter_edt)
+            parameter_edt.returnPressed.connect( self.apply_parameters )
+            panel_layout.addLayout(parameter_layout)
+            self.param_editors[ param_name ] = parameter_edt
+
+        b_layout = QtGui.QHBoxLayout()
+        b_layout.setMargin(5)
+        b_layout.addStretch()
+        self.btn_save = QDockPushButton('&Apply', self)
+        self.btn_save.setFixedWidth(100)
+        self.btn_save.setEnabled(True)
+        b_layout.addWidget(self.btn_save)
+        self.btn_reset = QDockPushButton('&Reset', self)
+        self.btn_reset.setFixedWidth(100)
+        self.btn_reset.setEnabled(True)
+        b_layout.addWidget(self.btn_reset)
+        b_layout.addStretch()
+        panel_layout.addLayout(b_layout)
+
+        self.btn_save.clicked.connect(self.apply_parameters)
+        self.btn_reset.clicked.connect(self.reset_parameters)
+#        current_layout = self.layout()
+#        if current_layout: del current_layout
+        self.setLayout(panel_layout)
+
+    def apply_parameters(self):
+        values = []
+        try:
+            for iparm, p_editor in enumerate( self.param_editors.values() ):
+                values.append( float( p_editor.text() ))
+        except ValueError, err:
+            errDIALOG = QtGui.QMessageBox()
+            errDIALOG.setText( str(err) )
+            errDIALOG.exec_()
+            return
+        self.emit( QtCore.SIGNAL("apply"), values )
+
+    def reset_parameters(self):
+        for iparm, p_editor in enumerate( self.param_editors.values() ):
+            p_editor.setText( str(self.init_values[iparm]) )
+        self.apply_parameters()
+
 class CDMS3DPlotWidget(QtGui.QWidget):
 
     PlotNames = [ 'CDMS3D_Scalar', 'CDMS3D_Vector' ]
 
-    def __init__(self,controller, version, plot_list, var_list, plot_apps, parent=None):
+    def __init__( self, controller, version, plot_list, var_list, plot_apps, parent=None ):
         QtGui.QWidget.__init__(self,parent)
         self.proj_controller = controller
         self.controller = controller.vt_controller
@@ -940,36 +999,48 @@ class CDMS3DPlotWidget(QtGui.QWidget):
         self.main_layout.setMargin(0)
         self.main_layout.setSpacing(2)
         self.setLayout(self.main_layout)
+        self.param_panels = []
+        self.cfgPanel = None
+        self.refresh()
 
-        bbarWidget = self.buttonBarHandler.getButtonBar( 'Interaction')
+    def refresh(self):
+        bbarWidget = self.buttonBarHandler.getButtonBar( 'Interaction' )
         istate = bbarWidget.InteractionState
+        if istate == None:
+            bbarWidget = self.buttonBarHandler.getButtonBar( 'Plot')
+            istate = bbarWidget.InteractionState
         cf = bbarWidget.getConfigFunction( istate )
         if cf.type == 'slider':
-            self.addConfigPanel( cf.label, cf.sliderLabels, cf.value.getValues() )
+            self.updateConfigPanel( cf.label, cf.sliderLabels, cf.value.getValues() )
+            self.connect( self.cfgPanel.widget(), QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
+            bbarWidget.StateChangedSignal.connect( self.processStateChange )
 
     def askToSaveChanges(self):
         pass
 
-    def addConfigPanel(self, title, param_names, param_values ):
-        print "Adding ConfigPanel %s: %s -> %s" % ( title, str(param_names), str(param_values) )
-        panel_layout = QtGui.QVBoxLayout()
-        title_lbl = QtGui.QLabel( title )
-        panel_layout.addWidget( title_lbl )
+    def processStateChange( self, button_id, key, state ):
+        print " Process State Change: ", str( ( button_id, key, state ) )
+        if (state > 0): self.refresh()
 
-        for param_index in range( len( param_names ) ):
-            param_name = param_names[ param_index ]
-            param_value = param_values[ param_index ]
-            parameter_lbl = QtGui.QLabel( param_name )
-            parameter_edt = QtGui.QLineEdit()
-            parameter_edt.setText( str( param_value ) )
-            parameter_layout = QtGui.QHBoxLayout()
-            parameter_layout.addWidget(parameter_lbl)
-            parameter_layout.addWidget(parameter_edt)
-            panel_layout.addLayout(parameter_layout)
+    def updateConfigPanel( self, title, param_names, param_values ):
+        initialize = self.clearConfigPanel()
+        cfg_widget = CDMS3DParamCfgPanel( title, param_names, param_values )
+        self.cfgPanel = QtGui.QWidgetItem( cfg_widget )
+        print " updateConfigPanel: ", title
+        self.main_layout.addItem( self.cfgPanel )
+#        if initialize: self.main_layout.insertStretch(1)
 
-        self.main_layout.addLayout(panel_layout)
+    def clearConfigPanel(self):
+        if self.cfgPanel <> None:
+            self.main_layout.removeItem( self.cfgPanel )
+            del self.cfgPanel
+            self.cfgPanel = None
+            return False
+        return True
+
 
 class CDMSPlotWidget(QtGui.QWidget):
+
     def __init__(self,controller, version, plot_list, var_list, parent=None):
         QtGui.QWidget.__init__(self,parent)
         self.proj_controller = controller
