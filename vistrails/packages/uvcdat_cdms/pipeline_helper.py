@@ -957,8 +957,6 @@ class CDMS3DParamCfgPanel(QtGui.QGroupBox):
 
         self.btn_save.clicked.connect(self.apply_parameters)
         self.btn_reset.clicked.connect(self.reset_parameters)
-#        current_layout = self.layout()
-#        if current_layout: del current_layout
         self.setLayout(panel_layout)
 
     def apply_parameters(self):
@@ -1040,7 +1038,6 @@ class CDMS3DPlotWidget(QtGui.QWidget):
         pass
 
     def processStateChange( self, button_id, key, state ):
-        print " Process State Change: ", str( ( button_id, key, state ) )
         if self.isVisible():
             if state > 0:
                 self.build( button_id )
@@ -1064,7 +1061,7 @@ class CDMS3DPlotWidget(QtGui.QWidget):
         cfg_layout.setSpacing(2)
         self.cfg_widget = CDMS3DParamCfgPanel( title, param_names, param_values )
         cfg_layout.addWidget( self.cfg_widget )
-        cfg_layout.addSpacing( 1 )
+        cfg_layout.addStretch( 1 )
         self.cfgPanel.setLayout( cfg_layout )
         self.layout().addWidget( self.cfgPanel )
 
