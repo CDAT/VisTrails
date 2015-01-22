@@ -1028,9 +1028,12 @@ class CDMS3DPlotWidget(QtGui.QWidget):
             sliderValues = []
             for cfkey in cfkeys:
                 cf = bbarWidget.getConfigFunction( cfkey )
-                state = cf.getState()
-                if state == 0: sliderValues.append( None )
-                else: sliderValues.append( cf.value.getValue(0) )
+                if cf is None:
+                    sliderValues.append( None )
+                else:
+                    state = cf.getState()
+                    if state == 0: sliderValues.append( None )
+                    else: sliderValues.append( cf.value.getValue(0) )
             self.createConfigPanel( "Slice Positions", sliderLabels, sliderValues )
             self.connect( self.cfg_widget, QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
 
