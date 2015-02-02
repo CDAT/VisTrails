@@ -973,7 +973,8 @@ class CDMS3DParamCfgPanel(QtGui.QGroupBox):
 
     def reset_parameters(self):
         for iparm, p_editor in enumerate( self.param_editors.values() ):
-            p_editor.setText( str(self.init_values[iparm]) )
+            if p_editor is not None:
+                p_editor.setText( str(self.init_values[iparm]) )
         self.apply_parameters()
 
 class CDMS3DPlotWidget(QtGui.QWidget):
