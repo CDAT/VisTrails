@@ -868,7 +868,8 @@ class QVTKWidget(QCellWidget):
         sheet = self.findSheetTabWidget()
         if sheet:
             ren = self.interacting
-            if not ren: ren = self.getActiveRenderer(self.iren)
+            if not ren and self.iren and self.iren.GetEnabled():
+                ren = self.getActiveRenderer(self.iren)
             if ren:
                 cells = sheet.getSelectedLocations()
                 if (ren in self.getRenderersInCellList(sheet, cells)):
