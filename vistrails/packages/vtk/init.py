@@ -160,9 +160,9 @@ def get_method_signature(method, docum='', name=''):
     doc = docum or method.__doc__
     if not doc:
         return []
-    tmptmp = doc.split('\n')
+    doc = doc.split('\n')
     tmp = []
-    for l in tmptmp:
+    for l in doc:
         l = l.strip('\n \t')
         if l.startswith('V.') or l.startswith('C++:'):
             tmp.append(l)
@@ -198,13 +198,13 @@ def get_method_signature(method, docum='', name=''):
             if ret and ret[:3]!='vtk':
                 try:
                     ret = eval(pat.sub('\"', ret))
-                except:
+                except Exception:
                     continue
             if arg:
                 if arg.find('(')!=-1:
                     try:
                         arg = eval(pat.sub('\"', arg))
-                    except:
+                    except Exception:
                         continue
                 else:
                     arg = arg.split(', ')
@@ -212,11 +212,11 @@ def get_method_signature(method, docum='', name=''):
                         arg = tuple(arg)
                     else:
                         arg = arg[0]
-                if type(arg) == str:
+                if isinstance(arg, str):
                     arg = [arg]
 
             sig.append(([ret], arg))
-    return sig    
+    return sig
 
 def prune_signatures(module, name, signatures, output=False):
     """prune_signatures tries to remove redundant signatures to reduce
