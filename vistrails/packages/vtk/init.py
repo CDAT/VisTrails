@@ -157,7 +157,9 @@ def get_method_signature(method, docum='', name=''):
     Re-wrap Prabu's method to increase performance
 
     """
-    doc = method.__doc__ if docum=='' else docum
+    doc = docum or method.__doc__
+    if not doc:
+        return []
     tmptmp = doc.split('\n')
     tmp = []
     for l in tmptmp:

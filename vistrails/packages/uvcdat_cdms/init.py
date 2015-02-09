@@ -1556,7 +1556,7 @@ class QCDATWidgetToolBar(QCellToolBar):
             pass
         
         if use_vcs_toolbar:
-            if cell.inputPorts[0][0].var.var.rank()>2:
+            if cell.inputPorts[0][0].var.var.rank()>2:  # no inputPorts here
                 self.prevAction=QCDATWidgetPrev(self)
                 self.prevAction.setEnabled(False)
                 self.appendAction(self.prevAction)
