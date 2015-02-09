@@ -356,9 +356,8 @@ class QCellToolBar(QtGui.QToolBar):
             filename = QtGui.QFileDialog.getSaveFileName(
                 self, "Save cell as...",
                 ".", ';;'.join(cell.save_formats))
-            if filename:
-                filename = str(filename)
-                cell.dumpToFile(filename)
+            if not filename.isEmpty():
+                cell.dumpToFile(str(filename))
 
     def createToolBar(self):
         """ createToolBar() -> None

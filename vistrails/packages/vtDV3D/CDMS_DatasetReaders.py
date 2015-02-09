@@ -1320,7 +1320,7 @@ class CDMSDatasetConfigurationWidget(DV3DConfigurationWidget):
     def selectFile(self):
         dataset = None
         file = QFileDialog.getOpenFileName( self, "Find Dataset", os.path.expanduser('~'), "CDMS Files (*.xml *.cdms *.nc *.nc4)") 
-        if file <> None:
+        if not file.isNull():
             cdmsFile = str( file ).strip() 
             if len( cdmsFile ) > 0:                             
                 try:
