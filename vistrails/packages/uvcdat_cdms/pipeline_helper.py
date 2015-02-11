@@ -926,7 +926,7 @@ class CDMS3DParamCfgPanel(QtGui.QGroupBox):
 
         for param_index in range( len( param_names ) ):
             param_name = param_names[ param_index ]
-            param_value = param_values[ param_index ]
+            param_value = param_values[ param_index ] if ( len( param_values ) > param_index ) else ""
             self.init_values.append( param_value )
             if param_value == None:
                 self.param_editors[ param_name ] = None
