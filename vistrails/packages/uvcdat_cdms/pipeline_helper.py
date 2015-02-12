@@ -1018,25 +1018,27 @@ class CDMS3DPlotWidget(QtGui.QWidget):
                 cf = bbw.getConfigFunction( istate )
                 if cf <> None: bbarWidget = bbw
             if ( bbarWidget <> None ): break
-        if bbarWidget.name == 'Interaction':
-            cf = bbarWidget.getConfigFunction( istate )
-            if cf.type == 'slider':
-                self.createConfigPanel( cf.label, cf.sliderLabels, cf.value.getValues() )
+
+        if bbarWidget is not None:
+            if bbarWidget.name == 'Interaction':
+                cf = bbarWidget.getConfigFunction( istate )
+                if cf.type == 'slider':
+                    self.createConfigPanel( cf.label, cf.sliderLabels, cf.value.getValues() )
+                    self.connect( self.cfg_widget, QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
+            else:
+                cfkeys = [ 'XSlider', 'YSlider', 'ZSlider' ]
+                sliderLabels = [ 'X Slice', 'Y Slice', 'Z Slice' ]
+                sliderValues = []
+                for cfkey in cfkeys:
+                    cf = bbarWidget.getConfigFunction( cfkey )
+                    if cf is None:
+                        sliderValues.append( None )
+                    else:
+                        state = cf.getState()
+                        if state == 0: sliderValues.append( None )
+                        else: sliderValues.append( cf.value.getValue(0) )
+                self.createConfigPanel( "Slice Positions", sliderLabels, sliderValues )
                 self.connect( self.cfg_widget, QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
-        else:
-            cfkeys = [ 'XSlider', 'YSlider', 'ZSlider' ]
-            sliderLabels = [ 'X Slice', 'Y Slice', 'Z Slice' ]
-            sliderValues = []
-            for cfkey in cfkeys:
-                cf = bbarWidget.getConfigFunction( cfkey )
-                if cf is None:
-                    sliderValues.append( None )
-                else:
-                    state = cf.getState()
-                    if state == 0: sliderValues.append( None )
-                    else: sliderValues.append( cf.value.getValue(0) )
-            self.createConfigPanel( "Slice Positions", sliderLabels, sliderValues )
-            self.connect( self.cfg_widget, QtCore.SIGNAL("apply"), bbarWidget.updateSliderWidgets )
 
     def askToSaveChanges(self):
         pass
