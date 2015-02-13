@@ -20,7 +20,7 @@ from collections import OrderedDict
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
 from sets import *
-from Cython.Compiler.Symtab import classmethod_utility_code
+# from Cython.Compiler.Symtab import classmethod_utility_code
 
 
 class CDMSDataType:
