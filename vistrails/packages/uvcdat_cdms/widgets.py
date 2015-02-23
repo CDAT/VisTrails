@@ -10,7 +10,7 @@ from PyQt4.QtCore import Qt
 from core.utils import InstanceObject
 import core.db.action
 from gui.uvcdat.graphicsMethodsWidgets import QBoxfillEditor, QIsofillEditor,\
-   QIsolineEditor, QMeshfillEditor, QOutfillEditor, QOutlineEditor, \
+   QIsolineEditor, QMeshfillEditor, \
    QScatterEditor, QTaylorDiagramEditor, QVectorEditor, Q1DPlotEditor, Q3D_ScalarEditor, Q3D_VectorEditor
 from gui.common_widgets import QDockPushButton
 from gui.utils import show_question, SAVE_BUTTON, DISCARD_BUTTON
@@ -76,10 +76,6 @@ class GraphicsMethodConfigurationWidget(QtGui.QWidget):
             return QIsolineEditor(self.tabWidget, gmName)
         elif plot_type == "Meshfill":
             return QMeshfillEditor(self.tabWidget, gmName)
-        elif plot_type == "Outfill":
-            return QOutfillEditor(self.tabWidget, gmName)
-        elif plot_type == "Outline":
-            return QOutlineEditor(self.tabWidget, gmName)
         elif plot_type == "Scatter":
             return QScatterEditor(self.tabWidget, gmName)
         elif plot_type == "Taylordiagram":
