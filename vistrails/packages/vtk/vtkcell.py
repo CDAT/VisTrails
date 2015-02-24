@@ -343,10 +343,10 @@ class QVTKWidget(QCellWidget):
                 try:
                     vp = '_%s_void_p' % (hex(int(QtGui.QX11Info.display()))[2:])
                 except TypeError:
-                    #This was change for PyQt4.2
-                    if isinstance(QtGui.QX11Info.display(),QtGui.Display):
-                        display = sip.unwrapinstance(QtGui.QX11Info.display())
-                        vp = '_%s_void_p' % (hex(display)[2:])
+                    # This was changed for PyQt4.2
+                    assert isinstance(QtGui.QX11Info.display(), QtGui.Display)
+                    display = sip.unwrapinstance(QtGui.QX11Info.display())
+                    vp = '_%s_void_p' % (hex(display)[2:])
                 v = vtk.vtkVersion()
                 version = [v.GetVTKMajorVersion(),
                            v.GetVTKMinorVersion(),
