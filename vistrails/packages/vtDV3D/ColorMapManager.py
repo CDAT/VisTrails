@@ -151,7 +151,7 @@ class ColorMapManager():
                 f = open(file_name, 'r')
             except IOError:
                 msg = "Cannot open Lookup Table file: %s\n"%file_name
-                error(msg)
+                error(msg)  # RR0224: 'error'?
             else:
                 f.close()
                 try:

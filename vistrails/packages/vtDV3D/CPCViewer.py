@@ -5,7 +5,7 @@ Created on Oct 29, 2013
 '''
 
 from packages.vtDV3D.PersistentModule import *
-from packages.CPCViewer.PointCloudViewer import CPCPlot
+from packages.CPCViewer.PointCloudViewer import CPCPlot  # RR0224: 'CPCViewer'?
 from packages.CPCViewer.ConfigurationControl import ConfigurationWidget
 from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
 from PyQt4 import QtCore
@@ -143,7 +143,7 @@ class CPCViewerConfigurationWidget(StandardModuleConfigurationWidget):
         self.moduleId = module.id
 #        self.pmod = module.module_descriptor.module.forceGetPersistentModule( module.id ) # self.module_descriptor.module.forceGetPersistentModule( module.id )
         self.getParameters( module )        
-        self.cfg_widget = CPCConfigConfigurationWidget()    
+        self.cfg_widget = ConfigurationWidget()  # RR0224: I'm only guessing here
         self.setLayout( QVBoxLayout() )
 #        self.layout().setMargin(0)
 #        self.layout().setSpacing(0)

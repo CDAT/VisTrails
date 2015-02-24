@@ -546,7 +546,7 @@ class RemoteDataBrowser(QtGui.QFrame):
     
     @staticmethod          
     def notify( msg ):
-            QtGui.QMessageBox.information( self, "RemoteDataBrowser", msg )
+            QtGui.QMessageBox.information( self, "RemoteDataBrowser", msg )  # RR0224: 'self' in staticmethod?
         
     def removeSelectedServer(self): 
         currentItem = self.treeWidget.currentItem()

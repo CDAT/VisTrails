@@ -102,7 +102,7 @@ class PM_VectorVolume(PersistentVisualizationModule):
             self.color_resample = vtk.vtkExtractVOI()
             self.color_resample.SetInputConnection( self.colorInputModule.getOutputPort() ) 
             self.color_resample.SetVOI( self.initialExtent )
-            self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )
+            self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )  # RR0224: 'sampleRate'?
 #            self.probeFilter = vtk.vtkProbeFilter()
 #            self.probeFilter.SetSourceConnection( self.resample.GetOutputPort() )           
 #            colorInput = self.colorInputModule.getOutput()

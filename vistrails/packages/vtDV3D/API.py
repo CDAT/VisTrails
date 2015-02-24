@@ -115,9 +115,9 @@ class UVCDAT_API():
         resource_path = kwargs.get( 'dir', None )
         version = kwargs.get( 'version', None )
         if not resource_path:
-            resource_path = self.app.resource_path if hasattr( app, "resource_path" ) else None
+            resource_path = self.app.resource_path if hasattr( app, "resource_path" ) else None  # RR0224: 'app'?
         for vistrail_name in args:
-            workflow_dir =  resource_path if resource_path else os.path.join( packagePath, "workflows")
+            workflow_dir =  resource_path if resource_path else os.path.join( packagePath, "workflows")  # RR0224: 'packagePath'?
             vistrail_filename = os.path.join( workflow_dir, vistrail_name + '.vt' )
             self.loadVistrailFile( vistrail_filename, version )
             

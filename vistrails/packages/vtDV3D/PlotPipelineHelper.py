@@ -1696,7 +1696,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             for cell in selected_cells:
                 if not (  (cell[0] == activeCell[0]) and (cell[1] == activeCell[1]) ): active_cells.append( cell )
         else:
-            active_cells = [ cell for cell in selected_cells ]
+            active_cells = [ cell for cell in selected_cells ]  # RR0224: 'selected_cells'?
         return active_cells
 
 

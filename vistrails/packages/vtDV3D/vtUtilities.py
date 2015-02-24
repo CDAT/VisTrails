@@ -816,7 +816,7 @@ class vtkImageImportFromArray:
             numComponents = numComponents * 2
 
         if (self.__ConvertIntToUnsignedShort and imArray.typecode() == 'i'):
-            imString = imArray.astype(Numeric.Int16).tostring()
+            imString = imArray.astype(Numeric.Int16).tostring()  # RR0224: 'Numeric'?
             type = VTK_UNSIGNED_SHORT
         else:
             imString = imArray.tostring()

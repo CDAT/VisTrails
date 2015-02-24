@@ -279,7 +279,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         if noOutput:
             from packages.pylab.init import MplFigureManager
             self.mfm = MplFigureManager()
-            self.mfm.figManager = pylab.get_current_fig_manager()
+            self.mfm.figManager = pylab.get_current_fig_manager()  # RR0224: 'pylab'?
             self.mfm.figManager.canvas.mpl_connect( 'key_press_event', self.onKeyPress )
             self.mfm.figManager.canvas.mpl_connect( 'motion_notify_event', self.onMotion )
             self.mfm.figManager.canvas.mpl_connect( 'button_press_event', self.onButtonPress )
@@ -290,7 +290,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         self.wmod.setResult('File', InvalidOutput)
         if 'File' in self.wmod.outputPorts:
             f = self.wmod.interpreter.filePool.create_file(suffix='.png')
-            pylab.savefig(f.name)
+            pylab.savefig(f.name)  # RR0224: 'pylab'?
             self.wmod.setResult('File', f)
             noOutput = False
         if noOutput:

@@ -3,8 +3,10 @@ Created on May 28, 2013
 
 @author: tpmaxwel
 '''
+
 import sys, os, cdms2
-from packages.vtDV3D.RemoteDataBrowser import ServerClass
+from packages.vtDV3D.RemoteDataBrowser import ServerClass  # RR0224: 'ServerClass'?
+
 
 class RemoteDataset():
     
@@ -67,7 +69,7 @@ class iRODS_RemoteVariable( RemoteVariable ):
     
     def __call__( self, **args ):
         import irods
-        from packages.vtDV3D.RemoteDataBrowser import iRodsCatalogNode
+        from packages.vtDV3D.RemoteDataBrowser import iRodsCatalogNode  # RR0224: 'iRodsCatalogNode'?
         print "Processing Remote Data on server and retreiving:\n ----> args = ", str(args)
         
         execMyRuleInp = irods.execMyRuleInp_t()

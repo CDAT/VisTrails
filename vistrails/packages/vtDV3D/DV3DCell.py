@@ -763,7 +763,7 @@ class ChartCell( WorkflowModule ):
         WorkflowModule.__init__(self, **args) 
         
     def syncCamera( self, cpos, cfol, cup ):
-        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  
+        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  # RR0224: '_pmod'?
 
 class PM_CloudCell3D( PM_DV3DCell ):
 
@@ -1337,7 +1337,7 @@ class MapCell3D( WorkflowModule ):
         WorkflowModule.__init__(self, **args) 
         
     def syncCamera( self, cpos, cfol, cup ):
-        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  
+        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  # RR0224: '_pmod'?
               
 class CloudCell3D( WorkflowModule ):
     
@@ -1347,7 +1347,7 @@ class CloudCell3D( WorkflowModule ):
         WorkflowModule.__init__(self, **args) 
         
     def syncCamera( self, cpos, cfol, cup ):
-        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  
+        if self._pmod: self._pmod.syncCamera( cpos, cfol, cup )  # RR0224: '_pmod'?
               
 
 class QCellToolBarExportTimeSeries(QtGui.QAction):

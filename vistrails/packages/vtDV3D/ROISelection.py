@@ -486,7 +486,7 @@ class ArrayEditor(QDialog):
     def __init__(self, data, ROICorner0, ROICorner1, parent=None):
         super(ArrayEditor, self).__init__(parent)
         
-        config = ConfigParser.SafeConfigParser( nvSettings.data )
+        config = ConfigParser.SafeConfigParser( nvSettings.data )  # RR0224: 'nvSettings'?
         self.Dirty = False
  
         print "Editing array: data[ " + str(data.shape[0]) + " ][ " + str(data.shape[1]) + " ]  " 
@@ -649,7 +649,7 @@ class BoundaryMap:
     def __init__(self, view, parentGraphItem =None):
         self.view = view
         self.parentGraphItem = parentGraphItem
-        config = ConfigParser.SafeConfigParser( nvSettings.data )
+        config = ConfigParser.SafeConfigParser( nvSettings.data )  # RR0224: 'nvSettings'?
         self.boundaryMapFile = str( nvSettings.data['RootDir'] + '/' + nvSettings.data['WorldBoundaryMap'] )
         self.boundaryMapLayer = str( nvSettings.data['WorldBoundaryMapLayer'] )
         self.checkStride = nvSettings.data['checkStride']
@@ -660,7 +660,7 @@ class BoundaryMap:
         if not os.path.exists(self.boundaryMapFile):
             print >>sys.stderr, "ERROR: Boundary Map NetCDF file doesn't exist -- %s" % self.boundaryMapFile
             return       
-        nc = NetCDFFile( self.boundaryMapFile )   
+        nc = NetCDFFile( self.boundaryMapFile )  # RR0224: 'NetCDFFile'?
         segvar = nc.variables[ '%s_seg' % self.boundaryMapLayer ]
         lonvar = nc.variables[ '%s_lon' % self.boundaryMapLayer ]
         latvar = nc.variables[ '%s_lat' % self.boundaryMapLayer ]                        

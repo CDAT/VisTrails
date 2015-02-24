@@ -333,7 +333,7 @@ class CDMSDatasetRecord():
         
         if ( (referenceVar==None) or ( ( referenceVar[0] == self.cdmsFile ) and ( referenceVar[1] == varName ) ) ) and ( decimationFactor == 1):
             if levBounds <> None:
-                args1['lev'] =  levbounds[0] if ( len( levbounds ) == 1 ) else levbounds
+                args1['lev'] =  levbounds[0] if ( len( levbounds ) == 1 ) else levbounds  # RR0224: 'levbounds'?
             else:
                 levbounds = self.getLevBounds( referenceLev )
                 if levbounds: args1['lev'] = levbounds
