@@ -3,31 +3,21 @@ Created on Jan 14, 2011
 
 @author: tpmaxwel
 '''
-import vtk, math
-#from PyQt4.QtCore import *
-#from PyQt4.QtGui import *
-import core.modules.module_registry
-from core.modules.module_registry import get_module_registry
-from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
-from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
-from core.modules.vistrails_module import Module, InvalidOutput, ModuleError
-from packages.vtDV3D.ColorMapManager import ColorMapManager 
-# from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
+
+from core.modules.vistrails_module import InvalidOutput
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.WorkflowModule import WorkflowModule
 from packages.vtDV3D.vtUtilities import *
 from packages.pylab.figure_cell import MplFigureCellWidget
 from packages.spreadsheet.basic_widgets import SpreadsheetCell 
-from matplotlib.pyplot import figure, show, axes, sci
-from matplotlib import cm, colors
+from matplotlib.pyplot import figure
 from matplotlib.font_manager import FontProperties
-from matplotlib.colors import LinearSegmentedColormap, ListedColormap, Normalize
-from numpy import amin, amax, ravel
+from matplotlib.colors import ListedColormap, Normalize
 from vtk.util.numpy_support import *
 from packages.vtDV3D import HyperwallManager
-import time
 PlotVersion = 0
-        
+
+
 class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
     """
         This module generates 2D matplotlib plots of slices from a volumetric data set. 
@@ -274,7 +264,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
         """ compute() -> None        
         Either passing the figure manager to a SpreadsheetCell or save
         the image to file
-        """      
+        """
         self.addObserver( self.input, "RenderEvent", self.SliceObserver )
         self.imageExport = vtkImageExportToArray()
         self.imageExport.SetInputData( self.input )
@@ -297,7 +287,7 @@ class PM_SlicePlotCell( SpreadsheetCell, PersistentVisualizationModule ):
             self.buildWidget()
             noOutput = False
 #            print "FigManager(%s) canvas(%s) methods: %s" % ( self.mfm.figManager.__class__.__name__ , self.mfm.figManager.canvas.__class__.__name__ ,dir( self.mfm.figManager.canvas ) )
-        wmod.setResult('File', InvalidOutput)
+        self.wmod.setResult('File', InvalidOutput)
         if 'File' in self.wmod.outputPorts:
             f = self.wmod.interpreter.filePool.create_file(suffix='.png')
             pylab.savefig(f.name)
@@ -331,6 +321,7 @@ class SlicePlotCell(WorkflowModule):
                 
 if __name__ == '__main__':
     from packages.spreadsheet.spreadsheet_config import configuration
+    from packages.vtDV3D import executeVistrail
     configuration.rowCount=1
     configuration.columnCount=2
     executeVistrail( 'VolumeSlicePlotDemo' )
@@ -463,6 +454,3 @@ class SlicePlotConfigurationWidget(DV3DConfigurationWidget):
 if __name__ == '__main__':
 
     executeVistrail( 'workflows/DemoWorkflow4' )
-
- 
-

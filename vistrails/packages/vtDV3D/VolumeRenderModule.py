@@ -3,21 +3,11 @@ Created on Dec 2, 2010
 
 @author: tpmaxwel
 '''
-import vtk, math, time
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-import core.modules.module_registry
-from core.modules.vistrails_module import Module, ModuleError
-from packages.vtk.base_module import vtkBaseModule
-from core.modules.module_registry import get_module_registry
-from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
-from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
-from packages.vtDV3D.ColorMapManager import ColorMapManager 
-from packages.vtDV3D.InteractiveConfiguration import VolumeRenderCfgDialog
-# from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
-from packages.vtDV3D.vtUtilities import *
+
+import math
 from packages.vtDV3D.SimplePlot import GraphWidget, NodeData 
 from packages.vtDV3D.PersistentModule import *
+
 
 LegacyAbsValueTransferFunction = 0
 LinearTransferFunction = 1 
@@ -761,5 +751,3 @@ if __name__ == '__main__':
     dialog.addTransferFunction( 'default' ) 
     dialog.show()
     sys.exit(app.exec_())
-   
- 

@@ -4,11 +4,8 @@ Created on May 11, 2011
 @author: tpmaxwel
 '''
 
-from PyQt4 import QtCore, QtGui
-from core.modules.vistrails_module import Module, ModuleError
-import sys, copy, os, cdms2, traceback
-import numpy as np
-import cdutil, genutil
+from PyQt4 import QtCore
+from core.modules.vistrails_module import ModuleError
 from packages.vtDV3D.vtUtilities import getItem
 
 def deserializeTaskData( taskData ):
@@ -144,4 +141,3 @@ class CDATTask(QtCore.QObject):
             inputBaseName = '-'.join( inputBaseNames )
             outputName = "%s*%s.%s.%s" % ( dsid, inputBaseName, self.name, outputLabel )
         return outputName
-

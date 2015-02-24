@@ -13,10 +13,9 @@ name = 'vtDV3D'
 version = '0.2.0'
 
 #Configuration object
-import sys
 vtk_pkg_identifier = 'edu.utah.sci.vistrails.vtk'
-from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color, Dictionary
 from core.bundles import py_import
+import core.requirements
 
 def package_dependencies():
     from core.packagemanager import get_package_manager
@@ -83,22 +82,21 @@ def initialize(*args, **keywords):
 #    from DemoDataModule import DemoData, DemoDataConfigurationWidget
 #    from packages.vtDV3D.InteractiveConfiguration import LayerConfigurationWidget
     from packages.vtDV3D.LevelSurfaceModule import LevelSurface 
-    from packages.vtDV3D.CurtainPlotModule import CurtainPlot 
+    from packages.vtDV3D.CurtainPlotModule import CurtainPlot
     from packages.uvcdat_cdms.init import CDMSVariable
     from packages.vtDV3D.ResampleModule import Resample 
     from packages.vtDV3D.CDATUtilitiesModule import CDMS_CDATUtilities, CDATUtilitiesModuleConfigurationWidget
     from packages.vtDV3D.GradientModule import  Gradient
     from packages.vtDV3D.WorkflowModule import WorkflowModule
     from packages.vtDV3D.VectorCutPlaneModule import GlyphArrayCutPlane, StreamlineCutPlane 
-    from packages.vtDV3D.VectorVolumeModule import VectorVolume 
+    from packages.vtDV3D.VectorVolumeModule import VectorVolume
 #    from packages.vtDV3D.CPCViewer import CPCViewer, CPCViewerConfigurationWidget
     from packages.spreadsheet.basic_widgets import CellLocation
-    from core.modules.basic_modules import Integer, Float, String, Boolean, Variant, Color
+    from core.modules.basic_modules import Integer, Float, String, Boolean, Color
 #    from packages.CPCViewer.PointCloudViewer import CPCPlot, kill_all_zombies
     from core import command_line
-    import api
     get = command_line.CommandLineParser().get_option
-    if get('kill_all_zombies') != None: kill_all_zombies()  
+    if get('kill_all_zombies') != None: get('kill_all_zombies')()
           
     reg = core.modules.module_registry.get_module_registry()   
     vtkAlgorithmOutputType = typeMap('vtkAlgorithmOutput')
@@ -339,11 +337,10 @@ def initialize(*args, **keywords):
 
 
 def executeVistrail( *args, **kwargs ):
-    import core.requirements, os
-    core.requirements.check_pyqt4()
+    import gui.requirements, os
+    gui.requirements.check_pyqt4()
     from core.db.locator import FileLocator
 
-    from PyQt4 import QtGui
     import gui.application
      
     try:

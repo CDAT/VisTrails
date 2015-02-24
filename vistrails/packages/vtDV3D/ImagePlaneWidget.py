@@ -1,6 +1,6 @@
-
-import vtk, sys, gc
+import vtk, sys
 from vtUtilities import versionAgnosticSetInput
+
 
 VTK_NEAREST_RESLICE = 0
 VTK_LINEAR_RESLICE  = 1
@@ -36,7 +36,7 @@ class ImagePlaneWidget:
         self.CurrentButton = self.NoButtonDown
         self.RenderWindow = None
         self.LastPickPosition = None
-        self.PlaceFactor = 0.5;
+        self.PlaceFactor = 0.5
         self.PlaneOrientation   = 0
         self.PlaceFactor  = 1.0
         self.TextureInterpolate = 1
@@ -423,8 +423,7 @@ class ImagePlaneWidget:
 
 #----------------------------------------------------------------------------
 
-    def StartInteraction(self): 
-        from PersistentModule import PersistentVisualizationModule
+    def StartInteraction(self):
         update_rate = self.Interactor.GetDesiredUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.updateInteractor()
@@ -432,8 +431,7 @@ class ImagePlaneWidget:
               
 #----------------------------------------------------------------------------
 
-    def EndInteraction(self): 
-        from PersistentModule import PersistentVisualizationModule
+    def EndInteraction(self):
         update_rate = self.Interactor.GetStillUpdateRate()
         self.Interactor.GetRenderWindow().SetDesiredUpdateRate( update_rate )
         self.ResetNavigationInteraction()
@@ -450,14 +448,14 @@ class ImagePlaneWidget:
 
     def ComputeDisplayToWorld( self, x, y, z ): 
         if self.CurrentRenderer == None: return None  
-        self.CurrentRenderer.SetDisplayPoint(x, y, z);
-        self.CurrentRenderer.DisplayToWorld();
+        self.CurrentRenderer.SetDisplayPoint(x, y, z)
+        self.CurrentRenderer.DisplayToWorld()
         worldPt = list( self.CurrentRenderer.GetWorldPoint() )
         if worldPt[3]:
-            worldPt[0] /= worldPt[3];
-            worldPt[1] /= worldPt[3];
-            worldPt[2] /= worldPt[3];
-            worldPt[3] = 1.0;
+            worldPt[0] /= worldPt[3]
+            worldPt[1] /= worldPt[3]
+            worldPt[2] /= worldPt[3]
+            worldPt[3] = 1.0
         return worldPt
 
 #----------------------------------------------------------------------------
@@ -568,7 +566,7 @@ class ImagePlaneWidget:
     def DoPick( self, X, Y ):  
         self.PlanePicker.Pick( X, Y, 0.0, self.CurrentRenderer )
         path = self.PlanePicker.GetPath()        
-        found = 0;
+        found = 0
         if path:
             path.InitTraversal()
             for _ in range( path.GetNumberOfItems() ):

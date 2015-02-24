@@ -3,13 +3,15 @@ Created on Oct 29, 2013
 
 @author: tpmaxwel
 '''
+
 from packages.vtDV3D.PersistentModule import *
 from packages.CPCViewer.PointCloudViewer import CPCPlot
 from packages.CPCViewer.ConfigurationControl import ConfigurationWidget
-from packages.vtDV3D.CDMS_VariableReaders import  CDMSReaderConfigurationWidget
-from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper            
+from packages.vtDV3D.PlotPipelineHelper import DV3DPipelineHelper
+from PyQt4 import QtCore
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+
 
 def get_vt_decl( val_decl_str ):
     import core.modules.basic_modules as basic_modules

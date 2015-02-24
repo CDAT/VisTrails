@@ -3,8 +3,8 @@ Created on May 16, 2011
 
 @author: tpmaxwel
 '''
-from PyQt4 import QtCore, QtGui
-import sys, copy, os, argparse, gui, subprocess, socket
+from PyQt4 import QtCore
+import gui
 from gui.application import get_vistrails_application
 from packages.spreadsheet.spreadsheet_config import configuration as spreadsheet_configuration
 from packages.vtDV3D.vtUtilities import *
@@ -38,7 +38,7 @@ class HyperwallManagerSingleton(QtCore.QObject):
             selected_cells = sheetTabWidget.getSelectedLocations()
             self.server.processInteractionState( self.deviceName, selected_cells, levelingState, altMode ) 
 
-    def getLevelingState():
+    def getLevelingState(self):
         return self.levelingState
         
     def shutdown(self):
@@ -258,5 +258,3 @@ def getInstance():
 def onExecute( ):
     pass
 #    HyperwallManager.executeCurrentWorkflows()
-
-

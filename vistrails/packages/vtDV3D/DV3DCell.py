@@ -3,13 +3,13 @@ Created on Feb 14, 2011
 
 @author: tpmaxwel
 '''
+
 ENABLE_JOYSTICK = False
-from PyQt4 import QtCore, QtGui
 from gui.qt import qt_super
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
-from packages.spreadsheet.spreadsheet_base import StandardSheetReference, StandardSingleCellSheetReference
+from packages.spreadsheet.spreadsheet_base import StandardSheetReference
 from packages.vtk.vtkcell import QVTKWidget, QVTKWidgetToolBar
-from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
+from packages.vtDV3D.PersistentModule import PersistentVisualizationModule
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.vtDV3D.CaptionManager import *
 from packages.vtDV3D.WorkflowModule import WorkflowModule
@@ -21,7 +21,8 @@ else:               ControlEventType = None
 from packages.vtDV3D import ModuleStore
 from packages.vtDV3D import HyperwallManager
 from packages.vtDV3D.vtUtilities import *
-import os, math, sys
+import os, sys
+
 
 vmath = vtk.vtkMath()
 packagePath = os.path.dirname( __file__ )  
@@ -1393,7 +1394,7 @@ class QCellToolBarExportTimeSeries(QtGui.QAction):
         new_cell = prj_controller.sheet_map[sheetName][(new_row, new_col)]
 
         # create new variable
-        coords = PM_VolumeSlicer.global_coords;
+        coords = PM_VolumeSlicer.global_coords
         if (coords==[-1, -1, -1]): return
         newname = "var_lat%0.1f_lon%0.1f_lev%0.1f" % (coords[1], coords[0], coords[2])
         python_cmd = '%s(lat=%f, lon=%f, lev=%f, squeeze=1)' % (old_cell.plots[0].variables[0], coords[1], coords[0], coords[2])
@@ -1405,7 +1406,7 @@ class QCellToolBarExportTimeSeries(QtGui.QAction):
         new_cell.add_variable(newname)
         
         # create new plot
-        plot_manager = prj_controller.plot_manager;
+        plot_manager = prj_controller.plot_manager
         new_cell.add_plot(plot_manager.new_plot('VCS', 'Yxvsx', 'ASD1'))
         
         prj_controller.check_update_cell(sheetName, new_row, new_col)
@@ -1431,5 +1432,3 @@ class QVTKWidgetToolBar2(QVTKWidgetToolBar):
         QVTKWidgetToolBar.createToolBar(self)
         
         self.appendAction(QCellToolBarExportTimeSeries(self))
-        
-

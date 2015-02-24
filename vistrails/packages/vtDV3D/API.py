@@ -1,9 +1,9 @@
 import sys, os, cdms2
-#path_root = os.path.dirname( os.path.dirname( os.path.dirname(os.path.abspath(__file__))))
-#sys.path.append( path_root )
-from PyQt4 import QtGui, QtCore
+from PyQt4 import QtCore
 import gui.application
 from core.modules.module_registry import get_module_registry
+from core import debug
+
 
 def disable_lion_restore():
     """ Prevent Mac OS 10.7 to restore windows state since it would
@@ -111,13 +111,13 @@ class UVCDAT_API():
         ops = controller.layout_modules_ops( preserve_order=True, no_gaps=True, new_modules=[module], new_connections=connections )
         self.addToPipeline([module] + connections, ops)
 
-    def loadVistrail( self, vistrail_name, **kwargs ):
+    def loadVistrail( self, *args, **kwargs ):
         resource_path = kwargs.get( 'dir', None )
         version = kwargs.get( 'version', None )
         if not resource_path:
             resource_path = self.app.resource_path if hasattr( app, "resource_path" ) else None
         for vistrail_name in args:
-            workflow_dir =  resource_path if resource_path else os.path.join( packagePath, "workflows" )
+            workflow_dir =  resource_path if resource_path else os.path.join( packagePath, "workflows")
             vistrail_filename = os.path.join( workflow_dir, vistrail_name + '.vt' )
             self.loadVistrailFile( vistrail_filename, version )
             
@@ -292,8 +292,8 @@ class UVCDAT_API():
         gui.application.stop_application()        
         
 if __name__ == '__main__':
+    import cdutil, genutil
     cdmsfile = cdms2.open('~/data/AConaty/comp-ECMWF/ecmwf.xml')
-#    cdmsfile = cdms2.open('/Developer/Data/AConaty/comp-ECMWF/ecmwf.xml')
     Temperature = cdmsfile('Temperature')
     Temperature = Temperature(lat=(90.0, -90.0),isobaric=(1000.0, 10.0),lon=(0.0, 359.0),time=('2011-5-1 0:0:0.0', '2011-5-1 18:0:0.0'),)
     axesOperations = eval("{'lat': 'def', 'isobaric': 'def', 'lon': 'def', 'time': 'def'}")

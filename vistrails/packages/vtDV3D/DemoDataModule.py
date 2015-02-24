@@ -3,16 +3,9 @@ Created on Dec 11, 2010
 
 @author: tpmaxwel
 '''
-import vtk, sys, os, packages.vtDV3D
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-import core.modules.module_registry
-from InteractiveConfiguration import DV3DConfigurationWidget
-from core.modules.vistrails_module import Module, ModuleError
-from vtUtilities import *
+
 from PersistentModule import * 
 from NetCDFDataInterface import NetCDFDataWrapper
-from netCDF4 import Dataset
 from vtk.util.misc import vtkGetDataRoot
 from vtGRADS import GradsReader
 packagePath = os.path.dirname( __file__ )  

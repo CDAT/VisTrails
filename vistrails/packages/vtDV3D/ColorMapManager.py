@@ -4,10 +4,8 @@ Hacked from the Enthought MayaVi2 lut_manager
 @author: tpmaxwel
 '''
 
-import os.path
-import sys, vtk
-import cPickle
 from packages.vtDV3D.vtUtilities import *
+
 
 pkl_path = os.path.join( os.path.dirname( __file__ ), 'colormaps.pkl' )
 colormap_file = open( pkl_path, 'rb' )
@@ -266,5 +264,3 @@ if __name__ == '__main__':
     iren.Start()
     
     app.exec_()   
-
- 

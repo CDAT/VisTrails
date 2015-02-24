@@ -4,20 +4,11 @@ Created on Mar 22, 2011
 @author: tpmaxwel
 '''
 
-from packages.vtDV3D.InteractiveConfiguration import *
-from core.modules.vistrails_module import Module, ModuleError
-from packages.vtDV3D.WorkflowModule import WorkflowModule 
-from core.vistrail.port_spec import PortSpec
-from packages.vtDV3D.vtUtilities import *
+from packages.vtDV3D.WorkflowModule import WorkflowModule
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.CDATTaskDefinitions import TaskManager
 from packages.vtDV3D.CDATTask import deserializeTaskData
-import numpy.ma as ma
-from vtk.util.misc import vtkGetDataRoot
-import cdms2, cdtime 
-from PyQt4 import QtCore, QtGui
-from core.modules.module_registry import get_module_registry
-from core.vistrail.port import PortEndPoint
+import cdms2, cdtime
 
 class PM_CDMS_CDATUtilities( PersistentModule ):
 

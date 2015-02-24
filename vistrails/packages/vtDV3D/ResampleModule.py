@@ -3,24 +3,7 @@ Created on Jan 3, 2011
 
 @author: tpmaxwel
 '''
-'''
-Created on Dec 2, 2010
 
-@author: tpmaxwel
-'''
-import vtk, os
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-import core.modules.module_registry
-from core.modules.vistrails_module import Module, ModuleError
-from core.modules.module_registry import get_module_registry
-from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
-
-from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
-
-from packages.vtDV3D.ColorMapManager import ColorMapManager 
-# from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
-from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.PersistentModule import *
 
 packagePath = os.path.dirname( __file__ )  
@@ -740,5 +723,5 @@ class Resample(WorkflowModule):
          
        
 if __name__ == '__main__':
+    from packages.vtDV3D import executeVistrail
     executeVistrail( 'ResampleDemo' )
- 

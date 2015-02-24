@@ -3,10 +3,8 @@ Created on Mar 22, 2011
 
 @author: tpmaxwel
 '''
-from PyQt4 import QtCore, QtGui
-import sys, copy, os, cdms2, hashlib, imp, traceback
-import numpy as np
-import cdutil, genutil
+from PyQt4 import QtCore
+import cdms2, hashlib, imp
 from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.CDATTask import CDATTask
 
@@ -161,6 +159,3 @@ def load_usr_task_modules( **args ):
     return modules
         
 if enable_user_tasks: load_usr_task_modules()        
-        
-        
-        

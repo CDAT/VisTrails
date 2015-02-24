@@ -6,24 +6,14 @@ Created on Mar 30, 2011
 '''
 
 from __future__ import division
-import functools
+import ConfigParser
 import random
 import sys
 import os
-import math
-#import nvEarthUtils
-#from nvAxis import nvAxis
-#from nvAxisCollection import nvAxisCollection
-#from nvField import nvField
-#from nvFieldCollection import nvFieldCollection
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import time
-#from netCDF4 import Dataset # from Scientific.IO.NetCDF import NetCDFFile
-# import numpy.oldnumeric as N
-import numpy as np
-#import LatLongUTMconversion
-#import LevelChangeDlg
+
 
 packagePath = os.path.dirname( __file__ )  
 defaultMapDir = os.path.join( packagePath, 'data' )
@@ -175,7 +165,7 @@ class ROISelectionDialog(QDialog):
         self.roiRect = QGraphicsRectItem( worldMapExtent[0], worldMapExtent[1], (worldMapExtent[2]-worldMapExtent[0]), (worldMapExtent[3]-worldMapExtent[1]), item, self.scene )
         self.roiRect.setBrush( QBrush(Qt.NoBrush) )
         pen = QPen(Qt.green) 
-        pen.setWidth(2);
+        pen.setWidth(2)
         self.roiRect.setPen( pen )
         self.roiRect.setZValue (1)
 #       self.scene.addItem( self.roiRect )
@@ -643,7 +633,7 @@ class GraphicsPolylineItem(QAbstractGraphicsShapeItem):
         
     def paint( self, painter, options,  widget):
         painter.setPen( self.pen() )
-        painter.setBrush( self.brush() );
+        painter.setBrush( self.brush() )
         painter.drawPolyline( self.polygon )
 
     def boundingRect( self ):
@@ -792,5 +782,3 @@ if __name__ == '__main__':
     form.resize( 300, 150 )
     form.show()
     app.exec_()
-
-

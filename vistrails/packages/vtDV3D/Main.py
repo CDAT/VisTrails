@@ -9,7 +9,8 @@ print "PYTHONPATH: "
 envmap = os.environ
 #for path in envmap['PYTHONPATH'].split(":"):
 #    print "   -- ", path
-from PyQt4 import QtGui, QtCore
+from PyQt4 import QtCore
+from core import debug
 from core.requirements import check_all_vistrails_requirements
 from gui.requirements import check_pyqt4, MissingRequirement
 from gui.application import VistrailsApplicationSingleton, get_vistrails_application, set_vistrails_application
@@ -171,6 +172,7 @@ class HWRunType :
         return run_type
 
 if __name__ == '__main__':
+    from packages.vtDV3D import executeVistrail
     runType = HWRunType.getValue() 
     if runType == HWRunType.Desktop: optionsDict = { "hw_role" : 'global', "showBuilder": True, 'spawn': True, 'decimation' : 7 }   #  'global'   'hw_client'  'hw_server' 
     if runType == HWRunType.Server:  optionsDict = {  'hw_role': 'hw_server', 'debug': 'False' } #, 'hw_nodes': 'localhost' }   

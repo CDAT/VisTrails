@@ -5,8 +5,7 @@ Created on Mar 10, 2011
 '''
 
 import gc
-from packages.vtDV3D.vtUtilities import *   
-from collections import OrderedDict 
+from packages.vtDV3D.vtUtilities import *
 moduleStoreDatabase = {}
 cdmsStoreDatabase = {}
 activeVariables = {}

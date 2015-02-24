@@ -4,19 +4,18 @@ Created on Dec 17, 2010
 @author: tpmaxwel
 '''
 
-import vtk, sys, time, threading, inspect, gui, traceback
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+import threading
 from core.modules.vistrails_module import Module, ModuleError
-from core.modules.module_registry import get_module_registry, MissingPort
+from core.modules.module_registry import MissingPort
 from packages.spreadsheet.spreadsheet_controller import spreadsheetController
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
 from packages.vtDV3D import ModuleStore
-from db.domain import DBModule, DBAnnotation
 from packages.vtDV3D import HyperwallManager
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
+
+
 DefaultReferenceTimeUnits = "days since 1900-1-1"
 MIN_LINE_LEN = 50
 ecount = 0
@@ -1902,7 +1901,7 @@ class PersistentVisualizationModule( PersistentModule ):
         return None
 
     def createLensActor(self, id_, pos):
-        lensActor = vtk.vtkXYPlotActor();
+        lensActor = vtk.vtkXYPlotActor()
         lensActor.SetTitle("Time vs. VAR")
         lensActor.SetXTitle("Time")
         lensActor.SetYTitle("VAR")
@@ -2279,7 +2278,7 @@ class PersistentVisualizationModule( PersistentModule ):
         rens = []
         sheetTabWidget = getSheetTabWidget()
         if sheetTabWidget:
-            sheet_addr = getSheetAddress(self)
+            sheet_addr = self.getSheetAddress()
             selected_cells = sheetTabWidget.getSelectedLocations() 
             for cell in selected_cells:
                 cell_spec = "%s:%s%s" % ( sheet_addr, chr(ord('A') + cell[1] ), cell[0]+1 )

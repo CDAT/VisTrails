@@ -3,21 +3,15 @@ Created on Dec 2, 2010
 
 @author: tpmaxwel
 '''
-import vtk, math, traceback
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-import core.modules.module_registry
-from core.modules.vistrails_module import Module, ModuleError
-from core.modules.module_registry import get_module_registry
-from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
-from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
-from packages.vtk.base_module import vtkBaseModule
-from packages.vtDV3D.ColorMapManager import ColorMapManager 
+
+import cdms2
 from packages.vtDV3D.WorkflowModule import WorkflowModule 
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.ImagePlaneWidget import *
 from packages.vtDV3D import HyperwallManager
+
+
 VolumeSlicerModules = {}
 
 packagePath = os.path.dirname( __file__ )  
@@ -684,4 +678,3 @@ class VolumeSlicer(WorkflowModule):
 #        self.sliceMatrix[2].DeepCopy( (1, 0, 0, center[0],    0, -1, 0, center[1],     0, 0, 1, center[2],    0, 0, 0, 1) )
          
 #        self._range = self.rangeBounds[0:2]           
-

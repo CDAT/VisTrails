@@ -4,12 +4,6 @@ Created on Jan 27, 2011
 @author: tpmaxwel
 '''
 
-'''
-Created on Feb 18, 2010
-
-@author: tpmaxwel
-
-'''
 import os, time, copy, sys, re, vtk
 from netCDF4 import Dataset
 from packages.vtDV3D.vtUtilities import *
@@ -457,10 +451,10 @@ class NetCDFDataWrapper:
                         interpDataArray = ma.array( (1.0-s)*prevDataArray )
                         interpDataArray += s*newDataArray
 #                        print " -- -- IS%d: %f %f " % ( iIS, interpDataArray[ testPoint[0], testPoint[1], 10 ], interpDataArray[ testPoint[0], testPoint[1], 20 ] )
-                        tField = TimeStepField( interpDataArray.astype(scalar_dtype), ( range_min, range_max ) ) 
+                        tField = TimeStepField( interpDataArray.astype(scalar_dtype), ( range_min, range_max ) )
                         timeSeries.AddField( iTStep, tField )
                         iTStep = iTStep+1 
-                tField = TimeStepField( newDataArray, ( range_min, range_max ) ) 
+                tField = TimeStepField( newDataArray, ( range_min, range_max ) )
                 prevDataArray = newDataArray
 #                print " --- --- Rescale time: %f sec." % (time.time()-t0)
                 print "Add timestep %d" % iTStep
