@@ -4,18 +4,16 @@ Created on Dec 9, 2010
 @author: tpmaxwel
 '''
 import sys, vtk, StringIO, cPickle, time, os, ConfigParser, shutil, traceback
-import core.modules.module_registry
-from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry
 from core.vistrail.vistrail import VersionAlreadyTagged
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
-from db.domain import DBModule, DBAnnotation
+from db.domain import DBAnnotation
 from core.db.action import create_action
 from core.debug import DebugPrint
-from PyQt4 import QtCore, QtGui
+from PyQt4 import QtGui
 import numpy.core.umath as umath
-# from vtk.util.vtkConstants import *
 import numpy as np
+import subprocess
 packagePath = os.path.dirname( __file__ ) 
 resourcePath = os.path.join( packagePath,  'resources')
 
@@ -818,7 +816,7 @@ class vtkImageImportFromArray:
             numComponents = numComponents * 2
 
         if (self.__ConvertIntToUnsignedShort and imArray.typecode() == 'i'):
-            imString = imArray.astype(Numeric.Int16).tostring()
+            imString = imArray.astype(Numeric.Int16).tostring()  # RR0224: 'Numeric'?
             type = VTK_UNSIGNED_SHORT
         else:
             imString = imArray.tostring()

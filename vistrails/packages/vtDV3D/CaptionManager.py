@@ -4,9 +4,10 @@ Created on Aug 25, 2012
 @author: tpmaxwell
 '''
 
-from PyQt4 import QtCore, QtGui
+from PyQt4 import QtCore
 from vtUtilities import *
 import vtk
+
 
 class CaptionEditor(QtGui.QDialog):
     

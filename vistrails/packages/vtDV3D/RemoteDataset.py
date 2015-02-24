@@ -3,8 +3,10 @@ Created on May 28, 2013
 
 @author: tpmaxwel
 '''
+
 import sys, os, cdms2
-from packages.vtDV3D.RemoteDataBrowser import ServerClass
+from packages.vtDV3D.RemoteDataBrowser import ServerClass  # RR0224: 'ServerClass'?
+
 
 class RemoteDataset():
     
@@ -67,7 +69,7 @@ class iRODS_RemoteVariable( RemoteVariable ):
     
     def __call__( self, **args ):
         import irods
-        from packages.vtDV3D.RemoteDataBrowser import iRodsCatalogNode
+        from packages.vtDV3D.RemoteDataBrowser import iRodsCatalogNode  # RR0224: 'iRodsCatalogNode'?
         print "Processing Remote Data on server and retreiving:\n ----> args = ", str(args)
         
         execMyRuleInp = irods.execMyRuleInp_t()
@@ -99,6 +101,3 @@ class iRODS_RemoteVariable( RemoteVariable ):
 # irods Dataset attributes:  'Conventions', 'Generating_Process_or_Model', 'Originating_center', 'Product_Type', '___cdms_internals__', '__call__', '__cdms_internals__', '__class__', '__delattr__', '__dict__', '__doc__', '__format__', '__getattribute__', '__getitem__', '__hash__', '__init__', '__module__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', 
 # '__weakref__', '_convention_', '_filemap_', '_getSections', '_getinternals', '_gridmap_', '_isEmptyNode', '_listatts', '_makeOptParser', '_node_', '_processXmlValue', '_setatts', '_setinternals', '_status_', '_toDOMElement', '_toDOMElements', '_v', '_xmlpath_', 'attributes', 'autoApiInfo', 'axes', 'calendar', 'cdm_data_type', 'cdms_filemap', 'cleardefault', 'close', 'createAxis', 'createRectGrid', 'createVariable', 'creator_name', 'datapath', 'default_variable', 'default_variable_name', 'dictdict', 'dimensionarray', 'dimensionobject', 'directory', 'dump', 'file_format', 'fromXml', 'getAxis', 'getConvention', 'getDictionary', 'getGrid', 'getLogicalCollectionDN', 'getPaths', 'getVariable', 'getVariables', 'getattribute', 'getdimensionunits', 'getglobal', 'getslab', 'go', 'grids', 'history', 
 # 'id', 'listall', 'listattribute', 'listdimension', 'listglobal', 'listvariable', 'listvariables', 'location', 'matchPattern', 'matchone', 'mode', 'openFile', 'parent', 'printXml', 'readScripGrid', 'scanDocString', 'searchPattern', 'searchPredicate', 'searchone', 'showall', 'showattribute', 'showdimension', 'showglobal', 'showvariable', 'stripSectionsFromDoc', 'sync', 'toDOM', 'toXml', 'uri', 'variables', 'xlinks']        
-        
-        
-

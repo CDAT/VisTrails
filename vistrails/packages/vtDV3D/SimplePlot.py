@@ -6,7 +6,7 @@ Created on Nov 4, 2011
 Based on PyQt example code by Riverbank Computing.
 '''
 
-import math, time, sys, random
+import math, random
 from vtUtilities import *
 from sets import Set
 from PyQt4 import QtCore, QtGui

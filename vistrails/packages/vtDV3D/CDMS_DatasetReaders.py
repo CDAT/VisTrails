@@ -3,24 +3,12 @@ Created on Dec 11, 2010
 
 @author: tpmaxwel
 '''
-import vtk, sys, os, copy, time, traceback, collections
-from collections import OrderedDict 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-import core.modules.module_registry
-from packages.vtDV3D.InteractiveConfiguration import *
-from core.modules.vistrails_module import Module, ModuleError
+import collections
 from packages.vtDV3D.WorkflowModule import WorkflowModule 
-from core.utils import getHomeRelativePath, getFullPath
-from packages.vtDV3D import HyperwallManager, ModuleStore
-#from core.vistrail.port_spec import PortSpec
-from packages.vtDV3D.vtUtilities import *
+from core.utils import getHomeRelativePath
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.ROISelection import ROISelectionDialog
 
-import numpy.ma as ma
-# from vtk.util.misc import vtkGetDataRoot
-# packagePath = os.path.dirname( __file__ ) 
 import cdms2, cdtime, cdutil, MV2 
 DataSetVersion = 0
 DefaultDecimation = [ 0, 7 ]
@@ -345,7 +333,7 @@ class CDMSDatasetRecord():
         
         if ( (referenceVar==None) or ( ( referenceVar[0] == self.cdmsFile ) and ( referenceVar[1] == varName ) ) ) and ( decimationFactor == 1):
             if levBounds <> None:
-                args1['lev'] =  levbounds[0] if ( len( levbounds ) == 1 ) else levbounds                        
+                args1['lev'] =  levbounds[0] if ( len( levbounds ) == 1 ) else levbounds  # RR0224: 'levbounds'?
             else:
                 levbounds = self.getLevBounds( referenceLev )
                 if levbounds: args1['lev'] = levbounds
@@ -2115,4 +2103,3 @@ class MetadataViewerDialog( QDialog ):
 #        executeVistrail( options=optionsDict )
 #    except Exception, err:
 #        print " executeVistrail exception: %s " % str( err )
-

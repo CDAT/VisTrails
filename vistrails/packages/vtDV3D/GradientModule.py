@@ -3,23 +3,7 @@ Created on Jan 3, 2011
 
 @author: tpmaxwel
 '''
-'''
-Created on Dec 2, 2010
 
-@author: tpmaxwel
-'''
-import vtk, os
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-import core.modules.module_registry
-from core.modules.vistrails_module import Module, ModuleError
-from core.modules.module_registry import get_module_registry
-from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
-
-from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
-
-# from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
-from packages.vtDV3D.vtUtilities import *
 from packages.vtDV3D.PersistentModule import *
         
 class PM_Gradient(PersistentVisualizationModule):
@@ -41,7 +25,7 @@ class PM_Gradient(PersistentVisualizationModule):
             array = pointData.GetArray(iA)
             print " Array %s: ntup = %d, ncomp = %d, type = %s, range = %s " % ( array_name, array.GetNumberOfTuples(), array.GetNumberOfComponents(), array.GetDataTypeAsString(), str(array.GetRange()) )
              
-        computeVorticity = wmod.forceGetInputFromPort( "computeVorticity", 1 ) 
+        computeVorticity = self.wmod.forceGetInputFromPort( "computeVorticity", 1 )
         self.gradient = vtk.vtkGradientFilter() 
         self.gradient.SetComputeVorticity( computeVorticity ) 
         self.inputModule().inputToAlgorithm( self.gradient )
@@ -59,4 +43,5 @@ class Gradient(WorkflowModule):
         WorkflowModule.__init__(self, **args) 
                 
 if __name__ == '__main__':
+    from packages.vtDV3D import executeVistrail
     executeVistrail( 'VorticityPlotDemo' )

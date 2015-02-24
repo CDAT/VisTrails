@@ -3,9 +3,10 @@ Created on Aug 14, 2013
 
 @author: tpmaxwell
 '''
+
 import os, sys
 from multiprocessing import Process, JoinableQueue,  Queue, Lock
-      
+
 
 class ExecutionSpecs:
     
@@ -117,9 +118,10 @@ class MulticoreExecutable :
         self.reset_queues()
         
     def get_result( self, block = False ):
+        from Queue import Empty
         try:
             return self.result_queue.get( block )
-        except Queue.Empty:
+        except Empty:
             return None
         
 

@@ -4,21 +4,10 @@ Created on Jan 24, 2011
 @author: tpmaxwel
 '''
 
-
-import vtk
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-import core.modules.module_registry
-from core.modules.vistrails_module import Module, ModuleError
-from core.modules.module_registry import get_module_registry
-from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
-from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
-from packages.vtk.base_module import vtkBaseModule
-from packages.vtDV3D.ColorMapManager import ColorMapManager 
-# from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 
 from packages.vtDV3D.PersistentModule import * 
 from packages.vtDV3D.vtUtilities import *
-        
+
+
 class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
     """Takes an arbitrary slice of the input data using an implicit cut
     plane and places glyphs according to the vector field data.  The
@@ -127,7 +116,7 @@ class PM_ScaledVectorCutPlane(PersistentVisualizationModule):
             self.color_resample = vtk.vtkExtractVOI()
             self.color_resample.SetInputPort( self.colorInputModule.getOutputPort() )
             self.color_resample.SetVOI( self.initialExtent )
-            self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )
+            self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )  # RR0224: 'sampleRate'?
 #            self.probeFilter = vtk.vtkProbeFilter()
 #            self.probeFilter.SetSourceConnection( self.resample.GetOutputPort() )           
 #            colorInput = self.colorInputModule.getOutput()
@@ -414,7 +403,7 @@ class PM_GlyphArrayCutPlane(PersistentVisualizationModule):
             self.color_resample = vtk.vtkExtractVOI()
             self.color_resample.SetInputConnection( self.colorInputModule.getOutputPort() ) 
             self.color_resample.SetVOI( self.initialExtent )
-            self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )
+            self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )  # RR0224: 'sampleRate'?
 #            self.probeFilter = vtk.vtkProbeFilter()
 #            self.probeFilter.SetSourceConnection( self.resample.GetOutputPort() )           
 #            colorInput = self.colorInputModule.getOutput()
@@ -766,7 +755,7 @@ class PM_StreamlineCutPlane(PersistentVisualizationModule):
             self.color_resample = vtk.vtkExtractVOI()
             self.color_resample.SetInput( self.colorInputModule.getOutputPort() ) 
             self.color_resample.SetVOI( self.initialExtent )
-            self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )
+            self.color_resample.SetSampleRate( sampleRate, sampleRate, 1 )  # RR0224: 'sampleRate'?
 #            self.probeFilter = vtk.vtkProbeFilter()
 #            self.probeFilter.SetSourceConnection( self.resample.GetOutputPort() )           
 #            colorInput = self.colorInputModule.getOutput()
@@ -901,6 +890,7 @@ class StreamlineCutPlane(WorkflowModule):
             
 if __name__ == '__main__':
     from packages.spreadsheet.spreadsheet_config import configuration
+    from packages.vtDV3D import executeVistrail
     configuration.rowCount=1
     configuration.columnCount=2
     executeVistrail( 'VectorSlicePlaneDemo' ) 

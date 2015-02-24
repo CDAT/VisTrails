@@ -1,4 +1,4 @@
-import cdms2, sys, os
+import cdms2
 
 opendapURL  = "http://nomads.ncep.noaa.gov:9090/dods/fens/fens20130403/fens001_00z"    # This one works!
 opendapURL1 = "http://nomads.ncep.noaa.gov:9090/dods/nam/nam20130308/nam1hr_06z"

@@ -4,9 +4,6 @@ Created on Dec 27, 2010
 @author: tpmaxwel
 '''
 
-import ConfigParser
-import numpy as np
-import os, vtk
 from packages.vtDV3D.PersistentModule import *
 from packages.vtDV3D.WorkflowModule import WorkflowModule 
 
@@ -44,11 +41,11 @@ class PM_WorldFrame(PersistentVisualizationModule):
     def buildPipeline(self):
         """ execute() -> None
         Dispatch the vtkRenderer to the actual rendering widget
-        """  
+        """
         module = self.getRegisteredModule()
         world_map =  None # wmod.forceGetInputFromPort( "world_map", None ) if wmod else None
-        opacity =  wmod.forceGetInputFromPort( "opacity",   0.4  )  if wmod else 0.4  
-        map_border_size =  wmod.forceGetInputFromPort( "map_border_size", 20  )  if wmod else 20  
+        opacity =  self.wmod.forceGetInputFromPort( "opacity",   0.4  )  if self.wmod else 0.4
+        map_border_size =  self.wmod.forceGetInputFromPort( "map_border_size", 20  )  if self.wmod else 20
             
         self.y0 = -90.0  
         dataPosition = None
@@ -59,7 +56,7 @@ class PM_WorldFrame(PersistentVisualizationModule):
             self.map_file = world_map[0].name
             self.map_cut = world_map[1]
         
-        self.world_cut = wmod.forceGetInputFromPort( "world_cut", -1 )  if wmod else getFunctionParmStrValues( module, "world_cut", -1 )
+        self.world_cut = self.wmod.forceGetInputFromPort( "world_cut", -1 )  if self.wmod else getFunctionParmStrValues( module, "world_cut", -1 )
         roi_size = [ self.roi[1] - self.roi[0], self.roi[3] - self.roi[2] ] 
         map_cut_size = [ roi_size[0] + 2*map_border_size, roi_size[1] + 2*map_border_size ]
         data_origin = self.input().GetOrigin() if self.input() else [ 0, 0, 0 ]
@@ -315,4 +312,3 @@ if __name__ == '__main__':
     
     gui.application.stop_application()
     sys.exit(v)    
- 

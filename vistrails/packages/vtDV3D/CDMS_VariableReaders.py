@@ -3,20 +3,16 @@ Created on Nov 21, 2011
 
 @author: tpmaxwel
 '''
-import vtk, sys, os, copy, time, traceback
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from packages.vtDV3D.InteractiveConfiguration import *
-from core.modules.vistrails_module import Module, ModuleError
-from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
-from packages.uvcdat_cdms.init import CDMSVariable, CDMSVariableOperation 
-from packages.vtDV3D.WorkflowModule import WorkflowModule 
-from packages.vtDV3D import ModuleStore
-from packages.vtDV3D.vtUtilities import *
+
+import ast, copy
+from packages.uvcdat_cdms.init import CDMSVariableOperation
+from packages.vtDV3D.WorkflowModule import WorkflowModule
 from packages.vtDV3D.PersistentModule import *
 from packages.vtDV3D import identifier
 from packages.uvcdat.init import Variable, VariableSource
-import cdms2, cdtime, cdutil, MV2 
+import cdms2, cdtime, cdutil, MV2, genutil
+
+
 PortDataVersion = 0
 
 def freeImageData( image_data ):
@@ -1539,4 +1535,3 @@ class CDMSTransientVariable(Variable):
         elif timeBounds == "Set Bounds For X-Daily Data":
             cdutil.times.setTimeBoundsDaily(var,val)
         return var
-

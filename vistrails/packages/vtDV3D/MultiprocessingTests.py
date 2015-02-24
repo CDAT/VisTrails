@@ -5,21 +5,13 @@ Created on Sep 18, 2013
 '''
 
 import sys
-import getopt
 import numpy
-import numpy.ma as ma
-import string
-import cdtime
 import os.path
-import pprint
-import copy
-import types
-import re
-import vtk, cdms2, time, random, math
-from vtk.util import numpy_support
-from PyQt4 import QtCore, QtGui
+import cdms2
+from PyQt4 import QtGui
 from packages.serverside_data_processing.multicore_process_executable import ExecutionTarget, MultiQueueExecutable
-from multiprocessing import Array, RawArray
+from multiprocessing import Array
+
 
 class MemoryLogger:
     def __init__( self, enabled = True ):
@@ -279,6 +271,3 @@ if __name__ == '__main__':
     else:   
         multicore_exec = MultiQueueExecutable( PointIngestExecutionTarget, ncores=ncores )     
         multicore_exec.execute( arg_tuple_list, init_args )      
-
-
-

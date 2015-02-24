@@ -11,22 +11,22 @@ Created on Feb 29, 2012
 '''
 
 
-import core.db.io, sys, os, traceback, api, time, copy, inspect
+import core.db.io, api
 import core.modules.basic_modules
 from core.uvcdat.plot_pipeline_helper import PlotPipelineHelper
+from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
 from packages.vtDV3D.CDMS_VariableReaders import CDMS_VolumeReader, CDMS_HoffmullerReader, CDMS_SliceReader, CDMS_VectorReader, CDMS_PointReader
-from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
+from packages.spreadsheet.basic_widgets import SpreadsheetCell
 from packages.vtDV3D.DV3DCell import MapCell3D, CloudCell3D
-from packages.vtDV3D import ModuleStore
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.uvcdat_cdms.init import CDMSVariableOperation, CDMSVariable 
 from packages.vtDV3D.vtUtilities import *
-from core.uvcdat.plot_registry import get_plot_registry
 from core.modules.module_registry import get_module_registry
 from core.utils import UnimplementedException
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from packages.vtDV3D import HyperwallManager
+
 
 class LevelingType:
     GUI = 0
@@ -1696,7 +1696,7 @@ class DV3DPipelineHelper( PlotPipelineHelper, QObject ):
             for cell in selected_cells:
                 if not (  (cell[0] == activeCell[0]) and (cell[1] == activeCell[1]) ): active_cells.append( cell )
         else:
-            active_cells = [ cell for cell in selected_cells ]
+            active_cells = [ cell for cell in selected_cells ]  # RR0224: 'selected_cells'?
         return active_cells
 
 

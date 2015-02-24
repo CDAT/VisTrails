@@ -1,8 +1,8 @@
-import urllib2, sys, os, copy, time, httplib
+import urllib2, sys, os, copy, httplib
 from HTMLParser import HTMLParser
 from urlparse import *
 from PyQt4 import QtCore, QtGui
-from vtUtilities import isList
+
 #useWebKit = False
     
 #        split_url = urlsplit(catalog_url) urlunsplit(split_url)
@@ -546,7 +546,7 @@ class RemoteDataBrowser(QtGui.QFrame):
     
     @staticmethod          
     def notify( msg ):
-            QtGui.QMessageBox.information( self, "RemoteDataBrowser", msg )
+            QtGui.QMessageBox.information( self, "RemoteDataBrowser", msg )  # RR0224: 'self' in staticmethod?
         
     def removeSelectedServer(self): 
         currentItem = self.treeWidget.currentItem()

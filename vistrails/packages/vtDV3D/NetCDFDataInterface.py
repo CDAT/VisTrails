@@ -4,12 +4,6 @@ Created on Jan 27, 2011
 @author: tpmaxwel
 '''
 
-'''
-Created on Feb 18, 2010
-
-@author: tpmaxwel
-
-'''
 import os, time, copy, sys, re, vtk
 from netCDF4 import Dataset
 from packages.vtDV3D.vtUtilities import *
@@ -96,8 +90,8 @@ class NetCDFDataWrapper:
         dmax = dataArray.max()
         scaledData = SCALARMAX * ( dataArray - dmin ) / ( dmax - dmin )
 
-        usData = scaledData.astype(N.UInt16)
-        vtkdata.SetNumberOfTuples(N.size(data))
+        usData = scaledData.astype(N.UInt16)  # RR0224: 'N'?
+        vtkdata.SetNumberOfTuples(N.size(data))  # RR0224: 'data'?
         vtkdata.SetVoidArray( data, N.size(data), 1)
         vtkdata.Modified()
         self.enc_mdata = encodeToString( { 'bounds' : self.GetDataBounds() } ) 
@@ -237,7 +231,7 @@ class NetCDFDataWrapper:
                 except: pass
                 try: units = var.units
                 except: pass
-                traitsVar = Variable( name=varName,  shape=var.shape[0:5],  long_name=long_name,  dimensions=str(var.dimensions), units = units )
+                traitsVar = Variable( name=varName,  shape=var.shape[0:5],  long_name=long_name,  dimensions=str(var.dimensions), units = units )  # RR0224: 'Variable'?
                 traitstVarList.append( traitsVar )
         return traitstVarList
     
@@ -253,7 +247,7 @@ class NetCDFDataWrapper:
             slice = dataArray[:,iS,:]
                       
         if 'z' in args:
-            iS = args['z'] + self.dimmd.zi[0]
+            iS = args['z'] + self.dimmd.zi[0]  # RR0224: 'dimmd'?
             slice = dataArray[:,:,iS]  
                      
         return slice
@@ -457,10 +451,10 @@ class NetCDFDataWrapper:
                         interpDataArray = ma.array( (1.0-s)*prevDataArray )
                         interpDataArray += s*newDataArray
 #                        print " -- -- IS%d: %f %f " % ( iIS, interpDataArray[ testPoint[0], testPoint[1], 10 ], interpDataArray[ testPoint[0], testPoint[1], 20 ] )
-                        tField = TimeStepField( interpDataArray.astype(scalar_dtype), ( range_min, range_max ) ) 
+                        tField = TimeStepField( interpDataArray.astype(scalar_dtype), ( range_min, range_max ) )  # RR0224: 'TimeStepField'?
                         timeSeries.AddField( iTStep, tField )
                         iTStep = iTStep+1 
-                tField = TimeStepField( newDataArray, ( range_min, range_max ) ) 
+                tField = TimeStepField( newDataArray, ( range_min, range_max ) )  # RR0224: 'TimeStepField'?
                 prevDataArray = newDataArray
 #                print " --- --- Rescale time: %f sec." % (time.time()-t0)
                 print "Add timestep %d" % iTStep

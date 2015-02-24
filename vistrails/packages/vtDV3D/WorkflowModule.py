@@ -4,11 +4,7 @@ Created on Mar 10, 2011
 @author: tpmaxwel
 '''
 
-import sys, time, threading, inspect
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from core.modules.vistrails_module import Module, ModuleError, NotCacheable
-from core.modules.module_registry import get_module_registry, ModuleRegistryException   
+from core.modules.vistrails_module import Module, NotCacheable
 from packages.vtDV3D import ModuleStore
 from packages.vtDV3D.InteractiveConfiguration import DV3DConfigurationWidget
 from packages.vtDV3D.vtUtilities import *
@@ -76,9 +72,3 @@ class WorkflowModule( NotCacheable,  Module ):
                 
     def getModuleID( self ):
         return self.moduleInfo['moduleId'] 
-
-
-         
-
- 
-# if __name__ == '__main__':      

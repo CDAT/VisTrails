@@ -1,6 +1,7 @@
-from PyQt4 import QtGui, QtCore
-import cdms2, cdutil, genutil, sys, os
+import cdms2, cdutil, genutil, sys
+from core import debug
 import gui.application
+
 
 def disable_lion_restore():
     import platform

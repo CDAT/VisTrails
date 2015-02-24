@@ -3,24 +3,21 @@ Created on Dec 15, 2010
 
 @author: tpmaxwel
 '''
-import sys, threading, traceback
+
+from PyQt4 import QtCore
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from gui.modules.module_configure import StandardModuleConfigurationWidget
 from core.vistrail.port import PortEndPoint
-from core.modules.vistrails_module import Module, ModuleError
-from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
-from core.modules.basic_modules import Integer, Float, String, Boolean, Variant
+from core.modules.basic_modules import Integer, Float, String
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
 from packages.vtDV3D import ModuleStore
-from core.utils import getHomeRelativePath, getFullPath
+from core.utils import getFullPath
 from packages.vtDV3D.CDATTask import deserializeTaskData
 from packages.vtDV3D import HyperwallManager
-from collections import OrderedDict
 from packages.vtDV3D.vtUtilities import *
 import cdms2, cdtime
-from sets import *
-#from Cython.Compiler.Symtab import classmethod_utility_code
+from sets import Set
 
 
 class CDMSDataType:
@@ -537,7 +534,7 @@ class ConfigurableFunction( QObject ):
         argClasses = iter( self.args )
         for data_elem in data:
             arg_sig = argClasses.next()
-            arg_class = arg_sig[0] if IsListType( arg_sig ) else arg_sig
+            arg_class = arg_sig[0] if isinstance(arg_sig, (list, tuple)) else arg_sig
             wd_val = arg_class()
             wd_val.setValue( data_elem )
             wrappedData.append( wd_val )
