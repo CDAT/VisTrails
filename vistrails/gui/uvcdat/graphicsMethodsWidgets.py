@@ -94,10 +94,6 @@ class VCSGMs():
             return "gm = vcs_canvas[%i].%sisoline('%s'%s)\n" % (canvas,method,name,original)
         elif isinstance(self.gm,vcs.meshfill.Gfm):
             return "gm = vcs_canvas[%i].%smeshfill('%s'%s)\n" % (canvas,method,name,original)
-        elif isinstance(self.gm,vcs.outfill.Gfo):
-            return "gm = vcs_canvas[%i].%soutfill('%s'%s)\n" % (canvas,method,name,original)
-        elif isinstance(self.gm,vcs.outline.Go):
-            return "gm = vcs_canvas[%i].%soutline('%s'%s)\n" % (canvas,method,name,original)
         elif isinstance(self.gm,vcs.scatter.GSp):
             return "gm = vcs_canvas[%i].%sscatter('%s'%s)\n" % (canvas,method,name,original)
         elif isinstance(self.gm,vcs.xyvsy.GXy):
@@ -594,7 +590,6 @@ class VCSGMRanges:
 ##             self.boxfillEditor = QBoxfillEditor(gm=canvas.getboxfill('ASD'))
 ##             self.continentsEditor = QContinentsEditor(gm=canvas.getcontinents('ASD'))
 ##             self.meshfillEditor = QMeshfillEditor(gm=canvas.getmeshfill())
-##             self.outfillEditor = QOutfillEditor(gm=canvas.getoutfill())
 ##             self.scatterEditor = QScatterEditor(gm=canvas.getscatter('ASD'))
 ##             self.taylorEditor = QTaylorDiagramEditor(gm=canvas.gettaylordiagram('ASD'))
 ##             self.vectorEditor = QVectorEditor(gm=canvas.getvector())
@@ -602,14 +597,12 @@ class VCSGMRanges:
 ##             self.boxfillEditor = QBoxfillEditor()
 ##             self.continentsEditor = QContinentsEditor()
 ##             self.meshfillEditor = QMeshfillEditor()
-##             self.outfillEditor = QOutfillEditor()
 ##             self.scatterEditor = QScatterEditor()
 ##             self.taylorEditor = QTaylorDiagramEditor()
 ##             self.vectorEditor = QVectorEditor()
             
 ##         self.contourEditor = QContourEditor()
 ##         self.oneDimEditor = Q1DPlotEditor()
-##         self.outlineEditor = QOutlineEditor()
         
 ##         # Add tabs
 ##         self.tabWidget.addTab(self.boxfillEditor, 'Boxfill')
@@ -617,8 +610,6 @@ class VCSGMRanges:
 ##         self.tabWidget.addTab(self.contourEditor, 'Contour')
 ##         self.tabWidget.addTab(self.meshfillEditor, 'Meshfill')
 ##         self.tabWidget.addTab(self.oneDimEditor, '1D Plot')
-##         self.tabWidget.addTab(self.outfillEditor, 'Outfill')
-##         self.tabWidget.addTab(self.outlineEditor, 'Outline')
 ##         self.tabWidget.addTab(self.scatterEditor, 'Scatter')
 ##         self.tabWidget.addTab(self.taylorEditor, 'Taylor Diagram')
 ##         self.tabWidget.addTab(self.vectorEditor, 'Vector')
@@ -654,14 +645,12 @@ class VCSGMRanges:
 ##         self.boxfillEditor.initValues()
 ##         self.continentsEditor.initValues()
 ##         self.meshfillEditor.initValues()
-##         self.outfillEditor.initValues()
 ##         self.scatterEditor.initValues()
 ##         self.taylorEditor.initValues()
 ##         self.vectorEditor.initValues()
             
 ##         self.contourEditor.initValues()
 ##         self.oneDimEditor.initValues()
-##         self.outlineEditor.initValues()
 
 ##     def applyPressedEvent(self):
 ##         #self.boxfillEditor.setVistrailsGraphicsMethod(self.parent.getParent())
@@ -669,13 +658,11 @@ class VCSGMRanges:
 ##         # TODO
 ##         # self.continentsEditor.setVistrailsGraphicsMethod()
 ##         # self.meshfillEditor.setVistrailsGraphicsMethod()
-##         # self.outfillEditor.setVistrailsGraphicsMethod()
 ##         # self.scatterEditor.setVistrailsGraphicsMethod()
 ##         # self.taylorEditor.setVistrailsGraphicsMethod()
 ##         # self.vectorEditor.setVistrailsGraphicsMethod()
 ##         # self.contourEditor.setVistrailsGraphicsMethod()
 ##         # self.oneDimEditor.setVistrailsGraphicsMethod()
-##         # self.outlineEditor.setVistrailsGraphicsMethod()
 ##         return #todo
 
 ##     def previewPressedEvent(self):
@@ -683,12 +670,9 @@ class VCSGMRanges:
 
 ##     def setToolTips(self):
 ##         self.tabWidget.setTabToolTip(0, 'The Boxfill graphics method displays a two-dimensional data\narray by surrounding each data value with a colored grid box.')
-##         self.tabWidget.setTabToolTip(1, "The Continents graphics method draws a predefined,\ngeneric set of continental outlines in a longitude\nby latitude space. (To draw continental outlines,\nno external data set is required.)")
 ##         self.tabWidget.setTabToolTip(2, "This Contour notebook tab represent both the Isofill\nand Isoline graphics methods. The Isofill graphics\nmethod fills the area between selected isolevels\n(levels of constant value) of a two-dimensional\narray; the manner of filling the area is determined\nby the named fill area attributes. The Isoline\ngraphics method draws lines of constant value at\nspecified levels to graphically represent the values\nof a two-dimensional array; labels also can be\ndisplayed on the isolines.\nIsolines can also have \"orientation\" arrows, indicating clockwise or counter-clockwise")
 ##         self.tabWidget.setTabToolTip(3, "The Meshfill graphics method draws data on irregular grid (or 'mesh')at specified levels to graphically represent\nthe values of a one-dimensional array;\nUnless the irregular grid is supported by cdms2, a mesh array must be passed as well")
 ##         self.tabWidget.setTabToolTip(4, "This 1D Plot notebook tab represent the XvsY, Xyvsy,\nand Yxvsx graphics methods. The XvsY graphics method\ndisplays a line plot from two 1D data arrays, that\nis X(t) and Y(t), where t represents the 1D\ncoordinate values. The Xyvsy graphics method displays\na line plot from a 1D data array, that is X(y),\nwhere y represents the 1D coordinate values. The\nYxvsx graphics method displays a line plot from\na 1D data array, that is Y(x), where y represents\nthe 1D coordinate values.")
-##         self.tabWidget.setTabToolTip(5, "The Outfill graphics method fills a set of integer\nvalues in any data array. Its primary purpose is\nto display continents by filling their area as\ndefined by a surface type array that indicates land,\nocean, and sea-ice points. ")
-##         self.tabWidget.setTabToolTip(6, "The Outline graphics method outlines a set of integer\nvalues in any data array. Its primary purpose is\nto display continental outlines as defined by a\nsurface type array that indicates land, ocean, and\nsea-ice points.")
 ##         self.tabWidget.setTabToolTip(7, "The Scatter graphics method displays a scatter plot\nof two 4-dimensional data arrays, e.g. A(x,y,z,t)\nand B(x,y,z,t). ")
 ##         self.tabWidget.setTabToolTip(8, "The Taylor diagram graphics method provides a statistical\nsummary of pattern correspondence. A single point on\nthe diagram indicates how similar two patterns are in\nterms of their correlation, root-mean-square (RMS)\ndifference, and the ratio of their variances.  The\nstandard deviation of a pattern is proportional to the\nradial distance.  The correlation is given by the cosine\nof the azimuthal angle. The RMS difference is proportional\nto the distance between the plotted points and the\nreference point (often chosen to be the observed\npattern), which is located along the abscissa at a radial\ndistance proportional to its standard deviation.")
 ##         self.tabWidget.setTabToolTip(9, "The Vector graphics method displays a vector plot\nof a 2D vector field. Vectors are located at the\ncoordinate locations and point in the direction of\nthe data vector field. Vector magnitudes are the\nproduct of data vector field lengths and a scaling\nfactor. ")
@@ -1358,162 +1342,6 @@ class Q1DPlotEditor(VCSGMs1D,VCSGMs,QtGui.QScrollArea):
         self.applyMarkerChanges(gm)
         self.applyLineChanges(gm)
         
-class QOutlineEditor(VCSGMs,QtGui.QScrollArea):
-    def __init__(self, parent=None, gm=None):
-        QtGui.QScrollArea.__init__(self, parent)
-        vbox = QtGui.QVBoxLayout()
-        frame = QtGui.QFrame()
-        frame.setLayout(vbox)
-        self.parent=parent
-        if hasattr(parent,"root") and parent.root is not None:
-            self.root=parent.root
-        else:
-            _app = get_vistrails_application()
-            self.root =_app.uvcdatWindow
-        self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2','linecolor', 'linewidth', 'line', 'outline']
-        self.gm = self.root.canvas[0].getoutline(gm)
-        self.saveOriginalValues()
-        self.setupCommonSection()
-
-        # Create Widgets
-        genSettings = uvcdatCommons.QFramedWidget("Outline Line Settings")
-        self.lineType = genSettings.addLabeledComboBox('Style:',
-                                                 ['solid', 'dash', 'dot', 'dash-dot', 'long-dash'],
-                                                 indent=False)
-        self.lineColorIndex = genSettings.addLabeledSpinBox('Color:',
-                                                      0, 255, indent=False)
-        self.lineWidth = genSettings.addLabeledSpinBox('Width:',
-                                                      0, 300, indent=False)
-        self.indexValues = genSettings.addLabeledLineEdit('Levels:',
-                                                    indent=False)
-
-        vbox.addWidget(genSettings)
-
-        #vbox.setAlignment(frame, QtCore.Qt.AlignTop)
-        self.initValues(self.gm)
-        self.setWidget(frame)
-        
-    def initValues(self,gm=None):
-        if gm is None:
-            gm = self.gm
-        if gm:
-            # Init common area
-            self.initCommonValues(gm)
-            self.indexValues.setText('1')
-            if gm.linewidth is None:
-                self.lineWidth.setValue(1)
-            else:
-                self.lineWidth.setValue(gm.linewidth)
-            if gm.linecolor is None:
-                self.lineColorIndex.setValue(241)
-            else:
-                self.lineColorIndex.setValue(gm.linecolor)
-            for i in range(self.lineType.count()):
-                if str(self.lineType.itemText(i))==gm.line:
-                    self.lineType.setCurrentIndex(i)
-                    break
-            self.indexValues.setText(repr(gm.outline))
-        
-    def applyChanges(self,gm=None):
-        if gm is None:
-            gm = self.gm
-        if gm:
-            self.applyCommonChanges(gm)
-            try:
-                gm.outline=eval(str(self.indexValues.text()))
-            except:
-                gm.outline=str(self.indexValues.text())
-            gm.linecolor=int(self.lineColorIndex.text())
-            gm.linewidth=int(self.lineWidth.text())
-            gm.line=str(self.lineType.currentText())
-        
-    def setToolTips(self):
-        # Set tool tips
-        self.lineType.setToolTip("Select the outline line type. ")
-        self.lineWidth.setToolTip("Enter the line width value. There can only\nbe one value (ranging from 0 to 300).")
-        self.lineColorIndex.setToolTip("Enter the line color index value. There can only\nbe one color index value (ranging from 0 to 255).\nIf an error in the color index value occurs, then the\ndefault color value index (i.e., 241) will be used.")
-        self.indexValues.setToolTip("Outlines are drawn to enclose the specified values\nin the data array. As few as one, or\nas many as\nten values, can be specified:\noutline=([n1,[n2,[n3,...[n10]...]]]).")        
-
-        
-
-class QOutfillEditor(VCSGMs,QtGui.QScrollArea):
-    def __init__(self, parent=None, gm=None):
-        QtGui.QScrollArea.__init__(self, parent)
-        vbox = QtGui.QVBoxLayout()
-
-        # Create Widgets
-        frame = QtGui.QFrame()
-        frame.setLayout(vbox)
-        self.parent=parent
-        if hasattr(parent,"root") and parent.root is not None:
-            self.root=parent.root
-        else:
-            _app = get_vistrails_application()
-            self.root =_app.uvcdatWindow
-        self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2','fillareacolor', 'fillareaindex', 'fillareastyle', 'outfill']
-        self.gm = self.root.canvas[0].getoutfill(gm)
-        self.saveOriginalValues()
-        self.setupCommonSection()
-        
-        genSettings = uvcdatCommons.QFramedWidget('Outfill Fill Area Settings')
-        self.fillArea = genSettings.addLabeledComboBox('Style:',
-                                                 ['solid', 'hatch', 'pattern', 'hallow'],
-                                                 indent=False)
-        self.fillAreaIndex = genSettings.addLabeledSpinBox('Index:',
-                                                     1, 18, indent=False)
-        self.fillColorIndex = genSettings.addLabeledSpinBox('Color:',
-                                                      0, 255, indent=False)
-        self.indexValues = genSettings.addLabeledLineEdit('Levels:',
-                                                    indent=False)
-        vbox.addWidget(genSettings)
-        ## vbox.setAlignment(frame, QtCore.Qt.AlignTop)
-
-        self.initValues(self.gm)
-
-        self.setWidget(frame)
-
-    def initValues(self,gm=None):
-        if gm is None:
-            gm = self.gm
-        if gm:
-            # Init common area
-            self.initCommonValues(gm)
-            if gm.fillareaindex is None:
-                self.fillAreaIndex.setValue(1)
-            else:
-                self.fillAreaIndex.setValue(gm.fillareaindex)
-            if gm.fillareacolor is None:
-                self.fillColorIndex.setValue(241)
-            else:
-                self.fillColorIndex.setValue(gm.fillareacolor)
-            for i in range(self.fillArea.count()):
-                if str(self.fillArea.itemText(i))==gm.fillareastyle:
-                    self.fillArea.setCurrentIndex(i)
-                    break
-            self.indexValues.setText(repr(gm.outfill))
-
-    def applyChanges(self,gm=None):
-        if gm is None:
-            gm = self.gm
-        if gm:
-            self.applyCommonChanges(gm)
-            try:
-                gm.outfill=eval(str(self.indexValues.text()))
-            except:
-                gm.outfill=str(self.indexValues.text())
-            gm.fillareacolor=int(self.fillColorIndex.text())
-            gm.fillareaindex = int(self.fillAreaIndex.text())
-            gm.fillareastyle=str(self.fillArea.currentText())
-        
-    def setToolTips(self):
-        # Set ToolTips
-        self.fillArea.setToolTip("Select the outfill fill area style type. ")
-        self.fillAreaIndex.setToolTip("Select the outfill fill area index value. ")
-        self.fillColorIndex.setToolTip("Enter the fillarea color index value. There can only\nbe one color index value (ranging from 0 to 255).\nIf an error in the color index value occurs, then the\ndefault color value index (i.e., 241) will be used.")
-        self.indexValues.setToolTip("Outlines are filled to enclose the selected values\nthat appear in the data array. As few as one, or\nas many as ten values, can be specified:\noutline=([n1,[n2,[n3,...[n10]...]]]).")
-
-        
-
 class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
 
     def __init__(self, parent=None, gm=None):

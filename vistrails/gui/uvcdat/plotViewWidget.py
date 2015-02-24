@@ -266,8 +266,6 @@ class QPlotView(QtGui.QWidget):
             self.root.canvas[0].createmeshfill,
             self.root.canvas[0].createisofill,
             self.root.canvas[0].createisoline,
-            self.root.canvas[0].createoutfill,
-            self.root.canvas[0].createoutline,
             self.root.canvas[0].createvector,
             self.root.canvas[0].createyxvsx,
             self.root.canvas[0].createxyvsy,
@@ -310,8 +308,8 @@ class QPlotView(QtGui.QWidget):
      #       self.spreadSheet = cdat_cell.QCDATWidget(self)
 
     def isVCSPlot(self,plotType):
-        if str(plotType).lower() in ['boxfill', 'isofill', 'isoline', 'meshfill', 'outfill',
-                                'outline', 'scatter', 'taylordiagram', 'vector', 'xvsy',
+        if str(plotType).lower() in ['boxfill', 'isofill', 'isoline', 'meshfill',
+                                'scatter', 'taylordiagram', 'vector', 'xvsy',
                                 'xyvsy', 'yxvsx']:
             return True
         else:
