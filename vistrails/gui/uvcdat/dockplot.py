@@ -198,10 +198,6 @@ class PlotTreeWidget(QtGui.QTreeWidget):
                 widget = graphicsMethodsWidgets.QIsolineEditor(w.editor,gm = str(name))
             elif plotType == "Meshfill":
                 widget = graphicsMethodsWidgets.QMeshfillEditor(w.editor,gm = str(name))
-            elif plotType == "Outfill":
-                widget = graphicsMethodsWidgets.QOutfillEditor(w.editor,gm = str(name))
-            elif plotType == "Outline":
-                widget = graphicsMethodsWidgets.QOutlineEditor(w.editor,gm = str(name))
             elif plotType == "Scatter":
                 widget = graphicsMethodsWidgets.QScatterEditor(w.editor,gm = str(name))
             elif plotType == "Taylordiagram":

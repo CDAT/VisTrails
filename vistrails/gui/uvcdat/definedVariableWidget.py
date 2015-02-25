@@ -395,7 +395,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         sel = self.getSelectedDefinedVariables()
         if len(sel)==0:
             return
-        out = QtGui.QFileDialog.getSaveFileName(self,"NetCDF File",filter="NetCDF Files (*.nc *.cdg *.NC *.CDF *.nc4 *.NC4) ;; All Files (*.*)",options=QtGui.QFileDialog.DontConfirmOverwrite)
+        out = str(QtGui.QFileDialog.getSaveFileName(self,"NetCDF File",filter="NetCDF Files (*.nc *.cdg *.NC *.CDF *.nc4 *.NC4) ;; All Files (*.*)",options=QtGui.QFileDialog.DontConfirmOverwrite))
         mode = "w"
         if os.path.exists(out):
             overwrite = QtGui.QMessageBox.question(self,"Existing File","Do you want to append to it or overwrite it?","Append","Overwrite","Ooops",2)
@@ -407,7 +407,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         c = self.cursor()
         self.setCursor(QtCore.Qt.BusyCursor)
         try:
-            fo = cdms2.open(str(out),mode)
+            fo = cdms2.open(out,mode)
             for v in sel:
                 fo.write(v)
             fo.close()

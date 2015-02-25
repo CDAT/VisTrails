@@ -81,9 +81,9 @@ class PlotManager(QtCore.QObject):
             klass = getattr(module, klass_name)
         else:
             try:
-                klass = globals()[klass_name]
+                klass = globals()[text]
             except:
-                klass =None
+                klass = None
         return klass
     
     def load_plots(self):

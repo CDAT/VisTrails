@@ -354,9 +354,9 @@ class QColormapEditor(QtGui.QColorDialog):
         self.cellsDirty = True
 
     def save(self):
-        out = QtGui.QFileDialog.getSaveFileName(self, "JSON File",
-                                                filter="json Files (*.json *.jsn *.JSN *.JSON) ;; All Files (*.*)",
-                                                options=QtGui.QFileDialog.DontConfirmOverwrite)
+        out = str(QtGui.QFileDialog.getSaveFileName(self, "JSON File",
+                                                    filter="json Files (*.json *.jsn *.JSN *.JSON) ;; All Files (*.*)",
+                                                    options=QtGui.QFileDialog.DontConfirmOverwrite))
         cmap = self.activeCanvas.getcolormap(str(self.colormap.currentText()))
         cmap.script(out)
 

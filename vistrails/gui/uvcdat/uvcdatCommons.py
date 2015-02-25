@@ -19,17 +19,15 @@ defaultGmsColor = QtGui.QColor(252,104,63)
 defaultTemplatesColor = QtGui.QColor(58,79,108)
 defaultGmsColor = QtGui.QColor(179,140,138)
 
-plotTypes = {"VCS":['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill',
-                     'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY',
-                     'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Vector', '3D_Dual_Scalar' ],  
+plotTypes = {"VCS":['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 
+                     'Scatter', 'Taylordiagram', 'Vector', 'XvsY',
+                     'Xyvsy', 'Yxvsx', '3D_Scalar', '3D_Vector', '3D_Dual_Scalar' ],
              }
 
 gmInfos= {'Boxfill' :{'nSlabs':1},
           'Isofill' :{'nSlabs':1},
           'Isoline' :{'nSlabs':1},
           'Meshfill' :{'nSlabs':1},
-          'Outfill' :{'nSlabs':1},
-          'Outline' :{'nSlabs':1},
           'Scatter' : {'nSlabs':2},
           'Taylordiagram' :{'nSlabs':1},
           'Vector' :{'nSlabs':2},
@@ -484,7 +482,7 @@ class QCommandsFileWidget(QtGui.QDialog):
     def saveAs(self):
         cont = True
         while cont is True:
-            fnm = QtGui.QFileDialog.getSaveFileName()
+            fnm = str(QtGui.QFileDialog.getSaveFileName())
             try:
                 f=open(fnm,'w')
                 cont=False

@@ -1556,7 +1556,7 @@ class QCDATWidgetToolBar(QCellToolBar):
             pass
         
         if use_vcs_toolbar:
-            if cell.inputPorts[0][0].var.var.rank()>2:
+            if cell.inputPorts[0][0].var.var.rank()>2:  # no inputPorts here
                 self.prevAction=QCDATWidgetPrev(self)
                 self.prevAction.setEnabled(False)
                 self.appendAction(self.prevAction)
@@ -2000,22 +2000,6 @@ def get_input_ports(plot_type):
                                   ('mesh', 'basic:String', True),
                                   ('wrap', 'basic:List', True)
                                   ]) 
-    elif plot_type == "Outfill":
-        return expand_port_specs([('outfill', 'basic:List', True),
-                                  ('fillareacolor', 'basic:List', True),
-                                  ('fillareaindex', 'basic:List', True),
-                                  ('fillareastyle', 'basic:String', True),
-                                  ('xaxisconvert', 'basic:String', True),
-                                  ('yaxisconvert', 'basic:String', True),
-                                  ]) 
-    elif plot_type == "Outline":
-        return expand_port_specs([('outline', 'basic:List', True),
-                                  ('linecolor', 'basic:Integer', True),
-                                  ('line', 'basic:String', True),
-                                  ('linewidth', 'basic:Integer', True),
-                                  ('xaxisconvert', 'basic:String', True),
-                                  ('yaxisconvert', 'basic:String', True),
-                                  ]) 
     elif plot_type == "Scatter":
         return expand_port_specs([('markercolor', 'basic:Integer', True),
                                   ('marker', 'basic:String', True),
@@ -2126,20 +2110,6 @@ def get_gm_attributes(plot_type):
                 'missing', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
                 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
                 'ymtics2', 'yticlabels1', 'yticlabels2', 'mesh', 'wrap']
-    elif plot_type == "Outfill":
-        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
-                'datawc_y1', 'datawc_y2', 'outfill',
-                'fillareacolor', 'fillareaindex', 'fillareastyle',
-                'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
-                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
-                'ymtics2', 'yticlabels1', 'yticlabels2']
-    elif plot_type == "Outline":
-        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
-                'datawc_y1', 'datawc_y2', 'outline',
-                'linecolor', 'line', 'linewidth',
-                'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
-                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
-                'ymtics2', 'yticlabels1', 'yticlabels2']
     elif plot_type == "Scatter":
         return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
                 'datawc_y1', 'datawc_y2', 
@@ -2195,8 +2165,8 @@ def get_canvas():
             pass
     return canvas
     
-for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
-                  'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
+for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', \
+                  'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
                   'Xyvsy', 'Yxvsx' ]:
     def get_init_method():
         def __init__(self):
@@ -2246,8 +2216,8 @@ def initialize(*args, **keywords):
 #    app = QtGui.QApplication.instance()
 #    app.connect( app,  QtCore.SIGNAL("focusChanged(QWidget*,QWidget*)"), canvas.applicationFocusChanged )
     
-    for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', 'Outfill', \
-                  'Outline', 'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
+    for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', \
+                  'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
                   'Xyvsy', 'Yxvsx', '3D_Dual_Scalar', '3D_Scalar', '3D_Vector' ]:
         method_name = "get"+plot_type.lower()
         attributes = get_gm_attributes(plot_type)

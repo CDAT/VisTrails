@@ -22,7 +22,6 @@ import cdms2, cdtime
 from sets import *
 # from Cython.Compiler.Symtab import classmethod_utility_code
 
-
 class CDMSDataType:
     Volume = 1
     Slice = 2

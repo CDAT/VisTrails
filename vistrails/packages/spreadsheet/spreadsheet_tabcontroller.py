@@ -975,7 +975,7 @@ class StandardWidgetTabController(QtGui.QTabWidget):
                                                      '(*.vss)',
                                                      )
         if not fileName.isNull():
-            self.openSpreadsheet(fileName)
+            self.openSpreadsheet(str(fileName))
 
     def cleanup(self):
         """ cleanup() -> None

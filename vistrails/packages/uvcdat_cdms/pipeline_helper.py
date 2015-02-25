@@ -1417,6 +1417,7 @@ class CDMSPlotWidget(QtGui.QWidget):
             
     def configure_done(self):
         canceled = []
+        action = None
         
         for a in self.to_be_added:
             if a in self.to_be_removed:
@@ -1467,7 +1468,8 @@ class CDMSPlotWidget(QtGui.QWidget):
             cell = self.proj_controller.sheet_map[sheetName][(row,col)]
             action = self.update_pipeline(None, function_updates)
 
-        action = self.update_templates(action)
+        if action is not None:
+            action = self.update_templates(action)
 
         self.emit(QtCore.SIGNAL('plotDoneConfigure'), action)
         if action is not None:

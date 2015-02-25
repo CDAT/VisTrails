@@ -32,10 +32,6 @@ class QEditorGraphicsMethodsWidget(QtGui.QWidget):
             self.widget = graphicsMethodsWidgets.QIsolineEditor(parent=self,gm = gmnm)
         elif ptype == "Meshfill":
             self.widget = graphicsMethodsWidgets.QMeshfillEditor(parent=self,gm = gmnm)
-        elif ptype == "Outfill":
-            self.widget = graphicsMethodsWidgets.QOutfillEditor(parent=self,gm = gmnm)
-        elif ptype == "Outline":
-            self.widget = graphicsMethodsWidgets.QOutlineEditor(parent=self,gm = gmnm)
         elif ptype == "Scatter":
             self.widget = graphicsMethodsWidgets.QScatterEditor(parent=self,gm = gmnm)
         elif ptype == "Taylordiagram":

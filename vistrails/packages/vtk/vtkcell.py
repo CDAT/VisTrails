@@ -341,18 +341,22 @@ class QVTKWidget(QCellWidget):
                 self.mRenWin.Finalize()
             if system.systemType=='Linux':
                 try:
-                    vp = '_%s_void_p' % (hex(int(QtGui.QX11Info.display()))[2:])
+                    display = int(QtGui.QX11Info.display())
                 except TypeError:
-                    #This was change for PyQt4.2
-                    if isinstance(QtGui.QX11Info.display(),QtGui.Display):
-                        display = sip.unwrapinstance(QtGui.QX11Info.display())
-                        vp = '_%s_void_p' % (hex(display)[2:])
+                    # This was changed for PyQt4.2
+                    assert isinstance(QtGui.QX11Info.display(), QtGui.Display)
+                    display = sip.unwrapinstance(QtGui.QX11Info.display())
                 v = vtk.vtkVersion()
                 version = [v.GetVTKMajorVersion(),
                            v.GetVTKMinorVersion(),
                            v.GetVTKBuildVersion()]
+                display = hex(display)[2:]
                 if version < [5, 7, 0]:
-                    vp = vp + '\0x00'                
+                    vp = ('_%s_void_p\0x00' % display)
+                elif version < [6, 2, 0]:
+                    vp = ('_%s_void_p' % display)
+                else:
+                    vp = ('_%s_p_void' % display)
                 self.mRenWin.SetDisplayId(vp)
                 self.resizeWindow(1,1)
             self.mRenWin.SetWindowInfo(str(int(self.winId())))  
@@ -868,7 +872,8 @@ class QVTKWidget(QCellWidget):
         sheet = self.findSheetTabWidget()
         if sheet:
             ren = self.interacting
-            if not ren: ren = self.getActiveRenderer(self.iren)
+            if not ren and self.iren and self.iren.GetEnabled():
+                ren = self.getActiveRenderer(self.iren)
             if ren:
                 cells = sheet.getSelectedLocations()
                 if (ren in self.getRenderersInCellList(sheet, cells)):
