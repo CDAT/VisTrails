@@ -261,7 +261,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         ## print "Added variable"
         ## self.emit(QtCore.SIGNAL('setupDefinedVariableAxes'), var)
 
-    def deleteVariable(self, varid):
+    def deleteVariable(self, varid, allSelected):
         """ Remove variable from dict and project
         """
 #        from packages.vtDV3D import ModuleStore
@@ -274,7 +274,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 for project in self.varList.item(i).projects:
                     controller = self.root.get_project_controller_by_name(project)
                     if controller:
-                        if controller.remove_defined_variable(varid):
+                        if controller.remove_defined_variable(varid, allSelected):
                             self.varList.takeItem(i)
                         else:
                             success = False
@@ -449,14 +449,29 @@ class QDefinedVariableWidget(QtGui.QWidget):
             d.show()
             self.ieds.append(d)
 
-    def trashVariable(self):
+    '''This method calls the delete variable method 2 times. The first time returns the list of 
+       variables which have dependent variable and therefore cannot be deleted till the dependent 
+       variables are. The second time goes through this list and tries to delete them again 
+       after (if) their dependent variables have been deleted
+    '''
+    def trashVariable(self): 
+        selectedItems = self.varList.selectedItems()
+        notDeletedVariables = []
+        count = 1
         for v in self.getSelectedDefinedVariables():
-            self.deleteVariable(v.id)
-
+            returnValue = self.deleteVariable(v.id,count)
+            if(not returnValue):
+              notDeletedVariables.append(v)
+        count = 2
+        for v in notDeletedVariables:
+            self.deleteVariable(v.id,count)
+    ''' Removing this method as it is not used any where in the code. Also, 
+        removing all the variables can be done by the above method(TrashVariable)
     def trashAll(self):
         self.selectAllVariables()
         for v in self.getSelectedDefinedVariables():
-            self.deleteVariable(v.id)
+            self.deleteVariable(v.id, 2)
+    '''
 
     def newVariable(self):
 #        from packages.vtDV3D.vtUtilities import memoryLogger
