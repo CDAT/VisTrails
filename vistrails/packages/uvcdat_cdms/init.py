@@ -1002,7 +1002,7 @@ class CDMS3DPlot(Plot, NotCacheable):
                     except ValueError: pass
                 values = getNonEmptyList( value )
                 if values <> None:
-                    print "Set PORT %s value: " % str(attr), str( values )
+#                    print "Set PORT %s value: " % str(attr), str( values )
                     for value in values:
                         if   value == "vcs.on":  
                             gm.setParameter( attr, None, state=1 ) ; print " --> state = 1 "
@@ -1312,8 +1312,8 @@ class QCDATWidget(QVTKWidget):
         #self.windowId = -1
         #self.createCanvas()
         #layout = QtGui.QVBoxLayout()
-        #self.setLayout(layout) 
-        
+        #self.setLayout(layout)
+
     def processParameterChange( self, args ):
         from pipeline_helper import CDMSPipelineHelper
         parameter_name  = args[1]
@@ -1498,7 +1498,7 @@ class QCDATWidget(QVTKWidget):
         #        self.window.setParent(QtGui.QApplication.activeWindow())
         #    self.window.setVisible(False)
             #reparentedVCSWindows[self.windowId] = self.window
-        self.canvas.onClosing()
+        self.canvas.onClosing( self.cell_coordinates )
         
         self.canvas = None
         #self.window = None
