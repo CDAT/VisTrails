@@ -261,7 +261,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
         ## print "Added variable"
         ## self.emit(QtCore.SIGNAL('setupDefinedVariableAxes'), var)
 
-    def deleteVariable(self, varid, allSelected):
+    def deleteVariable(self, varid,count):
         """ Remove variable from dict and project
         """
 #        from packages.vtDV3D import ModuleStore
@@ -274,7 +274,7 @@ class QDefinedVariableWidget(QtGui.QWidget):
                 for project in self.varList.item(i).projects:
                     controller = self.root.get_project_controller_by_name(project)
                     if controller:
-                        if controller.remove_defined_variable(varid, allSelected):
+                        if controller.remove_defined_variable(varid,count):
                             self.varList.takeItem(i)
                         else:
                             success = False
