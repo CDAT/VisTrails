@@ -87,6 +87,7 @@ class ProjectController(QtCore.QObject):
     def add_defined_variable(self, var):
         try:
             self.defined_variables[var.name] = var
+            print 'variable name is: %s' (str (var))
         except Exception, err:
             print "Error adding variable %s: %s" % ( str(var), str(err) )
 
@@ -154,14 +155,21 @@ class ProjectController(QtCore.QObject):
         else:
             debug.warning("Variable was not renamed: variable named '%s' not found." %oldname)
             
-    def remove_defined_variable(self, name, force = False):
+    def remove_defined_variable(self, name, count, force = False):
         """remove_defined_variable(name: str) -> None
         This will remove the variable only if it is not used to create other
-        variables.
+        variables. We however check if the method has been called the first 
+        or the second time. For the first time we don't break the method and 
+        return values, instead we add them to a list and call the delete method again 
+        for the list. This helps delete variables who have dependent variables 
+        and can help remove both without any issue.
         
         """
+        
         (res, cvars) = self.var_used_in_computed_variable(name)
-        if res:
+        if(count == 1 and res):
+            return False 
+        elif (res):
             msg = "%s is used to derive other variables. Delete those first." % name
             if not force:
                 QMessageBox.critical(None, "Can't delete variable", msg)
