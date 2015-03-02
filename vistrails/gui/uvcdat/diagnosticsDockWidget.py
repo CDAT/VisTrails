@@ -36,8 +36,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    obs2path = ''
    dfiles1 = None
    dfiles2 = None
-   obs1files = None
-   obs2files = None
+   obsfiles1 = None
+   obsfiles2 = None
    ds_menu = None
    region_box = None
    Types = dg_menu.keys()
@@ -53,13 +53,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       import os
       # For speed of entry; these will be set to '/' for the real check-in.
       self.DS1PathLabel.setText('/')
-      self.opts._opts['path'].append(str(self.DS1PathLabel.text()))
       self.DS2PathLabel.setText('/')
-      self.opts._opts['path'].append(str(self.DS2PathLabel.text()))
       self.obs1PathLabel.setText('/')
-      self.opts._opts['obspath'].append(str(self.obs1PathLabel.text()))
       self.obs2PathLabel.setText('/')
-      self.opts._opts['obspath'].append(str(self.obs2PathLabel.text()))
         
       self.tmppth = os.path.join(os.environ['HOME'],"tmp")
       if not os.path.exists(self.tmppth):
@@ -118,6 +114,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.DS2checkBox.stateChanged.connect(self.DS2Changed)
       self.Obs1checkBox.stateChanged.connect(self.obs1Changed)
       self.Obs2checkBox.stateChanged.connect(self.obs2Changed)
+
+      self.DS1Climos.stateChanged.connect(self.DS1climosChanged)
+      self.DS2Climos.stateChanged.connect(self.DS2climosChanged)
 
       self.pickDS1Path.clicked.connect(self.setDS1Path)
       self.pickDS2Path.clicked.connect(self.setDS2Path)
@@ -228,168 +227,163 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       pa = QtGui.QFileDialog.getExistingDirectory(self, "Observations 1 Path", self.obs1PathLabel.text())
       p = str(pa)
       self.obs1PathLabel.setText(p)
-      self.opts._opts['obspath'][0] = p
+      if len(self.opts._opts['obs']) == 0:
+         self.opts._opts['obs'].append({})
+
+      self.opts._opts['obs'][0]['path'] = p
       self.prepareObs1()
 
    def setObs2Path(self, button):
       pa = QtGui.QFileDialog.getExistingDirectory(self, "Observations 2 Path", self.obs2PathLabel.text())
       p = str(pa)
       self.obs2PathLabel.setText(p)
-      self.opts._opts['obspath'][1] = p
+      if len(self.opts._opts['obs']) == 0:
+         print 'Please select a first obs set'
+         return
+         
+      if len(self.opts._opts['obs']) == 1:
+         self.opts._opts['obs'].append({})
+      if len(self.opts._opts['obs']) == 2:
+         self.opts._opts['obs'][1]['path'] = p
+
       self.prepareObs2()
 
    def setDS1Path(self, button):
       pa = QtGui.QFileDialog.getExistingDirectory(self, "Dataset 1 Path", self.DS1PathLabel.text())
       p = str(pa)
       self.DS1PathLabel.setText(p)
-      self.opts._opts['path'][0] = p
+#      print 'self.opts_opts:'
+#      print self.opts._opts
+#      print 'self.opts._opts[\'model\']:'
+#      print self.opts._opts['model']
+#      print 'done'
+      if len(self.opts._opts['model']) == 0:
+         self.opts._opts['model'].append({})
+         self.opts._opts['model'][0]['path'] = p
+      else: # must already have a model 0, just upate path
+         self.opts._opts['model'][0]['path'] = p
+
+      if self.DS1Climos.isChecked() == True:
+         print 'DS1 Climos was checked'
+         self.opts._opts['model'][0]['climos'] = 'yes'
+      else:
+         print 'DS1 climos was not checked'
+         self.opts._opts['model'][0]['climos'] = 'no'
+
       self.prepareDS1()
 
    def setDS2Path(self, button):
       pa = QtGui.QFileDialog.getExistingDirectory(self, "Dataset 2 Path", self.DS2PathLabel.text())
       p = str(pa)
       self.DS2PathLabel.setText(p)
-      self.opts._opts['path'][1] = p
+      # Do we already have a model 2? If not, add one.
+      if len(self.opts._opts['model']) == 0:
+         print 'Please select a model 0 first.'
+         return
+      if len(self.opts._opts['model']) == 1: 
+         self.opts._opts['model'].append({})
+         # It should now == 2.
+      if len(self.opts._opts['model']) == 2:
+         self.opts._opts['model'][1]['path'] = p
+         if self.DS2Climos.isChecked() == True:
+            print 'DS2 climos was checked'
+            self.opts._opts['model'][1]['climos'] = 'yes'
+         else:
+            print 'DS2 climos was not checked'
+            self.opts._opts['model'][1]['climos'] = 'no'
+
       self.prepareDS2()
 
    def prepareDS1(self):
-      if self.opts._opts['path'][0] == None:
+      if len(self.opts._opts['model']) == 0 or self.opts._opts['model'][0]['path'] == None:
          print 'No dataset1 path selected'
       else:
-         self.dfiles1 = metrics.fileio.findfiles.dirtree_datafiles(
-            self.opts, pathid=0, filter=self.opts['filter'])
-         #self.ft1 = metrics.fileio.filetable.basic_filetable(self.dfiles1, self.opts)
-         self.ft1 = self.dfiles1.setup_filetable()
+         self.dsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, modelid = 0)
+         self.ft1 = self.dsfiles1.setup_filetable()
+
+#         self.ft1 = metrics.fileio.findfiles.path2filetable(self.opts, modelid = 0)
          self.setupDiagnosticTree(self.comboBoxType.currentIndex())
 
    def prepareDS2(self):
-      if self.opts._opts['path'][1] == None:
+      if len(self.opts._opts['model']) < 2 or self.opts._opts['model'][1]['path'] == None:
          print 'No dataset2 path selected'
       else:
-         # Hey, there's a bug - the same filter, filter, is used for both model (DS) datasets!
-         self.dfiles2 = metrics.fileio.findfiles.dirtree_datafiles(
-            self.opts, pathid=0, filter=self.opts['filter'])
-         #self.ft2 = metrics.fileio.filetable.basic_filetable(self.dfiles2, self.opts)
-         self.ft2 = self.dfiles2.setup_filetable()
+         self.dsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, modelid = 1)
+         self.ft2 = self.dsfiles2.setup_filetable()
+
+#         self.ft2 = metrics.fileio.findfiles.path2filetable(self.opts, modelid = 1)
          self.setupDiagnosticTree(self.comboBoxType.currentIndex())
 
-   def filefilter_menuitem( self, filefam_menu, comboBox, filtername ):
+   def filefilter_menuitem( self, filefam_menu, widget ):
+#      print 'menuitum - type: ', type(filefam_menu)
       if type(filefam_menu) is dict:
-         filefam = str(comboBox.currentText())
-         if(len(filefam) > 0):
-            self.opts[filtername] = filefam_menu[filefam]
-         else:
-            self.opts[filtername] = None
+         filefam = str(widget.currentText())
       else:  # filefam_menu is True or None
          filefam = ''
-         self.opts[filtername] = None
+#      print 'returning: \'%s\''% filefam
       return filefam
 
-   def filefilter_menu( self, datafiles, comboBox, filtername, default='NCEP' ):
-      """Sets up and initializes a menu for choosing a file filter.
-      The menu comes from the basic_datafiles object, 'datafiles'.
-      The GUI object to contain the menu is comboBox.
-      The initial (default) menu choice is stuck into self.opts[filtername].
-      """
+   def fill_filefilter_menu(self, datafiles, widget ):
       filefams = None
-      filefam_menu = self.obsfiles1.check_filespec() # True, None, or a dict
+      filefam_menu = datafiles.check_filespec()
+#      print 'filefam_menu: ', filefam_menu
+#      print 'type: ', type(filefam_menu)
       if type(filefam_menu) is dict:
          filefams = filefam_menu.keys()
-      elif filefam_menu==None:
-         print "WARNING: No data found in",datafiles
+      elif filefam_menu == None:
+         print 'No data found in %s' % datafiles
       if type(filefams) is list:
+#         print 'filefams was a list: ', filefams
          filefams.sort()
-         comboBox.setDuplicatesEnabled(False)
-         comboBox.addItems(filefams)
-         i = comboBox.findText(default)
-         comboBox.setCurrentIndex(max(i,0)) # 0 if findText didn't find text
+         widget.setDuplicatesEnabled(False)
+         widget.addItems(filefams)
+#         i = widget.findText(default)
+#         widget.setCurrentIndex(max(i,0)) # 0 if findText didn't find text
+         widget.setCurrentIndex(0)
 
-      filefam = self.filefilter_menuitem( filefam_menu, comboBox, filtername )
+      filefam = self.filefilter_menuitem(filefam_menu, widget)
 
       return filefams, filefam_menu, filefam
 
    def prepareObs1(self):
-      if self.opts._opts['obspath'][0] == None:
+      if len(self.opts._opts['obs']) == 0 or self.opts._opts['obs'][0]['path'] == None:
          print 'No observation directory selected'
       else:
-         print 'Processing observation data in ', self.opts._opts['obspath'][0]
-         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0,
-                                                                     path=self.opts['obspath'][0],
-                                                                     filter=self.opts['filter2'])
-         #self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
+         print 'Processing observation data in ', self.opts._opts['obs'][0]['path']
+         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
 
-         if "Let's use the old code" == True:
-            self.observations1 = None
-            self.obs1_menu = self.obsfiles1.check_filespec()
-            if type(self.obs1_menu) is dict:
-               self.observations1 = self.obs1_menu.keys()
-            self.diagnostic_set_name = "Not implemented"
-            if self.obs1_menu==None:
-               print "WARNING: No data found for observations directory"
-            if type(self.observations1) is list:
-               self.observations1.sort()
-               self.comboBoxObservation1.setDuplicatesEnabled(False)
-               self.comboBoxObservation1.addItems(self.observations1)
-               i = self.comboBoxObservation1.findText("NCEP")
-               self.comboBoxObservation1.setCurrentIndex(i)
+         # So now we need to see if the user wants a filter.
+         # I believe all we need to do is set up the combobox with a list of 
+         # possible filters based on the obs set which has now been selected.
+         # much of that work is done with check_filespec().
+         # When the user clicks Apply it has to re-fetch the menu item selected
 
-            if type(self.observations1) is list:
-               self.observation1 = str(self.comboBoxObservation1.currentText())
-               if(len(self.observation1) > 0):
-                  self.opts._opts['filter2'] = self.obs1_menu[self.observation1]
-               else:
-                  self.opts._opts['filter2'] = None
-            else:
-               self.opts._opts['filter2'] = None
-         else:
-            self.observations1, self.obs1_menu, self.observation1 =\
-                self.filefilter_menu( self.obsfiles1, self.comboBoxObservation1, 'filter2' )
+         self.observations1, self.obs1_menu, self.observation1 = \
+            self.fill_filefilter_menu(self.obsfiles1, self.comboBoxObservation1)
 
-         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(
-            self.opts, obsid=0, path=self.opts['obspath'][0], filter=self.opts['filter2'])
-         #self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
+         self.opts._opts['obs'][0]['filter'] = self.obs1_menu[self.observation1]
+#         self.opts._opts['obs'][0]['filter'] = str(self.comboBoxObservation1.currentText())
+         print 'opts obs 0 filter set to: ', self.opts._opts['obs'][0]['filter']
+
+         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
+
          self.obsft1 = self.obsfiles1.setup_filetable()
          # obs should be populated now
 
    def prepareObs2(self):
-      if self.opts._opts['obspath'][1] == None:
-         print 'No observation directory selected'
+      if len(self.opts._opts['obs']) != 2 or self.opts._opts['obs'][1]['path'] == None:
+         print 'No second observation directory selected'
       else:
-         print 'Processing observation data in ', self.opts._opts['obspath'][1]
-         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1,
-                                                                     path=self.opts['obspath'][1],
-                                                                     filter=self.opts['filter2'])
-         #self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
+         print 'Processing observation data in ', self.opts._opts['obs'][1]['path']
+         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1)
 
-         if "Let's use the old code" == True:
-            self.observations2 = None
-            self.obs2_menu = self.obsfiles2.check_filespec()
-            if type(self.obs2_menu) is dict:
-               self.observations2 = self.obs2_menu.keys()
-            self.diagnostic_set_name = "Not implemented"
-            if self.obs2_menu==None:
-               print "WARNING: No data found for observations directory"
-            if type(self.observations2) is list:
-               self.observations2.sort()
-               self.comboBoxObservation2.setDuplicatesEnabled(False)
-               self.comboBoxObservation2.addItems(self.observations2)
-               i = self.comboBoxObservation2.findText("NCEP")
-               self.comboBoxObservation2.setCurrentIndex(i)
+         self.observations2, self.obs2_menu, self.observation2 =\
+            self.fill_filefilter_menu(self.obsfiles2, self.comboBoxObservation2)
 
-            if type(self.observations2) is list:
-               self.observation2 = str(self.comboBoxObservation2.currentText())
-               self.opts._opts['filter2'] = self.obs2_menu[self.observation2]
-            else:
-               self.opts._opts['filter2'] = None
-         else:
-            # Hey, there's a bug - the same filter, filter2, is used for both obs sets!
-            self.observations2, self.obs2_menu, self.observation2 =\
-                self.filefilter_menu( self.obsfiles2, self.comboBoxObservation2, 'filter2' )
+         self.opts._opts['obs'][1]['filter'] = self.obs2_menu[self.observation2]
+         print 'opts obs1 filter set to: ', self.opts._opts['obs'][1]['filter']
 
-         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1,
-                                                                     path=self.opts['obspath'][1],
-                                                                     filter=self.opts['filter2'])
-         #self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
+         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.opts, obsid=1)
          self.obsft2 = self.obsfiles2.setup_filetable()
 
          # obs should be populated now
@@ -443,89 +437,46 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          if type(self.observations1) is list:
             self.observation1 = str(self.comboBoxObservation1.currentText())
             if type(self.observation1) is str and len(self.observation1) > 0:
-               self.opts._opts['filter2'] = self.obs1_menu[self.observation1]
+               self.opts._opts['obs'][0]['filter'] = self.obs1_menu[self.observation1]
             else:
-               self.opts._opts['filter2'] = None
+               self.opts._opts['obs'][0]['filter'] = None
          else:
-            self.opts._opts['filter2'] = None
+            self.opts._opts['obs'][0]['filter'] = None
 
-         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0,
-                                                                     path=self.opts['obspath'][0],
-                                                                     filter=self.opts['filter2'])
-         #self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts)
+         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
+         #self.obsft1 = metrics.fileio.filetable.basic_filetable(self.obsfiles1, self.opts._opts)
          self.obsft1 = self.obsfiles1.setup_filetable()
 
       if self.useObs2 == True:
          if type(self.observations2) is list:
             self.observation2 = str(self.comboBoxObservation2.currentText())
-            if type(self.observation2) is str and len(self.observation2) > 0:
-               self.opts._opts['filter2'] = self.obs2_menu[self.observation2]
+            if type(self.observation2) is str and len(self.observation2) > 0 and len(self.opts._opts['obs']) == 2:
+               self.opts._opts['obs'][1]['filter'] = self.obs2_menu[self.observation2]
             else:
-               self.opts._opts['filter2'] = None
+               self.opts._opts['obs'][1]['filter'] = None
          else:
-            self.opts._opts['filter2'] = None
+            if len(self.opts._opts['obs']) == 2:
+               self.opts._opts['obs'][1]['filter'] = None
 
-         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1,
-                                                                     path=self.opts['obspath'][1],
-                                                                     filter=self.opts['filter2'])
-         #self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts)
+         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1)
+         #self.obsft2 = metrics.fileio.filetable.basic_filetable(self.obsfiles2, self.opts._opts)
          self.obsft2 = setlf.obsfiles2.setup_filetable()
 
       self.diagnostic_set_name = str(item.text(column))
 
       varlist = []
       vtmp = []
-
-      if self.useDS1 == True:
-         vtmp = self.DiagnosticGroup.list_variables(self.ft1, diagnostic_set_name = self.diagnostic_set_name)
-         varlist = vtmp
-      if self.useDS2 == True:
-         vtmp = self.DiagnosticGroup.list_variables(self.ft2, diagnostic_set_name = self.diagnostic_set_name)
-         varlist = list(set(varlist) & (set(vtmp)))
-      if self.useObs1 == True:
-         vtmp = self.DiagnosticGroup.list_variables(self.obsft1, diagnostic_set_name = self.diagnostic_set_name)
-         varlist = list(set(varlist) & (set(vtmp)))
-      if self.useObs2 == True:
-         vtmp = self.DiagnosticGroup.list_variables(self.obsft2, diagnostic_set_name = self.diagnostic_set_name)
-         varlist = list(set(varlist) & (set(vtmp)))
-
-###      var1 = []
-###      var2 = []
-###      var3 = []
-###      var4 = []
-###      print 'PLOTSET CALLING LIST_VARS with set_name ', self.diagnostic_set_name
-###      print type(self.diagnostic_set_name)
-###      print self.DiagnosticGroup
-###      print 'THAT WAS DIAGNOSTIC GROUP'
-###
-###      #diagnostic = str(self.checkedItem.text(0))
-####      print 'calling ds_menu[',diagnostic
-###      print 'self.diagname: ', self.diagnostic_set_name
-###      if self.useDS1 == True:
-###         var1 = self.DiagnosticGroup.list_variables(self.ft1, diagnostic_set_name = self.diagnostic_set_name)
-####         obj = self.ds_menu[str(self.diagnostic_set_name)](self.ft1, None, None, None, aux=None)
-####         var1 = obj.varlist
-###      if self.useDS2 == True:
-###         var2 = self.DiagnosticGroup.list_variables(self.ft2, diagnostic_set_name = self.diagnostic_set_name)
-####         obj = self.ds_menu[str(self.diagnostic_set_name)](self.ft2, None, None, None, aux=None)
-####         var2 = obj.varlist
-###      if self.useObs1 == True:
-###         var3 = self.DiagnosticGroup.list_variables(self.obsft1, diagnostic_set_name = self.diagnostic_set_name)
-####         obj = self.ds_menu[str(self.diagnostic_set_name)](self.obsft1, None, None, None, aux=None)
-####         var3 = obj.varlist
-###      if self.useObs2 == True:
-###         var4 = self.DiagnosticGroup.list_variables(self.obsft2, diagnostic_set_name = self.diagnostic_set_name)
-####         obj = self.ds_menu[str(self.diagnostic_set_name)](self.obsft2, None, None, None, aux=None)
-####      if self.useDS1 == 1:
-####         var1 = self.DiagnosticGroup.list_variables(self.ft1, diagnostic_set_name=self.diagnostic_set_name)
-####      if self.useDS2 == 1:
-####         var2 = self.DiagnosticGroup.list_variables(self.ft2, diagnostic_set_name=self.diagnostic_set_name)
-####      if self.useObs == 1:
-####         var3 = self.DiagnosticGroup.list_variables(self.obsft, diagnostic_set_name=self.diagnostic_set_name)
-###
-###      print 'GOT VARS LISTS'
-###      varset = set(var1).union(set(var2)).union(set(var3)).union(set(var4))
-###      vars = list(varset)
+      model = []
+      obs = []
+      if self.useDS1:
+         model.append(self.ft1)
+      if self.useDS2:
+         model.append(self.ft2)
+      if self.useObs1:
+         obs.append(self.obsft1)
+      if self.useObs2:
+         obs.append(self.obsft2)
+      varlist = self.DiagnosticGroup.list_variables(model, obs, diagnostic_set_name = self.diagnostic_set_name)
 
       varlist.sort()
       self.variables = varlist
@@ -540,7 +491,18 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 #### variableChanged needs connected to comboBoxVar changes        
    def variableChanged(self, index):
       ## populate the aux menu, if appropriate
-      self.varmenu = self.DiagnosticGroup.all_variables(self.ft1, self.ft2, self.diagnostic_set_name)
+      model = []
+      obs = []
+      if self.ft1 != None:
+         model.append(self.ft1)
+      if self.ft2 != None:
+         model.append(self.ft2)
+      if self.obsft1 != None:
+         obs.append(self.obsft1)
+      if self.obsft2 != None:
+         obs.append(self.obsft2)
+         
+      self.varmenu = self.DiagnosticGroup.all_variables(model, obs, self.diagnostic_set_name)
       varname = str(self.comboBoxVar.currentText())
 
       if varname in self.varmenu.keys():
@@ -609,6 +571,31 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          self.obs2GroupBox.setVisible(False)
          self.changeState('obs2', False)
 
+   def DS1climosChanged(self, state):
+      if len(self.opts._opts['model']) >= 1: # so we have set up a model already
+         if state == QtCore.Qt.Checked:
+            self.opts._opts['model'][0]['climos'] = 'yes'
+         else:
+            self.opts._opts['model'][0]['climos'] = 'no'
+      else:
+         self.opts._opts['model'].append({})
+         if state == QtCore.Qt.Checked:
+            self.opts._opts['model'][0]['climos'] = 'yes'
+         else:
+            self.opts._opts['model'][0]['climos'] = 'no'
+
+   def DS2climosChanged(self, state):
+      if len(self.opts._opts['model']) == 0:
+         print 'Please select at least one model.'
+         return
+      if len(self.opts._opts['model']) == 1:
+         self.opts._opts['model'].append({})
+      if len(self.opts._opts['model']) == 2:
+         if state == QtCore.Qt.Checked:
+            self.opts._opts['model'][1]['climos'] = 'yes'
+         else:
+            self.opts._opts['model'][1]['climos'] = 'no'
+
    def DS1Changed(self, state):
       if state == QtCore.Qt.Checked:
          self.useDS1 = 1
@@ -655,18 +642,25 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         # user does something in the menus, and sometimes there's no alternative.  But this was
         # quicker to code...
         self.observation1 = str(self.comboBoxObservation1.currentText())
-        if(len(self.observation1) > 0):
-           if self.opts._opts['filter2'] != self.obs1_menu[self.observation1]:
-              self.observation1 = self.filefilter_menuitem(
-                 self.obs1_menu, self.comboBoxObservation1, 'filter2' )
-              self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(
-                 self.opts, obsid=0, path=self.opts['obspath'][0], filter=self.opts['filter2'])
+        if len(self.observation1) > 0:
+           if self.opts._opts['obs'][0]['filter'] != self.obs1_menu[self.observation1]:
+              self.observation1 = self.filefilter_menuitem(self.obs1_menu, self.comboBoxObservation1)
+              self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
               self.obsft1 = self.obsfiles1.setup_filetable()
-        if self.DS1FilterEdit.text() != self.opts['filter']:
-           self.opts['filter'] = self.DS1FilterEdit.text()
-           self.dfiles1 = metrics.fileio.findfiles.dirtree_datafiles(
-              self.opts, pathid=0, filter=self.opts['filter'])
+        if self.opts._opts['model'][0].get('filter', False) != False and self.DS1FilterEdit.text() != self.opts._opts['model'][0]['filter']:
+           self.opts._opts['model'][0]['filter'] = self.DS1FilterEdit.text()
+           self.dfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, modelid=0)
            self.ft1 = self.dfiles1.setup_filetable()
+        self.observation2 = str(self.comboBoxObservation2.currentText())
+        if len(self.observation2) > 0:
+           if len(self.opts._opts['obs']) == 2 and self.opts._opts['obs'][0]['filter'] != self.obs2_menu[self.observation2]:
+              self.observation2 = self.filefilter_menuitem(self.obs2_menu, self.comboBoxObservation2)
+              self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1)
+              self.obsft2 = self.obsfiles2.setup_filetable()
+        if len(self.opts._opts['model']) == 2 and self.opts._opts['model'][1].get('filter', False) != False and self.DS2FilterEdit.text() != self.opts._opts['model'][1]['filter']:
+           self.opts._opts['model'][1]['filter'] = self.DS2FilterEdit.text()
+           self.dfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, modelid=1)
+           self.ft2 = self.dfiles2.setup_filetable()
 
         diagnostic = str(self.checkedItem.text(0))
         #group = str(self.checkedItem.parent().text(0))
@@ -688,29 +682,18 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         import os
         #...was self.filetable2 = setup_filetable(self.path2,self.tmppth,search_filter=filt2)
         # ( replacement moved to __init__ and plotsetchanged)
-        ft2 = None
-        ft1 = None
-        if(self.useDS1 == 1): #ds1
-            ft1 = self.ft1
-            if(self.useDS2 == 1):
-               ft2 = self.ft2
-            if(self.useObs1 == 1):
-               ft2 = self.obsft1
-            if(self.useObs2 == 1):
-               ft2 = self.obsft2
-        elif self.useDS2 == 1: #just ds2, or ds2+obs
-            ft1 = self.ft2
-            if(self.useObs1 == 1):
-               ft2 = self.obsft1
-            if(self.useObs2 == 1):
-               ft2 = self.obsft2
-        else: # just observation
-            if(self.useObs1 == 1):
-               ft1 = self.obsft1
-            if(self.useObs2 == 1):
-               ft2 = self.obsft2
-
-        if(ft1 == None):
+        model = []
+        obs = []
+        if self.useDS1 == 1:
+            model.append(self.ft1)
+        if self.useDS2 == 1:
+            model.append(self.ft2)
+        if self.useObs1 == 1:
+            obs.append(self.obsft1)
+        if self.useObs2 == 1:
+            obs.append(self.obsft2)
+            
+        if len(model) == 0 and len(obs) == 0:
             return 
         
         if self.auxmenu is None:
@@ -721,7 +704,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
          ### ADDED STR() HERE. NOT SURE IF IT WAS NEEDED YET ###
         self.diagnostic_set_name = str(diagnostic)
-        self.plot_spec = self.ds_menu[diagnostic](ft1, ft2, variable, season, self.region_box, aux)
+        self.plot_spec = self.ds_menu[diagnostic](model, obs, variable, season, self.region_box, aux)
 
         ps = self.plot_spec
         if ps is None:
@@ -865,35 +848,4 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    def itemActivated(self, item):
       print 'ITEM ACTIVATED. SET UP VAR LIST NOW'
       pass
-
-   def itemClicked(self, item, column):
-      print 'itemClicked called. This should not have occurred.'
-#      print 'THIS SHOULDNT BE CALLED'
-      quit()
-      if column == 0:
-         if item.checkState(column) == Qt.Checked:
-            self.diagnostic_set_name = str(item.text(column))
-            var1 = []
-            var2 = []
-            var3 = []
-            var4 = []
-            print 'itemCLICKED Calling list_vars'
-            print self.DiagnosticGroup
-            if self.useDS1 == 1:
-               var1 = self.DiagnosticGroup.list_variables(self.ft1, self.diagnostic_set_name)
-            if self.useDS2 == 1:
-               var2 = self.DiagnosticGroup.list_variables(self.ft2, self.diagnostic_set_name)
-            if self.useObs1 == 1:
-               var3 = self.DiagnosticGroup.list_variables(self.obsft1, self.diagnostic_set_name)
-            if self.useObs2 == 1:
-               var4 = self.DiagnosticGroup.list_variables(self.obsft2, self.diagnostic_set_name)
-            print 'GOT VARS LISTS. Eventually this hsould be intersection not union'
-            varset = set(var1).union(set(var2)).union(set(var3)).union(set(var4))
-            vars = list(varset)
-            vars.sort()
-            self.variables = vars
-            for i in range(self.comboBoxVar.count()):
-               self.comboBoxVar.removeItem(0)
-
-            self.comboBoxVar.addItems(self.variables)
 

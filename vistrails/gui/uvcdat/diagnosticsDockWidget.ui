@@ -199,7 +199,7 @@
            <bool>false</bool>
           </property>
           <layout class="QGridLayout" name="DS1GridLayout">
-           <item row="2" column="0">
+           <item row="2" column="2">
             <widget class="QLabel" name="DS1FilterLabel">
              <property name="minimumSize">
               <size>
@@ -212,7 +212,23 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
+           <item row="2" column="3">
+            <widget class="QLineEdit" name="DS1FilterEdit"/>
+           </item>
+           <item row="2" column="1">
+            <widget class="QCheckBox" name="DS1Climos">
+             <property name="toolTip">
+              <string extracomment="Indicates this path points to reduced climatology files rather than raw data"/>
+             </property>
+             <property name="text">
+              <string>Climos</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
             <widget class="QPushButton" name="pickDS1Path">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -231,10 +247,7 @@
              </property>
             </widget>
            </item>
-           <item row="2" column="1">
-            <widget class="QLineEdit" name="DS1FilterEdit"/>
-           </item>
-           <item row="1" column="1">
+           <item row="1" column="2" colspan="2">
             <widget class="QLabel" name="DS1PathLabel">
              <property name="enabled">
               <bool>false</bool>
@@ -269,13 +282,39 @@
            <bool>false</bool>
           </property>
           <layout class="QGridLayout" name="DS2GridLayout">
-           <item row="3" column="2">
+           <item row="3" column="3">
             <widget class="QLineEdit" name="DS2FilterEdit">
              <property name="enabled">
               <bool>false</bool>
              </property>
              <property name="focusPolicy">
               <enum>Qt::WheelFocus</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QLabel" name="DS2FilterLabel">
+             <property name="minimumSize">
+              <size>
+               <width>93</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>File Filter:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QCheckBox" name="DS2Climos">
+             <property name="toolTip">
+              <string extracomment="Indicates this path points to reduced climatology files rather than raw data"/>
+             </property>
+             <property name="text">
+              <string>Climos</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
              </property>
             </widget>
            </item>
@@ -301,20 +340,7 @@
              </property>
             </widget>
            </item>
-           <item row="3" column="0">
-            <widget class="QLabel" name="DS2FilterLabel">
-             <property name="minimumSize">
-              <size>
-               <width>93</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>File Filter:</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="2">
+           <item row="1" column="1" colspan="3">
             <widget class="QLabel" name="DS2PathLabel">
              <property name="enabled">
               <bool>false</bool>

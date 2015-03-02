@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'diagnosticsDockWidget.ui'
 #
-# Created: Wed Jul  9 10:15:34 2014
-#      by: PyQt4 UI code generator 4.11.1
+# Created: Fri Feb 27 14:00:49 2015
+#      by: PyQt4 UI code generator 4.10.1
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -128,7 +128,15 @@ class Ui_DiagnosticDockWidget(object):
         self.DS1FilterLabel = QtGui.QLabel(self.DS1GroupBox)
         self.DS1FilterLabel.setMinimumSize(QtCore.QSize(93, 0))
         self.DS1FilterLabel.setObjectName(_fromUtf8("DS1FilterLabel"))
-        self.DS1GridLayout.addWidget(self.DS1FilterLabel, 2, 0, 1, 1)
+        self.DS1GridLayout.addWidget(self.DS1FilterLabel, 2, 2, 1, 1)
+        self.DS1FilterEdit = QtGui.QLineEdit(self.DS1GroupBox)
+        self.DS1FilterEdit.setObjectName(_fromUtf8("DS1FilterEdit"))
+        self.DS1GridLayout.addWidget(self.DS1FilterEdit, 2, 3, 1, 1)
+        self.DS1Climos = QtGui.QCheckBox(self.DS1GroupBox)
+        self.DS1Climos.setToolTip(_fromUtf8(""))
+        self.DS1Climos.setChecked(True)
+        self.DS1Climos.setObjectName(_fromUtf8("DS1Climos"))
+        self.DS1GridLayout.addWidget(self.DS1Climos, 2, 1, 1, 1)
         self.pickDS1Path = QtGui.QPushButton(self.DS1GroupBox)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -137,14 +145,11 @@ class Ui_DiagnosticDockWidget(object):
         self.pickDS1Path.setSizePolicy(sizePolicy)
         self.pickDS1Path.setMinimumSize(QtCore.QSize(92, 32))
         self.pickDS1Path.setObjectName(_fromUtf8("pickDS1Path"))
-        self.DS1GridLayout.addWidget(self.pickDS1Path, 1, 0, 1, 1)
-        self.DS1FilterEdit = QtGui.QLineEdit(self.DS1GroupBox)
-        self.DS1FilterEdit.setObjectName(_fromUtf8("DS1FilterEdit"))
-        self.DS1GridLayout.addWidget(self.DS1FilterEdit, 2, 1, 1, 1)
+        self.DS1GridLayout.addWidget(self.pickDS1Path, 1, 1, 1, 1)
         self.DS1PathLabel = QtGui.QLabel(self.DS1GroupBox)
         self.DS1PathLabel.setEnabled(False)
         self.DS1PathLabel.setObjectName(_fromUtf8("DS1PathLabel"))
-        self.DS1GridLayout.addWidget(self.DS1PathLabel, 1, 1, 1, 1)
+        self.DS1GridLayout.addWidget(self.DS1PathLabel, 1, 2, 1, 2)
         self.verticalLayout_2.addWidget(self.DS1GroupBox)
         self.DS2checkBox = QtGui.QCheckBox(self.scrollAreaWidgetContents)
         self.DS2checkBox.setChecked(False)
@@ -161,7 +166,16 @@ class Ui_DiagnosticDockWidget(object):
         self.DS2FilterEdit.setEnabled(False)
         self.DS2FilterEdit.setFocusPolicy(QtCore.Qt.WheelFocus)
         self.DS2FilterEdit.setObjectName(_fromUtf8("DS2FilterEdit"))
-        self.DS2GridLayout.addWidget(self.DS2FilterEdit, 3, 2, 1, 1)
+        self.DS2GridLayout.addWidget(self.DS2FilterEdit, 3, 3, 1, 1)
+        self.DS2FilterLabel = QtGui.QLabel(self.DS2GroupBox)
+        self.DS2FilterLabel.setMinimumSize(QtCore.QSize(93, 0))
+        self.DS2FilterLabel.setObjectName(_fromUtf8("DS2FilterLabel"))
+        self.DS2GridLayout.addWidget(self.DS2FilterLabel, 3, 1, 1, 1)
+        self.DS2Climos = QtGui.QCheckBox(self.DS2GroupBox)
+        self.DS2Climos.setToolTip(_fromUtf8(""))
+        self.DS2Climos.setChecked(True)
+        self.DS2Climos.setObjectName(_fromUtf8("DS2Climos"))
+        self.DS2GridLayout.addWidget(self.DS2Climos, 3, 0, 1, 1)
         self.pickDS2Path = QtGui.QPushButton(self.DS2GroupBox)
         self.pickDS2Path.setEnabled(True)
         sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
@@ -172,14 +186,10 @@ class Ui_DiagnosticDockWidget(object):
         self.pickDS2Path.setMinimumSize(QtCore.QSize(92, 32))
         self.pickDS2Path.setObjectName(_fromUtf8("pickDS2Path"))
         self.DS2GridLayout.addWidget(self.pickDS2Path, 1, 0, 1, 1)
-        self.DS2FilterLabel = QtGui.QLabel(self.DS2GroupBox)
-        self.DS2FilterLabel.setMinimumSize(QtCore.QSize(93, 0))
-        self.DS2FilterLabel.setObjectName(_fromUtf8("DS2FilterLabel"))
-        self.DS2GridLayout.addWidget(self.DS2FilterLabel, 3, 0, 1, 1)
         self.DS2PathLabel = QtGui.QLabel(self.DS2GroupBox)
         self.DS2PathLabel.setEnabled(False)
         self.DS2PathLabel.setObjectName(_fromUtf8("DS2PathLabel"))
-        self.DS2GridLayout.addWidget(self.DS2PathLabel, 1, 2, 1, 1)
+        self.DS2GridLayout.addWidget(self.DS2PathLabel, 1, 1, 1, 3)
         self.verticalLayout_2.addWidget(self.DS2GroupBox)
         self.Obs1checkBox = QtGui.QCheckBox(self.scrollAreaWidgetContents)
         self.Obs1checkBox.setChecked(False)
@@ -282,11 +292,13 @@ class Ui_DiagnosticDockWidget(object):
         self.RegionLabel.setText(_translate("DiagnosticDockWidget", "Region:", None))
         self.DS1checkBox.setText(_translate("DiagnosticDockWidget", "Use Dataset 1", None))
         self.DS1FilterLabel.setText(_translate("DiagnosticDockWidget", "File Filter:", None))
+        self.DS1Climos.setText(_translate("DiagnosticDockWidget", "Climos", None))
         self.pickDS1Path.setText(_translate("DiagnosticDockWidget", "Set Path", None))
         self.DS1PathLabel.setText(_translate("DiagnosticDockWidget", "DS1 Path", None))
         self.DS2checkBox.setText(_translate("DiagnosticDockWidget", "Use Dataset 2", None))
-        self.pickDS2Path.setText(_translate("DiagnosticDockWidget", "Set Path", None))
         self.DS2FilterLabel.setText(_translate("DiagnosticDockWidget", "File Filter:", None))
+        self.DS2Climos.setText(_translate("DiagnosticDockWidget", "Climos", None))
+        self.pickDS2Path.setText(_translate("DiagnosticDockWidget", "Set Path", None))
         self.DS2PathLabel.setText(_translate("DiagnosticDockWidget", "DS2 Path", None))
         self.Obs1checkBox.setText(_translate("DiagnosticDockWidget", "Use Observations 1", None))
         self.pickObs1Path.setText(_translate("DiagnosticDockWidget", "Set Path", None))
@@ -296,14 +308,4 @@ class Ui_DiagnosticDockWidget(object):
         self.pickObs2Path.setText(_translate("DiagnosticDockWidget", "Set Path", None))
         self.obs2PathLabel.setText(_translate("DiagnosticDockWidget", "ObsPath2", None))
         self.label.setText(_translate("DiagnosticDockWidget", "Obs set 2:", None))
-
-
-if __name__ == "__main__":
-    import sys
-    app = QtGui.QApplication(sys.argv)
-    DiagnosticDockWidget = QtGui.QDockWidget()
-    ui = Ui_DiagnosticDockWidget()
-    ui.setupUi(DiagnosticDockWidget)
-    DiagnosticDockWidget.show()
-    sys.exit(app.exec_())
 
