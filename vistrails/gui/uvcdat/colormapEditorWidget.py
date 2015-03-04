@@ -344,12 +344,11 @@ class QColormapEditor(QtGui.QColorDialog):
         self.activateFromCell(self.activeCanvas)
 
     def colorChanged(self):
-
         current = self.currentColor()
         cr, cg, cb, ca = current.getRgb()
 
         button = self.grid.itemAtPosition(self.vcscolor[0], self.vcscolor[1]).widget()
-        stsh = " background-color : rgb(%i,%i,%i)" % (cr, cg, cb)
+        stsh = "background-color : rgb(%i, %i, %i)" % (cr, cg, cb)
         button.setStyleSheet(stsh)
         button.vcscolor = (self.vcscolor[0], self.vcscolor[1], self.vcscolor[2])
         self.cellsDirty = True
@@ -370,7 +369,6 @@ class QColormapEditor(QtGui.QColorDialog):
         self.colormap.setCurrentIndex(self.colormap.findText(newname))
 
     def colorButtonClicked(self, b):
-        print "inside color button clicked"
         # Ben: not sure why this is needed
         #        current = self.currentColor()
         #        nr,ng,nb = self.getRgb(b.vcscolor[2])
@@ -387,7 +385,6 @@ class QColormapEditor(QtGui.QColorDialog):
         self.clicks[self.nclicks - 1] = b.vcscolor
 
     def setButtonFrame(self, button):
-        print "inside setButtonFrame"
         first_button = self.clicks[0]
         i0, j0 = first_button[:2]
         last_button = self.clicks[1]
@@ -475,7 +472,6 @@ class QColormapEditor(QtGui.QColorDialog):
         button.mousePressEvent(None);
 
     def setAButtonFrame(self, button, on=True):
-        print "inside setAButtonFrame"
         if on:
             button.flipFrameShadow(2, 3)
         else:
