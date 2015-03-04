@@ -345,12 +345,12 @@ class QColormapEditor(QtGui.QColorDialog):
 
     def colorChanged(self):
         current = self.currentColor()
-        #nr,ng,nb = self.getRgb(self.vcscolor[2])
         cr, cg, cb, ca = current.getRgb()
-        #if cr!=nr or cg!=ng or cb!=nb:
-        b = self.setButton(self.vcscolor[0], self.vcscolor[1], self.vcscolor[2],
-                           cr, cg, cb)
-        self.setAButtonFrame(b)
+
+        button = self.grid.itemAtPosition(self.vcscolor[0], self.vcscolor[1]).widget()
+        stsh = "background-color : rgb(%i, %i, %i)" % (cr, cg, cb)
+        button.setStyleSheet(stsh)
+        button.vcscolor = (self.vcscolor[0], self.vcscolor[1], self.vcscolor[2])
         self.cellsDirty = True
 
     def save(self):
