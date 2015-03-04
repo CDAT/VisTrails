@@ -22,6 +22,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    observations1 = None
    observation2 = None
    observations2 = None
+   obs1_menu = None
+   obs2_menu = None
    ft1 = None
    ft2 = None
    obsft1 = None
@@ -123,6 +125,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.pickObs1Path.clicked.connect(self.setObs1Path)
       self.pickObs2Path.clicked.connect(self.setObs2Path)
 
+      self.comboBoxObservation1.currentIndexChanged.connect(self.obs1ListChanged)
+      self.comboBoxObservation2.currentIndexChanged.connect(self.obs2ListChanged)
 #       self.obs1TranslateCheck.stateChanged.connect(self.obs1trans)
 #       self.obs2TranslateCheck.stateChanged.connect(self.obs2trans)
 
@@ -224,7 +228,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       pass
 
    def setObs1Path(self, button):
+      pa = None
       pa = QtGui.QFileDialog.getExistingDirectory(self, "Observations 1 Path", self.obs1PathLabel.text())
+      if pa == None or len(pa) == 0:
+         print 'BAD/NO PATH SELECTED'
+         return
       p = str(pa)
       self.obs1PathLabel.setText(p)
       if len(self.opts._opts['obs']) == 0:
@@ -234,8 +242,12 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.prepareObs1()
 
    def setObs2Path(self, button):
+      pa = None
       pa = QtGui.QFileDialog.getExistingDirectory(self, "Observations 2 Path", self.obs2PathLabel.text())
       p = str(pa)
+      if pa == None or len(pa) == 0:
+         print 'BAD/NO PATH SELECTED'
+         return
       self.obs2PathLabel.setText(p)
       if len(self.opts._opts['obs']) == 0:
          print 'Please select a first obs set'
@@ -326,6 +338,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    def fill_filefilter_menu(self, datafiles, widget ):
       filefams = None
       filefam_menu = datafiles.check_filespec()
+      print 'filefam_menu: ', filefam_menu
 #      print 'filefam_menu: ', filefam_menu
 #      print 'type: ', type(filefam_menu)
       if type(filefam_menu) is dict:
@@ -344,50 +357,69 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       filefam = self.filefilter_menuitem(filefam_menu, widget)
 
       return filefams, filefam_menu, filefam
+   def obs1ListChanged(self):
+      # Have we already populated the obs1_menu? If so, then just update obsfiles/ft/options.
+      print 'New index: ', self.comboBoxObservation1.currentText()
+      self.observation1 = str(self.comboBoxObservation1.currentText())
+      if self.obs1_menu != None:
+         self.opts._opts['obs'][0]['filter'] = self.obs1_menu[self.observation1]
+      self.prepareObs1(flag=1)
 
-   def prepareObs1(self):
+   def obs2ListChanged(self):
+      print 'New index: ', self.comboBoxObservation2.currentText() 
+      self.observation2 = str(self.comboBoxObservation2.currentText())
+      if self.obs2_menu != None:
+         self.opts._opts['obs'][1]['filter'] = self.obs2_menu[self.observation2]
+      self.prepareObs2(flag=1)
+
+   def prepareObs1(self, flag=None):
       if len(self.opts._opts['obs']) == 0 or self.opts._opts['obs'][0]['path'] == None:
          print 'No observation directory selected'
       else:
-         print 'Processing observation data in ', self.opts._opts['obs'][0]['path']
-         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
+         if flag == None:
+            print 'Processing observation data in ', self.opts._opts['obs'][0]['path']
+            self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
 
-         # So now we need to see if the user wants a filter.
-         # I believe all we need to do is set up the combobox with a list of 
-         # possible filters based on the obs set which has now been selected.
-         # much of that work is done with check_filespec().
-         # When the user clicks Apply it has to re-fetch the menu item selected
+            # So now we need to see if the user wants a filter.
+            # I believe all we need to do is set up the combobox with a list of 
+            # possible filters based on the obs set which has now been selected.
+            # much of that work is done with check_filespec().
+            # When the user clicks Apply it has to re-fetch the menu item selected
+   
+            self.observations1, self.obs1_menu, self.observation2 = \
+               self.fill_filefilter_menu(self.obsfiles1, self.comboBoxObservation1)
 
-         self.observations1, self.obs1_menu, self.observation1 = \
-            self.fill_filefilter_menu(self.obsfiles1, self.comboBoxObservation1)
-
-         self.opts._opts['obs'][0]['filter'] = self.obs1_menu[self.observation1]
+            self.opts._opts['obs'][0]['filter'] = self.obs1_menu[self.observation1]
+            print 'opts obs 0 filter set to: ', self.opts._opts['obs'][0]['filter']
+         
+         # If flag is passed just do this stuff.
 #         self.opts._opts['obs'][0]['filter'] = str(self.comboBoxObservation1.currentText())
-         print 'opts obs 0 filter set to: ', self.opts._opts['obs'][0]['filter']
 
          self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
 
          self.obsft1 = self.obsfiles1.setup_filetable()
+
+         self.updateVarList()
          # obs should be populated now
 
-   def prepareObs2(self):
+   def prepareObs2(self, flag=None):
       if len(self.opts._opts['obs']) != 2 or self.opts._opts['obs'][1]['path'] == None:
          print 'No second observation directory selected'
       else:
-         print 'Processing observation data in ', self.opts._opts['obs'][1]['path']
-         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1)
+         if flag == None:
+            print 'Processing observation data in ', self.opts._opts['obs'][1]['path']
+            self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1)
 
-         self.observations2, self.obs2_menu, self.observation2 =\
-            self.fill_filefilter_menu(self.obsfiles2, self.comboBoxObservation2)
+            self.observations2, self.obs2_menu, self.observation2 =\
+               self.fill_filefilter_menu(self.obsfiles2, self.comboBoxObservation2)
 
-         self.opts._opts['obs'][1]['filter'] = self.obs2_menu[self.observation2]
-         print 'opts obs1 filter set to: ', self.opts._opts['obs'][1]['filter']
+            self.opts._opts['obs'][1]['filter'] = self.obs2_menu[self.observation2]
+            print 'opts obs1 filter set to: ', self.opts._opts['obs'][1]['filter']
 
          self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.opts, obsid=1)
          self.obsft2 = self.obsfiles2.setup_filetable()
 
-         # obs should be populated now
-
+         self.updateVarList()
 
    # This adds the main menu field and adds the event handlers for each diagnostic type
    # selected via the main menu or the combobox
@@ -465,7 +497,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.diagnostic_set_name = str(item.text(column))
 
       varlist = []
-      vtmp = []
       model = []
       obs = []
       if self.useDS1:
@@ -487,6 +518,33 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.comboBoxVar.addItems(self.variables)
       self.comboBoxVar.setEnabled(True)
       self.comboBoxSeason.setEnabled(True)
+
+   def updateVarList(self):
+      if self.diagnostic_set_name == "Not implemented":
+         return
+      else:
+         varlist = []
+         model = []
+         obs = []
+         if self.useDS1:
+            model.append(self.ft1)
+         if self.useDS2:
+            model.append(self.ft2)
+         if self.useObs1:
+            obs.append(self.obsft1)
+         if self.useObs2:
+            obs.append(self.obsft2)
+         varlist = self.DiagnosticGroup.list_variables(model, obs, diagnostic_set_name = self.diagnostic_set_name)
+   
+         varlist.sort()
+         self.variables = varlist
+
+         for i in range(self.comboBoxVar.count()):
+            self.comboBoxVar.removeItem(0)
+         self.comboBoxVar.addItems(self.variables)
+
+
+
 
 #### variableChanged needs connected to comboBoxVar changes        
    def variableChanged(self, index):
@@ -848,4 +906,3 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    def itemActivated(self, item):
       print 'ITEM ACTIVATED. SET UP VAR LIST NOW'
       pass
-
