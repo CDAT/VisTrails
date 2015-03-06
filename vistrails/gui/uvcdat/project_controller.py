@@ -154,14 +154,14 @@ class ProjectController(QtCore.QObject):
         else:
             debug.warning("Variable was not renamed: variable named '%s' not found." %oldname)
             
-    def remove_defined_variable(self, name, force = False):
-        """remove_defined_variable(name: str) -> None
-        This will remove the variable only if it is not used to create other
-        variables.
-        
-        """
+    def remove_defined_variable(self, name, count, force = False):
+        ''' Returns a false if variable cannot be deleted or else returns a True. 
+            Count var is used to know if this is the first or the second call. Depending 
+            upon which we generate the popup error screen '''
         (res, cvars) = self.var_used_in_computed_variable(name)
-        if res:
+        if(count == 1 and res):
+            return False 
+        elif (res):
             msg = "%s is used to derive other variables. Delete those first." % name
             if not force:
                 QMessageBox.critical(None, "Can't delete variable", msg)
