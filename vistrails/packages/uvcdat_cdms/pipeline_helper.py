@@ -61,10 +61,15 @@ class CDMSPipelineHelper(PlotPipelineHelper):
         cell  = tabWidget.getCellWidget( row, col ).widget()   
         return cell.canvas.backend.plotApps
 
-    @staticmethod
-    def show_configuration_widget(controller, version, plot_objs=[]):
+    @classmethod
+    def show_configuration_widget(klass, controller, version, plot_objs=[]):
         pipeline = controller.vt_controller.vistrail.getPipeline(version)
+        (row, col) = klass.getCellLoc( pipeline )
         plots = CDMSPipelineHelper.find_plot_modules(pipeline)
+        plotItem = klass.getPlotApps(row, col).items()[0]
+        cfgMgr = plotItem[0].cfgManager
+        buttonBarHandler = plotItem[1].plot.buttonBarHandler
+        print "buttonBarHandler: ", str( buttonBarHandler )
         vars = CDMSPipelineHelper.find_modules_by_type(pipeline, 
                                                        [CDMSVariable,
                                                         CDMSVariableOperation])
