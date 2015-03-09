@@ -51,6 +51,17 @@ class PlotProperties(QtGui.QDockWidget):
         # we need to reset the title in case there were changes
         self.setWindowTitle("Visualization Properties")
     
+    def getCanvas(self):
+        sheetName, row, col = self.controller.get_current_cell_info()
+        #get cell widget
+        cellWidget = None
+        sheetWidget = self.controller.get_sheet_widget(sheetName)
+        if sheetWidget is not None:
+            cellWidget = sheetWidget.getCell(row, col)
+            if cellWidget is not None:
+                return cellWidget.canvas
+        return None
+
     def configureDone(self, action):
         self.controller.plot_properties_were_changed(self.sheetName,
                                                      self.row, self.col,
@@ -83,6 +94,9 @@ class PlotProperties(QtGui.QDockWidget):
         self.updateLocked = False
         
     def closeEvent(self, event):
+        canvas = self.getCanvas()
+        if canvas is not None:
+            canvas.endconfigure()
         self.confWidget.askToSaveChanges()
         event.accept()
         
@@ -94,12 +108,15 @@ class PlotProperties(QtGui.QDockWidget):
         self.confWidget.activate()
         
     def set_visible(self, enabled):
-        #print "set_visible ", self, enabled
+
         if hasattr(self, 'main_window') and self.main_window is not None:
             self.main_window.show()
             self.main_window.raise_()
 
         if enabled:
             self.show()
+            canvas = self.getCanvas()
+            if canvas is not None:
+                canvas.configure()
             self.raise_()
             self.setFloating(True)
