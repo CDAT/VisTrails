@@ -433,8 +433,10 @@ class QVTKWidget(QCellWidget):
         self.mRenWin.GetSize()
         
         self.mRenWin.SetSize(width, height)
+        self.mRenWin.Modified()
         if self.mRenWin.GetInteractor():
-            self.mRenWin.GetInteractor().SetSize(width, height)
+            self.mRenWin.GetInteractor().UpdateSize(width, height)
+            self.mRenWin.GetInteractor().InvokeEvent(vtk.vtkCommand.ConfigureEvent)
 
     def resizeEvent(self, e):
         """ resizeEvent(e: QEvent) -> None
