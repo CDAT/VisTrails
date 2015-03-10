@@ -55,8 +55,9 @@ class PlotProperties(QtGui.QDockWidget):
 
         if canvas is not None:
             if canvas not in self.configuring_canvases:
-                canvas.configure()
                 self.configuring_canvases.append(canvas)
+            if self.isVisible():
+                canvas.configure()
 
     def getCanvas(self):
         if self.controller is None:
