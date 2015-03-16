@@ -455,29 +455,21 @@ class QDefinedVariableWidget(QtGui.QWidget):
 
     
     def trashVariable(self):
-        '''This method is used to delete all the selected variables. The variables are 
-           deleted only if they are not used to define other variables. They would however
-           be deleted if the defined variable is also selected for deletion''' 
-        selectedItems = self.varList.selectedItems()
+        """ This method is used to delete all the selected variables.
+
+        The variables are deleted only if they are not used to define other
+        variables. They would however be deleted if the defined variable is
+        also selected for deletion
+        """
         varDeleted = 1
-        while(varDeleted > 0):
+        while varDeleted > 0:
           varDeleted = 0 
           for v in self.getSelectedDefinedVariables():
               returnValue = self.deleteVariable(v.id, report_errors=False)
-              if(returnValue):
+              if returnValue:
                 varDeleted = varDeleted + 1
         for v in self.getSelectedDefinedVariables():
             self.deleteVariable(v.id, report_errors=True)
-
-
-    
-    #def trashAll(self):
-        ''' This method is not required as it is not being used any where in the code. Also,
-             all the variables can be removed by using the trashVariable method'''
-        #self.selectAllVariables()
-        #for v in self.getSelectedDefinedVariables():
-        #    self.deleteVariable(v.id, 2)
-       
 
     def newVariable(self):
 #        from packages.vtDV3D.vtUtilities import memoryLogger
