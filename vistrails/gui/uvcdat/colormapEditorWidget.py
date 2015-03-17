@@ -6,6 +6,7 @@ import core.db.action
 from core.modules.module_registry import get_module_registry
 import core.system
 from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
+import vcs
 
 import customizeUVCDAT
 import uvcdatCommons
@@ -53,10 +54,9 @@ class QColormapEditor(QtGui.QColorDialog):
         ## Colormap selection Area
         f = QtGui.QFrame()
         h = QtGui.QHBoxLayout()
-        colormaps = sorted(self.activeCanvas.listelements("colormap"))
+
         self.colormap = QtGui.QComboBox(self)
-        for i in colormaps:
-            self.colormap.addItem(i)
+        self.initializeColorTable()
 
         h.addWidget(self.colormap)
         self.newname = QtGui.QLineEdit()
@@ -72,6 +72,8 @@ class QColormapEditor(QtGui.QColorDialog):
         buttons.layout().addSpacing(30)
         buttons.addButton(QtGui.QDialogButtonBox.Save).setToolTip(
             "Save Colormap To File")
+        buttons.addButton(QtGui.QDialogButtonBox.Open).setToolTip(
+            "Open existing colormap")
         buttons.addButton("Blend", QtGui.QDialogButtonBox.HelpRole) \
             .setToolTip("Blend From First To Last Highlighted Colors")
         buttons.addButton(QtGui.QDialogButtonBox.Reset).setToolTip(
@@ -83,6 +85,8 @@ class QColormapEditor(QtGui.QColorDialog):
 
         self.connect(buttons.button(QtGui.QDialogButtonBox.Apply),
                      QtCore.SIGNAL("clicked()"), self.applyChanges)
+        self.connect(buttons.button(QtGui.QDialogButtonBox.Open),
+                     QtCore.SIGNAL("clicked()"), self.openColormap)
         self.connect(buttons.button(QtGui.QDialogButtonBox.Cancel),
                      QtCore.SIGNAL("clicked()"), self.rejectChanges)
         self.connect(buttons.button(QtGui.QDialogButtonBox.Save),
@@ -106,15 +110,53 @@ class QColormapEditor(QtGui.QColorDialog):
         l.addWidget(self.scrollArea)
         l.addWidget(self.buttons)
 
-        # select the colormap before connecting
-        self.colormap.setCurrentIndex(colormaps.index(self.activeCanvas.getcolormapname()))
+
 
         # SIGNALS
         self.connect(self.colormap, QtCore.SIGNAL("currentIndexChanged(int)"), self.colorMapComboChanged)
         self.connect(self, QtCore.SIGNAL("currentColorChanged(QColor)"), self.colorChanged)
 
+    def initializeColorTable(self, index=None):
+        self.colormap.blockSignals(True)
+        self.colormap.clear()
+        colormaps = sorted(self.activeCanvas.listelements("colormap"))
+        for i in colormaps:
+            self.colormap.addItem(i)
+
+        self.colormap.blockSignals(False)
+        if index is None:
+            self.colormap.setCurrentIndex(colormaps.index(self.activeCanvas.getcolormapname()))
+        else:
+            self.colormap.setCurrentIndex(colormaps.index(index))
+
     def rejectChanges(self):
         self.close()
+
+    def importColorTableFromFile(self):
+        filename = QtGui.QFileDialog.getOpenFileName(self, "Open File",
+                                                 "/home", "Text Files (*.json)")
+
+        if filename is None:
+            return None;
+
+        return str(filename)
+
+    def openColormap(self):
+        import json
+        filename = self.importColorTableFromFile()
+        if filename is not None:
+            self.activeCanvas.scriptrun(filename)
+            f = open(filename)
+            name = self.activeCanvas.getcolormapname()
+            jsn = json.load(f)
+            for typ in jsn.keys():
+                for nm, v in jsn[typ].iteritems():
+                    name = str(nm)
+                    break
+
+            self.initializeColorTable(name)
+
+
 
     def getRgb(self, i, j=None, maximum=255):
         if j is None:
