@@ -81,8 +81,5 @@ class ReportErrorDialog(QtGui.QDialog, Ui_ReportErrorDialog):
                 fsize = f.tell()        # Get Size
                 f.seek (max (fsize-5000, 0), 0) # Set pos @ last n chars
                 data['execution_log'] = f.read()
-        print urlencode(data)
-        print "http://uvcdat.llnl.gov/UVCDATUsage/log/add/error/"
         result = urlopen("http://uvcdat.llnl.gov/UVCDATUsage/log/add/error/", 
                          urlencode(data))
-        
