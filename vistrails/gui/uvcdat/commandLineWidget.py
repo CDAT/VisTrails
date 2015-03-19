@@ -602,7 +602,10 @@ end up having the same dimensions\n(order of variable 1 plus any extra dims)',
 
         if not processed:
             # try to run things "normally"
-            exec(compile(command, "<string>", "single"), __main__.__dict__)
+            try:
+                exec(compile(command, "<string>", "single"), __main__.__dict__)
+            except Exception:
+                traceback.print_exc(file=sys.stderr)
 
         self.le.clear()
         self.dumpToWindow = False

@@ -22,6 +22,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    observations1 = None
    observation2 = None
    observations2 = None
+   obs1_menu = None
+   obs2_menu = None
    ft1 = None
    ft2 = None
    obsft1 = None
@@ -123,6 +125,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.pickObs1Path.clicked.connect(self.setObs1Path)
       self.pickObs2Path.clicked.connect(self.setObs2Path)
 
+      self.comboBoxObservation1.currentIndexChanged.connect(self.obs1ListChanged)
+      self.comboBoxObservation2.currentIndexChanged.connect(self.obs2ListChanged)
 #       self.obs1TranslateCheck.stateChanged.connect(self.obs1trans)
 #       self.obs2TranslateCheck.stateChanged.connect(self.obs2trans)
 
@@ -214,17 +218,19 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          self.region_box = None
 
    def obs1trans(self, state):
-      print 'This is for translating var names between datasets and obs sets'
-      print 'obs1 trans clicked - state: ', state
+      """This is for translating var names between datasets and obs sets"""
       pass
 
    def obs2trans(self, state):
-      print 'This is for translating var names between datasets and obs sets'
-      print 'obs2 trans clicked - state: ', state
+      """This is for translating var names between datasets and obs sets"""
       pass
 
    def setObs1Path(self, button):
+      pa = None
       pa = QtGui.QFileDialog.getExistingDirectory(self, "Observations 1 Path", self.obs1PathLabel.text())
+      if pa == None or len(pa) == 0:
+         print 'ERROR.  BAD/NO PATH SELECTED'
+         return
       p = str(pa)
       self.obs1PathLabel.setText(p)
       if len(self.opts._opts['obs']) == 0:
@@ -234,8 +240,12 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.prepareObs1()
 
    def setObs2Path(self, button):
+      pa = None
       pa = QtGui.QFileDialog.getExistingDirectory(self, "Observations 2 Path", self.obs2PathLabel.text())
       p = str(pa)
+      if pa == None or len(pa) == 0:
+         print 'ERROR.  BAD/NO PATH SELECTED'
+         return
       self.obs2PathLabel.setText(p)
       if len(self.opts._opts['obs']) == 0:
          print 'Please select a first obs set'
@@ -252,11 +262,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       pa = QtGui.QFileDialog.getExistingDirectory(self, "Dataset 1 Path", self.DS1PathLabel.text())
       p = str(pa)
       self.DS1PathLabel.setText(p)
-#      print 'self.opts_opts:'
-#      print self.opts._opts
-#      print 'self.opts._opts[\'model\']:'
-#      print self.opts._opts['model']
-#      print 'done'
       if len(self.opts._opts['model']) == 0:
          self.opts._opts['model'].append({})
          self.opts._opts['model'][0]['path'] = p
@@ -264,10 +269,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          self.opts._opts['model'][0]['path'] = p
 
       if self.DS1Climos.isChecked() == True:
-         print 'DS1 Climos was checked'
          self.opts._opts['model'][0]['climos'] = 'yes'
       else:
-         print 'DS1 climos was not checked'
          self.opts._opts['model'][0]['climos'] = 'no'
 
       self.prepareDS1()
@@ -286,17 +289,15 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       if len(self.opts._opts['model']) == 2:
          self.opts._opts['model'][1]['path'] = p
          if self.DS2Climos.isChecked() == True:
-            print 'DS2 climos was checked'
             self.opts._opts['model'][1]['climos'] = 'yes'
          else:
-            print 'DS2 climos was not checked'
             self.opts._opts['model'][1]['climos'] = 'no'
 
       self.prepareDS2()
 
    def prepareDS1(self):
       if len(self.opts._opts['model']) == 0 or self.opts._opts['model'][0]['path'] == None:
-         print 'No dataset1 path selected'
+         print 'ERROR.  No dataset1 path selected'
       else:
          self.dsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, modelid = 0)
          self.ft1 = self.dsfiles1.setup_filetable()
@@ -306,7 +307,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
    def prepareDS2(self):
       if len(self.opts._opts['model']) < 2 or self.opts._opts['model'][1]['path'] == None:
-         print 'No dataset2 path selected'
+         print 'ERROR.  No dataset2 path selected'
       else:
          self.dsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, modelid = 1)
          self.ft2 = self.dsfiles2.setup_filetable()
@@ -315,25 +316,20 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          self.setupDiagnosticTree(self.comboBoxType.currentIndex())
 
    def filefilter_menuitem( self, filefam_menu, widget ):
-#      print 'menuitum - type: ', type(filefam_menu)
       if type(filefam_menu) is dict:
          filefam = str(widget.currentText())
       else:  # filefam_menu is True or None
          filefam = ''
-#      print 'returning: \'%s\''% filefam
       return filefam
 
    def fill_filefilter_menu(self, datafiles, widget ):
       filefams = None
       filefam_menu = datafiles.check_filespec()
-#      print 'filefam_menu: ', filefam_menu
-#      print 'type: ', type(filefam_menu)
       if type(filefam_menu) is dict:
          filefams = filefam_menu.keys()
       elif filefam_menu == None:
-         print 'No data found in %s' % datafiles
+         print 'ERROR.  No data found in %s' % datafiles
       if type(filefams) is list:
-#         print 'filefams was a list: ', filefams
          filefams.sort()
          widget.setDuplicatesEnabled(False)
          widget.addItems(filefams)
@@ -344,50 +340,63 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       filefam = self.filefilter_menuitem(filefam_menu, widget)
 
       return filefams, filefam_menu, filefam
-
-   def prepareObs1(self):
-      if len(self.opts._opts['obs']) == 0 or self.opts._opts['obs'][0]['path'] == None:
-         print 'No observation directory selected'
-      else:
-         print 'Processing observation data in ', self.opts._opts['obs'][0]['path']
-         self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
-
-         # So now we need to see if the user wants a filter.
-         # I believe all we need to do is set up the combobox with a list of 
-         # possible filters based on the obs set which has now been selected.
-         # much of that work is done with check_filespec().
-         # When the user clicks Apply it has to re-fetch the menu item selected
-
-         self.observations1, self.obs1_menu, self.observation1 = \
-            self.fill_filefilter_menu(self.obsfiles1, self.comboBoxObservation1)
-
+   def obs1ListChanged(self):
+      # Have we already populated the obs1_menu? If so, then just update obsfiles/ft/options.
+      self.observation1 = str(self.comboBoxObservation1.currentText())
+      if self.obs1_menu != None:
          self.opts._opts['obs'][0]['filter'] = self.obs1_menu[self.observation1]
+      self.prepareObs1(flag=1)
+
+   def obs2ListChanged(self):
+      self.observation2 = str(self.comboBoxObservation2.currentText())
+      if self.obs2_menu != None:
+         self.opts._opts['obs'][1]['filter'] = self.obs2_menu[self.observation2]
+      self.prepareObs2(flag=1)
+
+   def prepareObs1(self, flag=None):
+      if len(self.opts._opts['obs']) == 0 or self.opts._opts['obs'][0]['path'] == None:
+         print 'ERROR.  No observation directory selected'
+      else:
+         if flag == None:
+            self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
+
+            # So now we need to see if the user wants a filter.
+            # I believe all we need to do is set up the combobox with a list of 
+            # possible filters based on the obs set which has now been selected.
+            # much of that work is done with check_filespec().
+            # When the user clicks Apply it has to re-fetch the menu item selected
+   
+            self.observations1, self.obs1_menu, self.observation2 = \
+               self.fill_filefilter_menu(self.obsfiles1, self.comboBoxObservation1)
+
+            self.opts._opts['obs'][0]['filter'] = self.obs1_menu[self.observation1]
+         
+         # If flag is passed just do this stuff.
 #         self.opts._opts['obs'][0]['filter'] = str(self.comboBoxObservation1.currentText())
-         print 'opts obs 0 filter set to: ', self.opts._opts['obs'][0]['filter']
 
          self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
 
          self.obsft1 = self.obsfiles1.setup_filetable()
+
+         self.updateVarList()
          # obs should be populated now
 
-   def prepareObs2(self):
+   def prepareObs2(self, flag=None):
       if len(self.opts._opts['obs']) != 2 or self.opts._opts['obs'][1]['path'] == None:
-         print 'No second observation directory selected'
+         print 'ERRROR.  No second observation directory selected'
       else:
-         print 'Processing observation data in ', self.opts._opts['obs'][1]['path']
-         self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1)
+         if flag == None:
+            self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1)
 
-         self.observations2, self.obs2_menu, self.observation2 =\
-            self.fill_filefilter_menu(self.obsfiles2, self.comboBoxObservation2)
+            self.observations2, self.obs2_menu, self.observation2 =\
+               self.fill_filefilter_menu(self.obsfiles2, self.comboBoxObservation2)
 
-         self.opts._opts['obs'][1]['filter'] = self.obs2_menu[self.observation2]
-         print 'opts obs1 filter set to: ', self.opts._opts['obs'][1]['filter']
+            self.opts._opts['obs'][1]['filter'] = self.obs2_menu[self.observation2]
 
          self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.opts, obsid=1)
          self.obsft2 = self.obsfiles2.setup_filetable()
 
-         # obs should be populated now
-
+         self.updateVarList()
 
    # This adds the main menu field and adds the event handlers for each diagnostic type
    # selected via the main menu or the combobox
@@ -416,7 +425,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    def plotsetchanged(self,item,column):
       import metrics.frontend.uvcdat
       txt = str(item.text(item.columnCount()-1))
-      ##      print 'need to call init for the thing that was just selected to get pre_compute done'
       
       if 'REGIONAL' in txt.upper():
          rl = defines.all_regions.keys()
@@ -465,7 +473,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.diagnostic_set_name = str(item.text(column))
 
       varlist = []
-      vtmp = []
       model = []
       obs = []
       if self.useDS1:
@@ -487,6 +494,33 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.comboBoxVar.addItems(self.variables)
       self.comboBoxVar.setEnabled(True)
       self.comboBoxSeason.setEnabled(True)
+
+   def updateVarList(self):
+      if self.diagnostic_set_name == "Not implemented":
+         return
+      else:
+         varlist = []
+         model = []
+         obs = []
+         if self.useDS1:
+            model.append(self.ft1)
+         if self.useDS2:
+            model.append(self.ft2)
+         if self.useObs1:
+            obs.append(self.obsft1)
+         if self.useObs2:
+            obs.append(self.obsft2)
+         varlist = self.DiagnosticGroup.list_variables(model, obs, diagnostic_set_name = self.diagnostic_set_name)
+   
+         varlist.sort()
+         self.variables = varlist
+
+         for i in range(self.comboBoxVar.count()):
+            self.comboBoxVar.removeItem(0)
+         self.comboBoxVar.addItems(self.variables)
+
+
+
 
 #### variableChanged needs connected to comboBoxVar changes        
    def variableChanged(self, index):
@@ -670,13 +704,14 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         season = str(self.comboBoxSeason.currentText())
 
         # region_box was set when region was clicked.
-        print "diagnostic: %s" % diagnostic
-        print "observation1: %s" % self.observation1
-        print "observation2: %s" % self.observation2
-        print "variable: %s" % variable
-        print "auxiliary option: %s" % auxname
-        print "region_box: %s" %self.region_box
-        print "season: %s" % season
+        if False:  # standard diagnostics prints:
+           print "diagnostic: %s" % diagnostic
+           print "observation1: %s" % self.observation1
+           print "observation2: %s" % self.observation2
+           print "variable: %s" % variable
+           print "auxiliary option: %s" % auxname
+           print "region_box: %s" %self.region_box
+           print "season: %s" % season
         # initial test, first cut:
         # This stuff should go elsewhere...
         import os
@@ -708,11 +743,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
         ps = self.plot_spec
         if ps is None:
-            print "Can't plot, plot_set is None!!!!"
+            print "ERROR.  Can't plot, plot_set is None!!!!"
             return None
         res = ps.results()
         if res is None:
-            print "Can't plot, plot_set results were None!"
+            print "ERROR.  Can't plot, plot_set results were None!"
             return None
 
 
@@ -735,7 +770,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         ires = 0
         for row in range(Nrows):
             for col in range(Ncolumns):
-               print 'displaying cell for row, col: ', row, col
                if ires<len(res):
                   res30 = res[ires]
                else:
@@ -757,13 +791,14 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       labels = res30.labels
       title = res30.title
       presentation = res30.presentation
-      print "pvars:",[p.id for p in pvars]
-      print "labels:",labels
-      print "title:",title
-      print "presentation:",presentation
-      print "x min,max:",getattr(presentation,'datawc_x1',None), getattr(presentation,'datawc_x2',None)
-      print "y min,max:",getattr(presentation,'datawc_y1',None), getattr(presentation,'datawc_y2',None)
-      print "res",res30.type
+      if False:  # standard diagnostics prints:
+         print "pvars:",[p.id for p in pvars]
+         print "labels:",labels
+         print "title:",title
+         print "presentation:",presentation
+         print "x min,max:",getattr(presentation,'datawc_x1',None), getattr(presentation,'datawc_x2',None)
+         print "y min,max:",getattr(presentation,'datawc_y1',None), getattr(presentation,'datawc_y2',None)
+         print "res",res30.type
       #define where to drag and drop
       import cdms2
       from packages.uvcdat_cdms.init import CDMSVariable
@@ -846,6 +881,4 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
         else:
             self.checkedItem = None
    def itemActivated(self, item):
-      print 'ITEM ACTIVATED. SET UP VAR LIST NOW'
       pass
-
