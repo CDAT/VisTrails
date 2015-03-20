@@ -1174,8 +1174,9 @@ class QCellPresenter(QtGui.QLabel):
         Make sure to delete the cell widget if it exists
         
         """
-        if (self.cellWidget):
+        if self.cellWidget is not None:
             self.cellWidget.deleteLater()
+            self.cellWidget = None
         QtGui.QLabel.deleteLater(self)
 
 ################################################################################

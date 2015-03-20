@@ -150,9 +150,6 @@ class QPVIsoSurfaceWidget(QVTKWidget):
         else:
             return writer.GetResult()
 
-    def deleteLater(self):
-        QCellWidget.deleteLater(self)
-
 def register_self():
     registry = get_module_registry()
     # For now, we don't have configuration widget
