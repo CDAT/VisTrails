@@ -796,8 +796,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          print "labels:",labels
          print "title:",title
          print "presentation:",presentation
-         print "x min,max:",presentation.datawc_x1, presentation.datawc_x2
-         print "y min,max:",presentation.datawc_y1, presentation.datawc_y2
+         print "x min,max:",getattr(presentation,'datawc_x1',None), getattr(presentation,'datawc_x2',None)
+         print "y min,max:",getattr(presentation,'datawc_y1',None), getattr(presentation,'datawc_y2',None)
          print "res",res30.type
       #define where to drag and drop
       import cdms2
