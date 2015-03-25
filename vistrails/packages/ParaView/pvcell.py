@@ -69,9 +69,6 @@ class QParaViewWidget(QVTKWidget):
         else:
             return writer.GetResult()
 
-    def deleteLater(self):
-        QCellWidget.deleteLater(self)
-
 
 
 def registerSelf():
