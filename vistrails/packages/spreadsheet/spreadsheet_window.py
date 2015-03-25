@@ -420,8 +420,7 @@ class SpreadsheetWindow(QtGui.QMainWindow):
                 if p and not p.isModal():
                     pos = p.viewport().mapFromGlobal(e.globalPos())
                     p.emit(QtCore.SIGNAL('cellActivated(int, int, bool)'),
-                           p.rowAt(pos.y()), p.columnAt(pos.x()),
-                           e.modifiers()==QtCore.Qt.ControlModifier)
+                           p.rowAt(pos.y()), p.columnAt(pos.x()), False)
             except AttributeError:
                 return False
         return False
