@@ -511,8 +511,13 @@ class QVTKWidget(QCellWidget):
         if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
-        ctrl = (e.modifiers()&QtCore.Qt.ControlModifier)
+        if sys.platform == "darwin":
+            ctrl = (e.modifiers() & QtCore.Qt.MetaModifier)
+        else:
+            ctrl = (e.modifiers() & QtCore.Qt.ControlModifier)
+
         isDoubleClick = e.type()==QtCore.QEvent.MouseButtonDblClick
+
         self.iren.SetEventInformationFlipY(e.x(),e.y(),
                                       ctrl,
                                       (e.modifiers()&QtCore.Qt.ShiftModifier),
@@ -543,8 +548,13 @@ class QVTKWidget(QCellWidget):
         if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
+        if sys.platform == "darwin":
+            ctrl = (e.modifiers() & QtCore.Qt.MetaModifier)
+        else:
+            ctrl = (e.modifiers() & QtCore.Qt.ControlModifier)
+
         self.iren.SetEventInformationFlipY(e.x(),e.y(),
-                                      (e.modifiers()&QtCore.Qt.ControlModifier),
+                                      ctrl,
                                       (e.modifiers()&QtCore.Qt.ShiftModifier),
                                       chr(0), 0, None)
 
@@ -581,8 +591,13 @@ class QVTKWidget(QCellWidget):
         if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
+        if sys.platform == "darwin":
+            ctrl = (e.modifiers() & QtCore.Qt.MetaModifier)
+        else:
+            ctrl = (e.modifiers() & QtCore.Qt.ControlModifier)
+
         self.iren.SetEventInformationFlipY(e.x(),e.y(),
-                                      (e.modifiers()&QtCore.Qt.ControlModifier),
+                                      ctrl,
                                       (e.modifiers()&QtCore.Qt.ShiftModifier),
                                       chr(0),0,None)
 
@@ -615,7 +630,11 @@ class QVTKWidget(QCellWidget):
             keysym = self.qt_key_to_key_sym(e.key())
 
         # Ignore 'q' or 'e' or Ctrl-anykey
-        ctrl = (e.modifiers()&QtCore.Qt.ControlModifier)
+        if sys.platform == "darwin":
+            ctrl = (e.modifiers() & QtCore.Qt.MetaModifier)
+        else:
+            ctrl = (e.modifiers() & QtCore.Qt.ControlModifier)
+
         shift = (e.modifiers()&QtCore.Qt.ShiftModifier)
         if (keysym in ['q', 'e'] or ctrl):
             e.ignore()
@@ -649,7 +668,10 @@ class QVTKWidget(QCellWidget):
             keysym = self.qt_key_to_key_sym(e.key())
 
         # Ignore 'q' or 'e' or Ctrl-anykey
-        ctrl = (e.modifiers()&QtCore.Qt.ControlModifier)
+        if sys.platform == "darwin":
+            ctrl = (e.modifiers() & QtCore.Qt.MetaModifier)
+        else:
+            ctrl = (e.modifiers() & QtCore.Qt.ControlModifier)
         shift = (e.modifiers()&QtCore.Qt.ShiftModifier)
         if (keysym in ['q','e'] or ctrl):
             e.ignore()
@@ -667,9 +689,12 @@ class QVTKWidget(QCellWidget):
 
         if (not self.iren) or (not self.iren.GetEnabled()):
             return
-
+        if sys.platform == "darwin":
+            ctrl = (e.modifiers() & QtCore.Qt.MetaModifier)
+        else:
+            ctrl = (e.modifiers() & QtCore.Qt.ControlModifier)
         self.iren.SetEventInformationFlipY(e.x(),e.y(),
-                                      (e.modifiers()&QtCore.Qt.ControlModifier),
+                                      ctrl,
                                       (e.modifiers()&QtCore.Qt.ShiftModifier),
                                       chr(0),0,None)
         
@@ -703,7 +728,12 @@ class QVTKWidget(QCellWidget):
         if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
-        ctrl = int(e.modifiers()&QtCore.Qt.ControlModifier)
+        if sys.platform == "darwin":
+            ctrl = (e.modifiers() & QtCore.Qt.MetaModifier)
+        else:
+            ctrl = (e.modifiers() & QtCore.Qt.ControlModifier)
+        ctrl = int(ctrl)
+
         shift = int(e.modifiers()&QtCore.Qt.ShiftModifier)
         self.iren.SetEventInformationFlipY(e.x(),e.y(),ctrl,shift,chr(0),0,None)
         self.iren.InvokeEvent("ContextMenuEvent")
