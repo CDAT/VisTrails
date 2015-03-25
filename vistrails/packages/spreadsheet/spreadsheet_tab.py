@@ -713,7 +713,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                     for col in range(self.sheet.columnCount()):
                         widget = self.sheet.cellWidget(row, col)
                         if widget is not None and widget.widget() is not None:
-                            widget.widget().deleteLater()
+                            widget.takeWidget().deleteLater()
 
             self.sheet.setRowCount(newRowCount)
             self.sheet.stretchCells()
@@ -736,7 +736,7 @@ class StandardWidgetSheetTab(QtGui.QWidget, StandardWidgetSheetTabInterface):
                     for row in range(self.sheet.rowCount()):
                         widget = self.sheet.cellWidget(row, col)
                         if widget is not None and widget.widget() is not None:
-                            widget.widget().deleteLater()
+                            widget.takeWidget().deleteLater()
                 
             self.sheet.setColumnCount(newColumnCount)
             self.sheet.stretchCells()
