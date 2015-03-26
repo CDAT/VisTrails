@@ -815,6 +815,10 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          f = tempfile.NamedTemporaryFile()
          filename = f.name
          f.close()
+         value=0
+         cdms2.setNetcdfShuffleFlag(value) ## where value is either 0 or 1
+         cdms2.setNetcdfDeflateFlag(value) ## where value is either 0 or 1
+         cdms2.setNetcdfDeflateLevelFlag(value) ## where value is a integer between 0 and 9 included
          fd = cdms2.open(filename,"w")
          fd.write(V)
          fd.close()
