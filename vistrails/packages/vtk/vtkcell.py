@@ -511,11 +511,14 @@ class QVTKWidget(QCellWidget):
         if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
-        ctrl = (e.modifiers()&QtCore.Qt.ControlModifier)
+
+        ctrl = bool(e.modifiers() & QtCore.Qt.ControlModifier)
+
         isDoubleClick = e.type()==QtCore.QEvent.MouseButtonDblClick
+
         self.iren.SetEventInformationFlipY(e.x(),e.y(),
                                       ctrl,
-                                      (e.modifiers()&QtCore.Qt.ShiftModifier),
+                                      bool(e.modifiers()&QtCore.Qt.ShiftModifier),
                                       chr(0),
                                       isDoubleClick,
                                       None)
@@ -527,7 +530,6 @@ class QVTKWidget(QCellWidget):
 
         if ctrl:
             e.ignore()
-            return
 
         self.interacting = self.getActiveRenderer(self.iren)
         
@@ -543,9 +545,12 @@ class QVTKWidget(QCellWidget):
         if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
+
+        ctrl = bool(e.modifiers() & QtCore.Qt.ControlModifier)
+
         self.iren.SetEventInformationFlipY(e.x(),e.y(),
-                                      (e.modifiers()&QtCore.Qt.ControlModifier),
-                                      (e.modifiers()&QtCore.Qt.ShiftModifier),
+                                      ctrl,
+                                      bool(e.modifiers()&QtCore.Qt.ShiftModifier),
                                       chr(0), 0, None)
 
         self.iren.InvokeEvent("MouseMoveEvent")
@@ -581,9 +586,12 @@ class QVTKWidget(QCellWidget):
         if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
+
+        ctrl = bool(e.modifiers() & QtCore.Qt.ControlModifier)
+
         self.iren.SetEventInformationFlipY(e.x(),e.y(),
-                                      (e.modifiers()&QtCore.Qt.ControlModifier),
-                                      (e.modifiers()&QtCore.Qt.ShiftModifier),
+                                      ctrl,
+                                      bool(e.modifiers()&QtCore.Qt.ShiftModifier),
                                       chr(0),0,None)
 
         invoke = {QtCore.Qt.LeftButton:"LeftButtonReleaseEvent",
@@ -615,8 +623,10 @@ class QVTKWidget(QCellWidget):
             keysym = self.qt_key_to_key_sym(e.key())
 
         # Ignore 'q' or 'e' or Ctrl-anykey
-        ctrl = (e.modifiers()&QtCore.Qt.ControlModifier)
-        shift = (e.modifiers()&QtCore.Qt.ShiftModifier)
+
+        ctrl = bool(e.modifiers() & QtCore.Qt.ControlModifier)
+
+        shift = bool(e.modifiers()&QtCore.Qt.ShiftModifier)
         if (keysym in ['q', 'e'] or ctrl):
             e.ignore()
             return
@@ -649,8 +659,9 @@ class QVTKWidget(QCellWidget):
             keysym = self.qt_key_to_key_sym(e.key())
 
         # Ignore 'q' or 'e' or Ctrl-anykey
-        ctrl = (e.modifiers()&QtCore.Qt.ControlModifier)
-        shift = (e.modifiers()&QtCore.Qt.ShiftModifier)
+
+        ctrl = bool(e.modifiers() & QtCore.Qt.ControlModifier)
+        shift = bool(e.modifiers()&QtCore.Qt.ShiftModifier)
         if (keysym in ['q','e'] or ctrl):
             e.ignore()
             return
@@ -668,9 +679,10 @@ class QVTKWidget(QCellWidget):
         if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
+        ctrl = bool(e.modifiers() & QtCore.Qt.ControlModifier)
         self.iren.SetEventInformationFlipY(e.x(),e.y(),
-                                      (e.modifiers()&QtCore.Qt.ControlModifier),
-                                      (e.modifiers()&QtCore.Qt.ShiftModifier),
+                                      ctrl,
+                                      bool(e.modifiers()&QtCore.Qt.ShiftModifier),
                                       chr(0),0,None)
         
         self.SelectActiveRenderer(self.iren)
@@ -703,7 +715,8 @@ class QVTKWidget(QCellWidget):
         if (not self.iren) or (not self.iren.GetEnabled()):
             return
 
-        ctrl = int(e.modifiers()&QtCore.Qt.ControlModifier)
+        ctrl = int(e.modifiers() & QtCore.Qt.ControlModifier)
+
         shift = int(e.modifiers()&QtCore.Qt.ShiftModifier)
         self.iren.SetEventInformationFlipY(e.x(),e.y(),ctrl,shift,chr(0),0,None)
         self.iren.InvokeEvent("ContextMenuEvent")
