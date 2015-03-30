@@ -44,6 +44,7 @@ import subprocess
 import time
 from core.system.unix import executable_is_in_path, list2cmdline, \
      executable_is_in_pythonpath, execute_cmdline, execute_piped_cmdlines
+from core import debug
 import core.utils
     
 ###############################################################################
@@ -87,8 +88,19 @@ class OSXSystemProfiler(object):
             command.append(str(category))
         if detail is not None:
             command.extend(['-detailLevel', '%d' % detail])
-        p = subprocess.Popen(command, stdout=subprocess.PIPE)
-        self.document = ElementTree.parse(p.stdout)
+        p = subprocess.Popen(command, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        stdout, stderr = p.communicate()
+        stderr = stderr.strip()
+        if stderr:
+            lines = stderr.splitlines()
+            if len(lines) > 1 or len(lines[0]) > 44:
+                line = "%s..." % lines[0][:41]
+            else:
+                line = lines[0]
+            debug.warning("Error output from system_profiler: %s" % line,
+                          stderr)
+        self.document = ElementTree.XML(stdout)
 
     def _content(self, node):
         "Get the text node content of an element or an empty string"
