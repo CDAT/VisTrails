@@ -68,7 +68,7 @@ class PlotProperties(QtGui.QDockWidget):
         sheetWidget = self.controller.get_sheet_widget(sheetName)
         if sheetWidget is not None:
             cellWidget = sheetWidget.getCell(row, col)
-            if cellWidget is not None:
+            if cellWidget is not None and hasattr(cellWidget, 'canvas'):
                 return cellWidget.canvas
         return None
 
