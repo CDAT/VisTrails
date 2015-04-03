@@ -1,7 +1,7 @@
 from info import *
 def package_dependencies():
     import core.packagemanager
-    dependencies = []
+    dependencies = ['gov.llnl.uvcdat']
     manager = core.packagemanager.get_package_manager()    
     if (manager.has_package('edu.utah.sci.vistrails.spreadsheet') and
             manager.has_package('edu.utah.sci.vistrails.vtk')):
