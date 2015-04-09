@@ -1,6 +1,6 @@
 from PyQt4 import QtCore
 from core.modules.module_registry import get_module_registry
-from packages.vtk.vtkcell import QVTKWidget
+from packages.uvcdat_cdms.vtk_classes import QVTKWidget
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_cell import QCellWidget
 from PVBase import PVModule

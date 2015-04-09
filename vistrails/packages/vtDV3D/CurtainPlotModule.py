@@ -9,7 +9,6 @@ from PyQt4.QtGui import *
 if __name__ == '__main__': app = QApplication(sys.argv)
 import core.modules.module_registry
 from core.modules.vistrails_module import Module, ModuleError
-from packages.vtk.base_module import vtkBaseModule
 from core.modules.module_registry import get_module_registry
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color

@@ -13,7 +13,6 @@ from core.modules.vistrails_module import Module, ModuleError
 from core.modules.module_registry import get_module_registry
 from core.interpreter.default import get_default_interpreter as getDefaultInterpreter
 from core.modules.basic_modules import Integer, Float, String, File, Variant, Color
-from packages.vtk.base_module import vtkBaseModule
 from packages.vtDV3D.ColorMapManager import ColorMapManager 
 import numpy as np
 # from packages.vtDV3D.InteractiveConfiguration import QtWindowLeveler 

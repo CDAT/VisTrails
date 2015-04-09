@@ -6,7 +6,7 @@ except:
     import pickle
 
 #from cdatguiwrap import VCSQtManager
-from packages.vtk.vtkcell import QVTKWidget, QVTKWidgetToolBar, VTKCell
+from packages.uvcdat_cdms.vtk_classes import QVTKWidget
 import vcs
 import genutil
 import cdutil
