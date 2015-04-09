@@ -852,10 +852,10 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
          from gui.uvcdat.uvcdatCommons import gmInfos
          Gtype = res30.type
-         if res30.type=="Taylor":
-             G=V["Taylordiagram"]
-         else:
-             G = V[Gtype]
+         if Gtype == "Taylor":
+             Gtype = "Taylordiagram"
+
+         G = V[Gtype]
          if not gm.name in G.keys():
             G[gm.name] = pm._registry.add_plot(gm.name,"VCS",None,None,Gtype)
             G[gm.name].varnum = int(gmInfos[Gtype]["nSlabs"])
