@@ -5,7 +5,7 @@ identifier = 'edu.utah.sci.eranders.ParaView'
 from configuration import configuration
 
 def package_dependencies():
-    return ['edu.utah.sci.vistrails.spreadsheet', 'edu.utah.sci.vistrails.vtk']
+    return ['edu.utah.sci.vistrails.spreadsheet', 'gov.llnl.uvcdat.cdms']
 
 def package_requirements():
     import core.requirements
@@ -16,4 +16,3 @@ def package_requirements():
     if not core.requirements.python_module_exists('PyQt4'):
         print 'PyQt4 is not available. There will be no interaction',
         print 'between VTK and the spreadsheet.'
-    import vtk
