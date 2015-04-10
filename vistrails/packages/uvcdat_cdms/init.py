@@ -422,12 +422,6 @@ class CDMSVariable(Variable):
         elif timeBounds == "Set Bounds For X-Daily Data":
             cdutil.times.setTimeBoundsDaily(var,val)
         return var
-    
-def wrapVTKModule(classname,instance):
-  registry = get_module_registry()
-  result = registry.get_descriptor_by_name('edu.utah.sci.vistrails.vtk',classname).module()
-  result.vtkInstance = instance
-  return result
 
 class CDMSVariableOperation(Module):
     _input_ports = expand_port_specs([("varname", "basic:String"),
@@ -1459,17 +1453,6 @@ class QCDATWidget(QVTKWidget):
 #                 print "cgm=",cgm,"args=",args,"kwargs=",kwargs
 #                 spreadsheetWindow.setUpdatesEnabled(True)
 #                 raise e
-        doInteractorStyle = False
-        if doInteractorStyle:
-          vtkRenderers = self.canvas.backend.renWin.GetRenderers()
-          vtkRenderers.InitTraversal()
-          renderers = []
-          r = vtkRenderers.GetNextItem()
-          self.SetRenderWindow(self.canvas.backend.renWin)
-          while r is not None:
-            renderers.append(wrapVTKModule('vtkRenderer',r))
-            r = vtkRenderers.GetNextItem()
-          QVTKWidget.updateContents(self,(renderers,None,[],self.interactorStyle,None))
         self.canvas.setAnimationStepper( QtAnimationStepper )
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
