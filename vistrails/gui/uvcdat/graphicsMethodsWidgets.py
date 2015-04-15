@@ -1408,11 +1408,11 @@ class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             self.legendLineEdit.setText(repr(gm.legend))
 
 
-            if gm.ext_1 == "n":
+            if gm.ext_1 in [0,False,"n"]:
                 self.ext1ButtonGroup.setChecked('No')
             else:
                 self.ext1ButtonGroup.setChecked('Yes')
-            if gm.ext_2 == "n":
+            if gm.ext_2 in [0,False,"n"]:
                 self.ext2ButtonGroup.setChecked('No')
             else:
                 self.ext2ButtonGroup.setChecked('Yes')
@@ -1509,11 +1509,11 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.legendLineEdit.setText(repr(gm.legend))
 
         
-        if gm.ext_1 == "n":
+        if gm.ext_1 in [False,0,"n"]:
             self.ext1ButtonGroup.setChecked('No')
         else:
             self.ext1ButtonGroup.setChecked('Yes')
-        if gm.ext_2 == "n":
+        if gm.ext_2 in [False,0,"n"]:
             self.ext2ButtonGroup.setChecked('No')
         else:
             self.ext2ButtonGroup.setChecked('Yes')
