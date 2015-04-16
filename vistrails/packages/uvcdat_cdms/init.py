@@ -1408,12 +1408,13 @@ class QCDATWidget(QVTKWidget):
             if plot.graphics_method_name != 'default':
                 print "PLOT GM NAME:",plot.graphics_method_name
                 print "PLOT ATTR:",plot.gm_attributes
+                #cgm.list()
                 for k in plot.gm_attributes:
                     if hasattr(plot,k):
                         if k in ['legend']:
                             setattr(cgm,k,eval(getattr(plot,k)))
                         else:
-                            print "cgm=",cgm,"k=",k,"getattr(plot,k)=",getattr(plot,k)
+                            print "cgm=",cgm,"k=",k,"getattr(plot,k)=",getattr(plot,k),type(getattr(plot,k))
                             if getattr(plot,k)!=getattr(cgm,k):
                                 try:
                                     setattr(cgm,k,eval(getattr(plot,k)))

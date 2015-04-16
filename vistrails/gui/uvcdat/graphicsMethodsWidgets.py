@@ -1408,6 +1408,7 @@ class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             self.legendLineEdit.setText(repr(gm.legend))
 
 
+            print "EXT1:",gm.name,gm.ext_1
             if gm.ext_1 in [0,False,"n"]:
                 self.ext1ButtonGroup.setChecked('No')
             else:
@@ -1509,6 +1510,7 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.legendLineEdit.setText(repr(gm.legend))
 
         
+        print "EXT1:",gm.name,gm.ext_1
         if gm.ext_1 in [False,0,"n"]:
             self.ext1ButtonGroup.setChecked('No')
         else:
@@ -2058,11 +2060,13 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.boxfillTypeButtonGroup.setChecked(gm.boxfill_type)
         self.clickedBoxType()
         
-        if gm.ext_1 == "n":
+        print "OK GM EXT1:",gm.ext_1,type(gm.ext_1)
+        if gm.ext_1 in [False,0,"n"]:
+            print "we are setting to ff for sure"
             self.ext1ButtonGroup.setChecked('No')
         else:
             self.ext1ButtonGroup.setChecked('Yes')
-        if gm.ext_2 == "n":
+        if gm.ext_2 in [False,0,"n"]:
             self.ext2ButtonGroup.setChecked('No')
         else:
             self.ext2ButtonGroup.setChecked('Yes')
