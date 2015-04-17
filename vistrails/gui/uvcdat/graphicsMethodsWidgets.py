@@ -461,21 +461,14 @@ class VCSGMRanges:
                               self).show()
             return
 
-        colors = []
         values = []                
         value = minValue
-        color = 16
 
         # Generate ranges and colors (Linear)
         if self.spacingButtonGroup.isChecked('Linear'):
             delta = float((maxValue - minValue) / numIntervals)
-            d = int(222 / (numIntervals - 1))
-            
             for a in range(numIntervals + 1):
-                if color <= 238:
-                    colors.append(color)
                 values.append(value)
-                color += d
                 value += delta
         # Generate ranges (Log)                
         else:
@@ -504,13 +497,20 @@ class VCSGMRanges:
 
             # Gen colors (Log)
             numIntervals = len(values) - 1
-            d = int(222 / (numIntervals - 1))
-            for a in range(numIntervals):
-                colors.append(16 + a * d)
             
         if self.includeZeroButtonGroup.isChecked('On'):
             values.insert(0, 0.0)
+        if str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
+          ## Ok we want a left extension
+          if abs(values[0])<1.e20:
+            values.insert(0,-1.e20)
 
+        if str(self.ext2ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
+          ## Ok we want a right extension
+          if abs(values[-1])<1.e20:
+            values.append(1.e20)
+
+        colors = vcs.getcolors(values)
         self.rangeLineEdit.setText(str(values))
         if self.allBlack.isChecked():
             colors=[1,]
@@ -1408,12 +1408,12 @@ class QMeshfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             self.legendLineEdit.setText(repr(gm.legend))
 
 
-            print "EXT1:",gm.name,gm.ext_1
-            if gm.ext_1 in [0,False,"n"]:
+            ## i;n case we get the weird instance type here as well`
+            if gm.ext_1 in [0,False,"n","False"]:
                 self.ext1ButtonGroup.setChecked('No')
             else:
                 self.ext1ButtonGroup.setChecked('Yes')
-            if gm.ext_2 in [0,False,"n"]:
+            if gm.ext_2 in [0,False,"n","False"]:
                 self.ext2ButtonGroup.setChecked('No')
             else:
                 self.ext2ButtonGroup.setChecked('Yes')
@@ -1510,12 +1510,11 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.legendLineEdit.setText(repr(gm.legend))
 
         
-        print "EXT1:",gm.name,gm.ext_1
-        if gm.ext_1 in [False,0,"n"]:
+        if gm.ext_1 in [False,0,"n","False"]:
             self.ext1ButtonGroup.setChecked('No')
         else:
             self.ext1ButtonGroup.setChecked('Yes')
-        if gm.ext_2 in [False,0,"n"]:
+        if gm.ext_2 in [False,0,"n","False"]:
             self.ext2ButtonGroup.setChecked('No')
         else:
             self.ext2ButtonGroup.setChecked('Yes')
@@ -2060,13 +2059,18 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.boxfillTypeButtonGroup.setChecked(gm.boxfill_type)
         self.clickedBoxType()
         
-        print "OK GM EXT1:",gm.ext_1,type(gm.ext_1)
-        if gm.ext_1 in [False,0,"n"]:
-            print "we are setting to ff for sure"
+        ## Apparently the first time around it comes in as expected with a boxfill gm
+        ## But right after that it comes back as a:
+        ## <class 'core.utils.InstanceObject'> with values no longer bool but str
+        ## So we need to test against this!
+        ## But we should really figure out why the type is changed to this vistrails thing
+        ## someone with a better understanding a VisTrails inners should try
+        ## to figure this out (@remram44 @vvpalav or @hgohil2805 ???
+        if gm.ext_1 in [False,0,"n", "False"]:
             self.ext1ButtonGroup.setChecked('No')
         else:
             self.ext1ButtonGroup.setChecked('Yes')
-        if gm.ext_2 in [False,0,"n"]:
+        if gm.ext_2 in [False,0,"n","False"]:
             self.ext2ButtonGroup.setChecked('No')
         else:
             self.ext2ButtonGroup.setChecked('Yes')
