@@ -5,7 +5,6 @@
     </key>
   </configuration>
   <packages>
-    <package name="vtk"/>
     <package name="pythonCalc"/>
     <package name="spreadsheet"/>
     <package name="dialogs"/>

@@ -449,7 +449,7 @@ Returns true if given package identifier is present."""
         for package in self._package_list.itervalues():
             if package.initialized():
                 continue
-            debug.log("Initializing %s", package.codepath)
+            debug.log("Initializing %s" % package.codepath)
             try:
                 package.load(prefix_dictionary.get(package.codepath, None),
                              existing_paths)

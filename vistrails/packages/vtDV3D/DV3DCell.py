@@ -8,7 +8,7 @@ from PyQt4 import QtCore, QtGui
 from gui.qt import qt_super
 from packages.spreadsheet.basic_widgets import SpreadsheetCell, CellLocation
 from packages.spreadsheet.spreadsheet_base import StandardSheetReference, StandardSingleCellSheetReference
-from packages.vtk.vtkcell import QVTKWidget, QVTKWidgetToolBar
+from packages.uvcdat_cdms.vtk_classes import QVTKWidget, QVTKWidgetToolBar
 from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
 from packages.vtDV3D.InteractiveConfiguration import *
 from packages.vtDV3D.CaptionManager import *
