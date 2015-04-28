@@ -1388,7 +1388,6 @@ class QCDATWidget(QVTKWidget):
         # Plot
         for plot in inputPorts[0]:
             cmd = "#Now plotting\nvcs_canvas[%i].plot(" % (self.canvas.canvasid()-1)
-            # print "PLOT TYPE:", plot.plot_type
             k1 = self.prepExtraDims(plot.var.var)
             args = [plot.var.var(**k1)]
             cmd+="%s(**%s), " % (args[0].id,str(k1))
@@ -1400,12 +1399,12 @@ class QCDATWidget(QVTKWidget):
             cgm = self.get_graphics_method(plot.plot_type, plot.graphics_method_name)
 #            cgm.setProvenanceHandler( plot.processParameterUpdate )
             if plot.graphics_method_name != 'default':
+                #cgm.list()
                 for k in plot.gm_attributes:
                     if hasattr(plot,k):
                         if k in ['legend']:
                             setattr(cgm,k,eval(getattr(plot,k)))
                         else:
-#                            print "cgm=",cgm,"k=",k,"getattr(plot,k)=",getattr(plot,k)
                             if getattr(plot,k)!=getattr(cgm,k):
                                 try:
                                     setattr(cgm,k,eval(getattr(plot,k)))
