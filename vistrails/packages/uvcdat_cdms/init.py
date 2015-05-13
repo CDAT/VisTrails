@@ -1910,8 +1910,8 @@ def get_input_ports(plot_type):
                                   ('color_1', 'basic:Integer', True),
                                   ('color_2', 'basic:Integer', True),
                                   ('levels', 'basic:List', True),
-                                  ('ext_1', 'basic:String', True),
-                                  ('ext_2', 'basic:String', True),
+                                  ('ext_1', 'basic:Boolean', True),
+                                  ('ext_2', 'basic:Boolean', True),
                                   ('fillareacolors', 'basic:List', True),
                                   ('fillareaindices', 'basic:List', True),
                                   ('fillareastyle', 'basic:String', True),
@@ -1940,8 +1940,8 @@ def get_input_ports(plot_type):
     
     elif plot_type == "Isofill":
         return expand_port_specs([('levels', 'basic:List', True),
-                                  ('ext_1', 'basic:String', True),
-                                  ('ext_2', 'basic:String', True),
+                                  ('ext_1', 'basic:Boolean', True),
+                                  ('ext_2', 'basic:Boolean', True),
                                   ('fillareacolors', 'basic:List', True),
                                   ('fillareaindices', 'basic:List', True),
                                   ('fillareastyle', 'basic:String', True),
@@ -1953,8 +1953,8 @@ def get_input_ports(plot_type):
     elif plot_type == "Isoline":
         return expand_port_specs([('label', 'basic:String', True),
                                   ('levels', 'basic:List', True),
-                                  ('ext_1', 'basic:String', True),
-                                  ('ext_2', 'basic:String', True),
+                                  ('ext_1', 'basic:Boolean', True),
+                                  ('ext_2', 'basic:Boolean', True),
                                   ('level', 'basic:List', True),
                                   ('line', 'basic:List', True),
                                   ('linecolors', 'basic:List', True),
@@ -1970,8 +1970,8 @@ def get_input_ports(plot_type):
                                   ]) 
     elif plot_type == "Meshfill":
         return expand_port_specs([('levels', 'basic:List', True),
-                                  ('ext_1', 'basic:String', True),
-                                  ('ext_2', 'basic:String', True),
+                                  ('ext_1', 'basic:Boolean', True),
+                                  ('ext_2', 'basic:Boolean', True),
                                   ('fillareacolors', 'basic:List', True),
                                   ('fillareaindices', 'basic:List', True),
                                   ('fillareastyle', 'basic:String', True),

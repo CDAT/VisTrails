@@ -207,9 +207,9 @@ def new_constant(name, py_conversion, default_value, validation,
 
 def bool_conv(x):
     s = str(x).upper()
-    if s == 'TRUE':
+    if s == 'TRUE' or s == 'Y' or s == 'YES' or s == '1':
         return True
-    if s == 'FALSE':
+    if s == 'FALSE' or s == 'N' or s == 'NO' or s == '0':
         return False
     raise ValueError('Boolean from String in VisTrails should be either \
 "true" or "false", got "%s" instead' % x)
