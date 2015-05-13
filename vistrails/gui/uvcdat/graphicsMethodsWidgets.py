@@ -404,7 +404,7 @@ class VCSGMRanges:
         self.numNegDecLabel, self.negDecadesLineEdit = target.addLabelAndLineEdit('Number of Negative Decades:')
         self.numNegDecLabel.setEnabled(False)
         genRangesButton = target.addButton('Generate Ranges')
-        genRangesButton.setToolTip("Use the 'Minimun Value', 'Maximum Value', and 'Number\nof Intervals' to generate the iso level range values\nand color index values. Note: if 'Ranges' and 'Colors'\nare specified, then the plot will use these numbers\nto generate the contour levels.")
+        genRangesButton.setToolTip("Use the 'Minimum Value', 'Maximum Value', and 'Number\nof Intervals' to generate the iso level range values\nand color index values. Note: if 'Ranges' and 'Colors'\nare specified, then the plot will use these numbers\nto generate the contour levels.")
         clearButton = target.addButton('Clear All', newRow=False)        
         self.initRangeValues()
 
@@ -500,17 +500,20 @@ class VCSGMRanges:
             
         if self.includeZeroButtonGroup.isChecked('On'):
             values.insert(0, 0.0)
-        if str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
-          ## Ok we want a left extension
-          if abs(values[0])<1.e20:
-            values.insert(0,-1.e20)
+        if hasattr(self,"ext1ButtonGroup"):
+            if str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
+              ## Ok we want a left extension
+              if abs(values[0])<1.e20:
+                values.insert(0,-1.e20)
+            colors = vcs.getcolors(values)
+        else:
+            colors = vcs.getcolors(values+[values[-1],])
 
-        if str(self.ext2ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
+        if hasattr(self,"ext2ButtonGroup") and str(self.ext2ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
           ## Ok we want a right extension
           if abs(values[-1])<1.e20:
             values.append(1.e20)
 
-        colors = vcs.getcolors(values)
         self.rangeLineEdit.setText(str(values))
         if self.allBlack.isChecked():
             colors=[1,]
