@@ -58,10 +58,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.DS2PathLabel.setText('/')
       self.obs1PathLabel.setText('/')
       self.obs2PathLabel.setText('/')
-        
-      self.tmppth = os.path.join(os.environ['HOME'],"tmp")
-      if not os.path.exists(self.tmppth):
-         os.makedirs(self.tmppth)
 
       self.DiagnosticGroup = None
       self.diagnostic_set = None
@@ -712,11 +708,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
            print "auxiliary option: %s" % auxname
            print "region_box: %s" %self.region_box
            print "season: %s" % season
-        # initial test, first cut:
-        # This stuff should go elsewhere...
-        import os
-        #...was self.filetable2 = setup_filetable(self.path2,self.tmppth,search_filter=filt2)
-        # ( replacement moved to __init__ and plotsetchanged)
         model = []
         obs = []
         if self.useDS1 == 1:
