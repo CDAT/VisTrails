@@ -12,7 +12,7 @@ import metrics.frontend.defines as defines
 import metrics.fileio.findfiles
 import metrics.packages.diagnostic_groups
 from metrics.common.utilities import natural_sort
-import pdb
+#import pdb
 
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    dg_menu = metrics.packages.diagnostic_groups.diagnostics_menu()  # typical item: 'AMWG':AMWG
