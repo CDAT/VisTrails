@@ -12,7 +12,6 @@ import metrics.frontend.defines as defines
 import metrics.fileio.findfiles
 import metrics.packages.diagnostic_groups
 from metrics.common.utilities import natural_sort
-#import pdb
 
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    dg_menu = metrics.packages.diagnostic_groups.diagnostics_menu()  # typical item: 'AMWG':AMWG
@@ -769,7 +768,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             mbox = QtGui.QMessageBox(QtGui.QMessageBox.Warning, msg, QString(msg))
             mbox.exec_()
         ires = 0
-        #pdb.set_trace()
         for row in range(Nrows):
             for col in range(Ncolumns):
                if ires<len(res):
@@ -786,17 +784,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
    def displayCell(self, res30, row, column, sheet="Sheet 1", dropInfo = True):
       """Display result into one cell defined by row/col args"""
-      #pdb.set_trace()
-      #print 'displayCell start'
-      #print dropInfo
-      #print "row, column =", row, column
       projectController = self.parent().get_current_project_controller()
       if dropInfo:
           projectController.get_sheet_widget(sheet).deleteCell(row,column)
       projectController.enable_animation = False  # I (JfP) don't know why I need this, it didn't
                                                   # used to be necessary.
-
-      #print 'res30=', res30
       if res30 is None:
          return
       if not hasattr(res30,'presentation') or res30.presentation is None or res30.presentation is "text":
@@ -818,19 +810,13 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       from packages.uvcdat_cdms.init import CDMSVariable
       from core.utils import InstanceObject
       from metrics.frontend.uvcdat import diagnostics_template
-      #pdb.set_trace()
       tm = diagnostics_template()  # template name is 'diagnostic'
       if dropInfo:
           tmplDropInfo = ('diagnostic', sheet, row, column)
           projectController.template_was_dropped(tmplDropInfo)
       for V in pvars:
-         #print V.id, V
-         #pdb.set_trace()
          V.title = title        # VCS looks the title of the variable, not the plot.
          V.long_name = V.title  # VCS overrides title with long_name!
-         #tmplDropInfo = ('diagnostic', sheet, row, column)
-         #if dropInfo:
-         #    projectController.template_was_dropped(tmplDropInfo)
          # Until I know better storing vars in tempfile....
          f = tempfile.NamedTemporaryFile()
          filename = f.name
@@ -859,10 +845,8 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          projectController.add_defined_variable(cdmsVar)
          
          # simulate drop variable
-         #print "SI DROPPING:",name_in_var_widget,row,column
          varDropInfo = (name_in_var_widget, sheet, row, column)
          projectController.variable_was_dropped(varDropInfo)
-         #pdb.set_trace()
       # Trying to add method to plot list....
       #from gui.application import get_vistrails_application
       #_app = get_vistrails_application()
@@ -892,12 +876,11 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          attrs[attr] = getattr(gm,attr)
       original_gm_attributes[Gtype][gm.name] = InstanceObject(**attrs)
 
-      #print "PLOTTING:",Gtype,gm.name
       plot = projectController.plot_manager.new_plot('VCS', Gtype, gm.name )
       #plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
       plotDropInfo = (plot, sheet, row, column)
-      #pdb.set_trace()
       projectController.plot_was_dropped(plotDropInfo)
+
    def cancelClicked(self):
         self.close()
             
