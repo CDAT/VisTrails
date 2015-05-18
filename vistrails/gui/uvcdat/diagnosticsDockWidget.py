@@ -823,7 +823,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       if dropInfo:
           tmplDropInfo = ('diagnostic', sheet, row, column)
           projectController.template_was_dropped(tmplDropInfo)
-      for V in pvars:
+      for varindex, V in enumerate(pvars):
          #print V.id, V
          #pdb.set_trace()
          V.title = title        # VCS looks the title of the variable, not the plot.
@@ -863,41 +863,45 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          varDropInfo = (name_in_var_widget, sheet, row, column)
          projectController.variable_was_dropped(varDropInfo)
          #pdb.set_trace()
-      # Trying to add method to plot list....
-      #from gui.application import get_vistrails_application
-      #_app = get_vistrails_application()
-      #d = _app.uvcdatWindow.dockPlot
-      # simulate drop plot
-      pm = projectController.plot_manager
-      VCS_LIST = pm._plot_list["VCS"]
-      gm = res30.presentation
-      from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
-      from gui.uvcdat.uvcdatCommons import gmInfos
-      Gtype = res30.type
-      if Gtype == "Taylor":
-          Gtype = "Taylordiagram"
- 
-      G = VCS_LIST[Gtype]
-      if not gm.name in G.keys():
-         G[gm.name] = pm._registry.add_plot(gm.name,"VCS",None,None,Gtype)
-         G[gm.name].varnum = int(gmInfos[Gtype]["nSlabs"])
- 
-      #add initial attributes to global dict
-      canvas = get_canvas()
-      method_name = "get"+Gtype.lower()
-      attributes = get_gm_attributes(Gtype)
-
-      attrs = {}
-      for attr in attributes:
-         attrs[attr] = getattr(gm,attr)
-      original_gm_attributes[Gtype][gm.name] = InstanceObject(**attrs)
-
-      #print "PLOTTING:",Gtype,gm.name
-      plot = projectController.plot_manager.new_plot('VCS', Gtype, gm.name )
-      #plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
-      plotDropInfo = (plot, sheet, row, column)
-      #pdb.set_trace()
-      projectController.plot_was_dropped(plotDropInfo)
+         # Trying to add method to plot list....
+         #from gui.application import get_vistrails_application
+         #_app = get_vistrails_application()
+         #d = _app.uvcdatWindow.dockPlot
+         # simulate drop plot
+         pm = projectController.plot_manager
+         VCS_LIST = pm._plot_list["VCS"]
+         gm = res30.presentation
+         from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
+         from gui.uvcdat.uvcdatCommons import gmInfos
+         Gtype = res30.type
+         if Gtype == "Taylor":
+             Gtype = "Taylordiagram"
+     
+         G = VCS_LIST[Gtype]
+         if not gm.name in G.keys():
+            G[gm.name] = pm._registry.add_plot(gm.name,"VCS",None,None,Gtype)
+            G[gm.name].varnum = int(gmInfos[Gtype]["nSlabs"])
+     
+         #add initial attributes to global dict
+         canvas = get_canvas()
+         method_name = "get"+Gtype.lower()
+         attributes = get_gm_attributes(Gtype)
+    
+         attrs = {}
+         for attr in attributes:
+            attrs[attr] = getattr(gm,attr)
+         original_gm_attributes[Gtype][gm.name] = InstanceObject(**attrs)
+         #print "PLOTTING:", Gtype, gm.name
+         if Gtype == "Scatter" and varindex == 0:
+             #to plot a scatter plot, requires both axes passed to the plotspec.
+             #so dont plot the until the 2nd variable is processed.
+            pass
+         else:
+            plot = projectController.plot_manager.new_plot('VCS', Gtype, gm.name )
+            #plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
+            plotDropInfo = (plot, sheet, row, column)
+            #pdb.set_trace()
+            projectController.plot_was_dropped(plotDropInfo)
    def cancelClicked(self):
         self.close()
             
