@@ -775,6 +775,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
 
    def displayCell(self, res30, row, column, sheet="Sheet 1", dropInfo = True):
       """Display result into one cell defined by row/col args"""
+      import pdb
       projectController = self.parent().get_current_project_controller()
       if dropInfo:
           projectController.get_sheet_widget(sheet).deleteCell(row,column)
@@ -788,6 +789,19 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       labels = res30.labels
       title = res30.title
       presentation = res30.presentation
+      
+      #moved
+      pm = projectController.plot_manager
+      VCS_LIST = pm._plot_list["VCS"]
+      gm = res30.presentation
+      from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
+      from gui.uvcdat.uvcdatCommons import gmInfos
+      Gtype = res30.type
+      #print Gtype
+      if Gtype == "Taylor":
+          Gtype = "Taylordiagram"
+      #end move
+      
       if False:  # standard diagnostics prints:
          print "pvars:",[p.id for p in pvars]
          print "labels:",labels
@@ -806,12 +820,16 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
           tmplDropInfo = ('diagnostic', sheet, row, column)
           projectController.template_was_dropped(tmplDropInfo)
 
+      if Gtype == 'Vector':
+          pvars = pvars[0]
       for varindex, V in enumerate(pvars):
          #print V.id, V
-         #pdb.set_trace()
+         if Gtype != 'Vector':
+             V.title = title        # VCS looks the title of the variable, not the plot.
+             V.long_name = V.title  # VCS overrides title with long_name!
+         #else:
+         #    pdb.set_trace()
 
-         V.title = title        # VCS looks the title of the variable, not the plot.
-         V.long_name = V.title  # VCS overrides title with long_name!
          # Until I know better storing vars in tempfile....
          f = tempfile.NamedTemporaryFile()
          filename = f.name
@@ -825,19 +843,24 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          fd.close()
          cdmsFile = cdms2.open(filename)
          #define name of variable to appear in var widget
-         name_in_var_widget = V.id
+         if Gtype == 'Vector':
+             name_in_var_widget = V[0].id
+         else:
+             name_in_var_widget = V.id
          #get uri if exists
          url = None
          if hasattr(cdmsFile, 'uri'):
             url = cdmsFile.uri
          #create vistrails module
+         print name_in_var_widget, cdmsFile.id
          cdmsVar = CDMSVariable(filename=cdmsFile.id, url=url, name=name_in_var_widget,
-            varNameInFile=V.id)
+            varNameInFile=name_in_var_widget )#V.id)
          #get variable widget and project controller
          definedVariableWidget = self.parent().dockVariable.widget()
          #add variable to display widget and controller
          definedVariableWidget.addVariable(V)
          projectController.add_defined_variable(cdmsVar)
+         #pdb.set_trace()
          
          # simulate drop variable
          varDropInfo = (name_in_var_widget, sheet, row, column)
@@ -849,14 +872,16 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          #_app = get_vistrails_application()
          #d = _app.uvcdatWindow.dockPlot
          # simulate drop plot
-         pm = projectController.plot_manager
-         VCS_LIST = pm._plot_list["VCS"]
-         gm = res30.presentation
-         from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
-         from gui.uvcdat.uvcdatCommons import gmInfos
-         Gtype = res30.type
-         if Gtype == "Taylor":
-             Gtype = "Taylordiagram"
+         
+         #pm = projectController.plot_manager
+         #VCS_LIST = pm._plot_list["VCS"]
+         #gm = res30.presentation
+         #from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
+         #from gui.uvcdat.uvcdatCommons import gmInfos
+         #Gtype = res30.type
+         #print Gtype
+         #if Gtype == "Taylor":
+         #    Gtype = "Taylordiagram"
      
          G = VCS_LIST[Gtype]
          if not gm.name in G.keys():
@@ -872,12 +897,14 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          for attr in attributes:
             attrs[attr] = getattr(gm,attr)
          original_gm_attributes[Gtype][gm.name] = InstanceObject(**attrs)
-         #print "PLOTTING:", Gtype, gm.name
-         if Gtype == "Scatter" and varindex == 0:
-             #to plot a scatter plot, requires both axes passed to the plotspec.
-             #so dont plot the until the 2nd variable is processed.
+         print "PLOTTING:", Gtype, gm.name
+         if Gtype in ["Scatter", "Vector"] and varindex == 0:
+             #to plot a scatter plot or vector plot, requires both axes passed to plotspec.
+             #so dont plot the 1st one until the 2nd variable is processed.
+            #pdb.set_trace()
             pass
          else:
+            # simulate drop plot
             plot = projectController.plot_manager.new_plot('VCS', Gtype, gm.name )
             #plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
             plotDropInfo = (plot, sheet, row, column)
