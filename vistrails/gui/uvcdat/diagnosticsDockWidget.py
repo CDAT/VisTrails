@@ -312,6 +312,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          self.setupDiagnosticTree(self.comboBoxType.currentIndex())
 
    def filefilter_menuitem( self, filefam_menu, widget ):
+
       if type(filefam_menu) is dict:
          filefam = str(widget.currentText())
       else:  # filefam_menu is True or None
@@ -350,9 +351,10 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.prepareObs2(flag=1)
 
    def prepareObs1(self, flag=None):
+
       if len(self.opts._opts['obs']) == 0 or self.opts._opts['obs'][0]['path'] == None:
          print 'ERROR.  No observation directory selected'
-      else:
+      else:           
          if flag == None:
             self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
 
@@ -360,20 +362,17 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             # I believe all we need to do is set up the combobox with a list of 
             # possible filters based on the obs set which has now been selected.
             # much of that work is done with check_filespec().
-            # When the user clicks Apply it has to re-fetch the menu item selected
-   
-            self.observations1, self.obs1_menu, self.observation2 = \
-               self.fill_filefilter_menu(self.obsfiles1, self.comboBoxObservation1)
+            # When the user clicks Apply it has to re-fetch the menu item sel
 
+            self.observations1, self.obs1_menu, self.observation1 = \
+               self.fill_filefilter_menu(self.obsfiles1, self.comboBoxObservation1)            
             self.opts._opts['obs'][0]['filter'] = self.obs1_menu[self.observation1]
-         
+
          # If flag is passed just do this stuff.
 #         self.opts._opts['obs'][0]['filter'] = str(self.comboBoxObservation1.currentText())
 
          self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
-
          self.obsft1 = self.obsfiles1.setup_filetable()
-
          self.updateVarList()
          # obs should be populated now
 
@@ -515,8 +514,14 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
             self.comboBoxVar.removeItem(0)
          self.comboBoxVar.addItems(self.variables)
 
+         varlist = self.DiagnosticGroup.list_variables(model, obs, diagnostic_set_name = self.diagnostic_set_name)
+   
+         varlist.sort()
+         self.variables = varlist
 
-
+         for i in range(self.comboBoxVar.count()):
+            self.comboBoxVar.removeItem(0)
+         self.comboBoxVar.addItems(self.variables)
 
 #### variableChanged needs connected to comboBoxVar changes        
    def variableChanged(self, index):
@@ -789,18 +794,15 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       labels = res30.labels
       title = res30.title
       presentation = res30.presentation
-      
-      #moved
+      Gtype = res30.type
+      if Gtype == "Taylor":
+          Gtype = "Taylordiagram"
+                
       pm = projectController.plot_manager
       VCS_LIST = pm._plot_list["VCS"]
       gm = res30.presentation
       from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
       from gui.uvcdat.uvcdatCommons import gmInfos
-      Gtype = res30.type
-      #print Gtype
-      if Gtype == "Taylor":
-          Gtype = "Taylordiagram"
-      #end move
       
       if False:  # standard diagnostics prints:
          print "pvars:",[p.id for p in pvars]
@@ -810,6 +812,7 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          print "x min,max:",getattr(presentation,'datawc_x1',None), getattr(presentation,'datawc_x2',None)
          print "y min,max:",getattr(presentation,'datawc_y1',None), getattr(presentation,'datawc_y2',None)
          print "res",res30.type
+
       #define where to drag and drop
       import cdms2
       from packages.uvcdat_cdms.init import CDMSVariable
@@ -823,12 +826,9 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       if Gtype == 'Vector':
           pvars = pvars[0]
       for varindex, V in enumerate(pvars):
-         #print V.id, V
          if Gtype != 'Vector':
              V.title = title        # VCS looks the title of the variable, not the plot.
              V.long_name = V.title  # VCS overrides title with long_name!
-         #else:
-         #    pdb.set_trace()
 
          # Until I know better storing vars in tempfile....
          f = tempfile.NamedTemporaryFile()
@@ -852,7 +852,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          if hasattr(cdmsFile, 'uri'):
             url = cdmsFile.uri
          #create vistrails module
-         print name_in_var_widget, cdmsFile.id
          cdmsVar = CDMSVariable(filename=cdmsFile.id, url=url, name=name_in_var_widget,
             varNameInFile=name_in_var_widget )#V.id)
          #get variable widget and project controller
@@ -860,29 +859,17 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          #add variable to display widget and controller
          definedVariableWidget.addVariable(V)
          projectController.add_defined_variable(cdmsVar)
-         #pdb.set_trace()
-         
+   
          # simulate drop variable
          varDropInfo = (name_in_var_widget, sheet, row, column)
          projectController.variable_was_dropped(varDropInfo)
 
-         #pdb.set_trace()
          # Trying to add method to plot list....
          #from gui.application import get_vistrails_application
          #_app = get_vistrails_application()
          #d = _app.uvcdatWindow.dockPlot
          # simulate drop plot
-         
-         #pm = projectController.plot_manager
-         #VCS_LIST = pm._plot_list["VCS"]
-         #gm = res30.presentation
-         #from packages.uvcdat_cdms.init import get_canvas, get_gm_attributes, original_gm_attributes
-         #from gui.uvcdat.uvcdatCommons import gmInfos
-         #Gtype = res30.type
-         #print Gtype
-         #if Gtype == "Taylor":
-         #    Gtype = "Taylordiagram"
-     
+
          G = VCS_LIST[Gtype]
          if not gm.name in G.keys():
             G[gm.name] = pm._registry.add_plot(gm.name,"VCS",None,None,Gtype)
@@ -897,18 +884,16 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          for attr in attributes:
             attrs[attr] = getattr(gm,attr)
          original_gm_attributes[Gtype][gm.name] = InstanceObject(**attrs)
-         print "PLOTTING:", Gtype, gm.name
+
          if Gtype in ["Scatter", "Vector"] and varindex == 0:
              #to plot a scatter plot or vector plot, requires both axes passed to plotspec.
              #so dont plot the 1st one until the 2nd variable is processed.
-            #pdb.set_trace()
             pass
          else:
             # simulate drop plot
             plot = projectController.plot_manager.new_plot('VCS', Gtype, gm.name )
             #plot = projectController.plot_manager.new_plot('VCS', Gtype, "default" )
             plotDropInfo = (plot, sheet, row, column)
-            #pdb.set_trace()
             projectController.plot_was_dropped(plotDropInfo)
 
    def cancelClicked(self):
