@@ -13,6 +13,7 @@ import metrics.fileio.findfiles
 import metrics.packages.diagnostic_groups
 from metrics.common.utilities import natural_sort
 
+import pdb
 class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
    dg_menu = metrics.packages.diagnostic_groups.diagnostics_menu()  # typical item: 'AMWG':AMWG
    diagnostic_set_name = "Not implemented"
@@ -312,7 +313,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          self.setupDiagnosticTree(self.comboBoxType.currentIndex())
 
    def filefilter_menuitem( self, filefam_menu, widget ):
-
       if type(filefam_menu) is dict:
          filefam = str(widget.currentText())
       else:  # filefam_menu is True or None
@@ -351,28 +351,39 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       self.prepareObs2(flag=1)
 
    def prepareObs1(self, flag=None):
-
       if len(self.opts._opts['obs']) == 0 or self.opts._opts['obs'][0]['path'] == None:
          print 'ERROR.  No observation directory selected'
       else:           
          if flag == None:
+            #the following is a total kludge to avoid a bug where the list of obs does not
+            #change when the directory is changed.  The following gets back to the state 
+            #at the very beginning of the gui.  There might be a better way of doing this!
+            if 'filter' in self.opts._opts['obs'][0].keys():
+               del self.opts._opts['obs'][0]['filter']
+               self.comboBoxObservation1.currentIndexChanged.disconnect()
+               self.comboBoxObservation1.clear()
+
             self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
 
             # So now we need to see if the user wants a filter.
             # I believe all we need to do is set up the combobox with a list of 
             # possible filters based on the obs set which has now been selected.
             # much of that work is done with check_filespec().
-            # When the user clicks Apply it has to re-fetch the menu item sel
+            # When the user clicks Apply it has to re-fetch the menu item se
 
             self.observations1, self.obs1_menu, self.observation1 = \
-               self.fill_filefilter_menu(self.obsfiles1, self.comboBoxObservation1)            
-            self.opts._opts['obs'][0]['filter'] = self.obs1_menu[self.observation1]
+               self.fill_filefilter_menu(self.obsfiles1, self.comboBoxObservation1)  
+            if self.obs1_menu is not None:         
+               self.opts._opts['obs'][0]['filter'] = self.obs1_menu[self.observation1]
 
+            #reconnect to the menu of file families
+            self.comboBoxObservation1.currentIndexChanged.connect(self.obs1ListChanged)
          # If flag is passed just do this stuff.
 #         self.opts._opts['obs'][0]['filter'] = str(self.comboBoxObservation1.currentText())
 
          self.obsfiles1 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=0)
          self.obsft1 = self.obsfiles1.setup_filetable()
+         
          self.updateVarList()
          # obs should be populated now
 
@@ -381,13 +392,24 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          print 'ERRROR.  No second observation directory selected'
       else:
          if flag == None:
+            #the following is a total kludge to avoid a bug where the list of obs does not
+            #change when the directory is changed.  The following gets back to the state 
+            #at the very beginning of the gui.  There might be a better way of doing this!
+            if 'filter' in self.opts._opts['obs'][0].keys():
+               del self.opts._opts['obs'][0]['filter']
+               self.comboBoxObservation2.currentIndexChanged.disconnect()
+               self.comboBoxObservation2.clear()
+
             self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles(self.opts, obsid=1)
 
             self.observations2, self.obs2_menu, self.observation2 =\
                self.fill_filefilter_menu(self.obsfiles2, self.comboBoxObservation2)
 
             self.opts._opts['obs'][1]['filter'] = self.obs2_menu[self.observation2]
-
+            
+            #reconnect to the menu of file families
+            self.comboBoxObservation2.currentIndexChanged.connect(self.obs2ListChanged)
+            
          self.obsfiles2 = metrics.fileio.findfiles.dirtree_datafiles( self.opts, obsid=1)
          self.obsft2 = self.obsfiles2.setup_filetable()
 
