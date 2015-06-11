@@ -18,6 +18,7 @@ import MV2
 import os
 import ast
 import string
+import tempfile
 from info import identifier
 from widgets import GraphicsMethodConfigurationWidget
 from core.configuration import get_vistrails_configuration
@@ -1501,6 +1502,20 @@ class QCDATWidget(QVTKWidget):
             self.canvas.gif(filename)#, width=11.5)
         elif ext.upper() == ".PS":
             self.canvas.postscript(filename)#, width=11.5)
+
+    def grabWindowPixmap(self):
+        """ grabWindowImage() -> QPixmap
+        Widget special grabbing function
+
+        """
+        fd, filename = tempfile.mkstemp(prefix='vt_vcs_exportcell_',
+                                        suffix='.png')
+        os.close(fd)
+        try:
+            self.saveToPNG(filename)
+            return QtGui.QPixmap(filename, 'PNG')
+        finally:
+            os.remove(filename)
 
     def saveToPNG(self, filename):
         """ saveToPNG(filename: str) -> bool
