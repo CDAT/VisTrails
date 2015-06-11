@@ -940,13 +940,16 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
         module = CDMSVariableOperation.to_module(self, controller)
         return module
 
-class CDMS3DPlot(Plot, NotCacheable):
+class CDMSBasePlot(Plot, NotCacheable):
+    _input_ports = expand_port_specs([("variable", "CDMSVariable")])
+    _output_ports = expand_port_specs([("self", "CDMSBasePlot")])
+
+class CDMS3DPlot(CDMSBasePlot):
     _input_ports = expand_port_specs([("variable", "CDMSVariable"),
                                       ("variable2", "CDMSVariable", True),
                                       ("plotOrder", "basic:Integer", True),
                                       ("graphicsMethodName", "basic:String"),
                                       ("template", "basic:String") ])
-    _output_ports = expand_port_specs([("self", "CDMS3DPlot")])
 
     gm_attributes = [ 'projection' ]
     
@@ -1075,7 +1078,7 @@ class CDMS3DPlot(Plot, NotCacheable):
 #            attribs[attr] = getattr(cgm,attr)
 #        return InstanceObject(**attribs)
         
-class CDMSPlot(Plot, NotCacheable):
+class CDMSPlot(CDMSBasePlot):
     _input_ports = expand_port_specs([("variable", "CDMSVariable"),
                                       ("variable2", "CDMSVariable", True),
                                       ("plotOrder", "basic:Integer", True),
@@ -1099,7 +1102,6 @@ class CDMSPlot(Plot, NotCacheable):
                                       ('continents', 'basic:Integer', True),
                                       ('ratio', 'basic:String', True),
                                       ("colorMap", "CDMSColorMap", True)])
-    _output_ports = expand_port_specs([("self", "CDMSPlot")])
 
     gm_attributes = [ 'datawc_calendar', 'datawc_timeunits',
                       'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2',
@@ -1264,7 +1266,7 @@ class CDMSColorMap(Module):
         return module
      
 class CDMSCell(SpreadsheetCell):
-    _input_ports = expand_port_specs([("plot", "CDMSPlot")])
+    _input_ports = expand_port_specs([("plot", "CDMSBasePlot")])
     def __init__(self,*args,**kargs):
         SpreadsheetCell.__init__(self)
     def compute(self):
@@ -1900,7 +1902,7 @@ class QCDATWidgetColormap(QtGui.QAction):
         else:
             self.setVisible(False)
 
-_modules = [CDMSVariable, CDMSPlot, CDMS3DPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
+_modules = [CDMSVariable, CDMSBasePlot, CDMSPlot, CDMS3DPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
             CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, 
             CDMSNaryVariableOperation, CDMSColorMap, CDMSGrowerOperation]
 
