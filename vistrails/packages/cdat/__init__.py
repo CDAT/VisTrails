@@ -54,14 +54,8 @@ def package_dependencies():
 
 
 def package_requirements():
-    import core.requirements
-    if not core.requirements.python_module_exists('vcs'):
-        raise core.requirements.MissingRequirements('vcs')
-    if not core.requirements.python_module_exists('cdms2'):
-        raise core.requirements.MissingRequirements('cdms2')
-    if not core.requirements.python_module_exists('cdutil'):
-        raise core.requirements.MissingRequirements('cdutil')
-    if not core.requirements.python_module_exists('lepl'):
-        raise core.requirements.MissingRequirements('lepl')
-    import vcs, cdms2, cdutil, lepl
-
+    from core.requirements import require_python_module
+    require_python_module('vcs')
+    require_python_module('cdms2')
+    require_python_module('cdutil')
+    require_python_module('lepl')

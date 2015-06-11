@@ -41,20 +41,15 @@ version : description
   0.1   : First automatically generated package based on xml descriptions
 
 """
-from PyQt4 import QtCore, QtGui
-import sip
 import api
 import core.modules
+import core.modules.basic_modules
 import core.modules.module_registry
 from core.modules.vistrails_module import (Module, NotCacheable,
                                            ModuleError, new_module)
 from core.bundles import py_import
 from gui.shell import QShellDialog
-#from gui.uvcdat.mainwindow import UVCDATMainWindow
 
-import os, sys
-#import qtbrowser
-#qtbrowser.use_vistrails=True
 #cdat specific packages
 vcs = py_import('vcs',{})
 cdms2 = py_import('cdms2', {})
@@ -64,7 +59,6 @@ cdutil = py_import('cdutil', {})
 from cdat_cell import QCDATWidget, CDATCell, Variable, GraphicsMethod, Gfb
 from quickplot import quickplot
 from translator import QTranslator
-from plot_registry import PlotRegistry
 
 
 vt_type_dict = {}
@@ -11317,9 +11311,7 @@ def initialize(*args, **keywords):
     reg.add_output_port(GraphicsMethod, 'canvas', (Canvas, "Canvas object"))
     
     #cdat GUI modules
-    global cdatWindow
     global translator
-    global plotRegistry
     import qtbrowser
     qtbrowser.useVistrails=True
     try:
@@ -11329,23 +11321,3 @@ def initialize(*args, **keywords):
     except api.NoGUI:
         shell = None
     translator = QTranslator(shell=shell)
-    
-    #cdatWindow = UVCDATMainWindow()
-    #plotRegistry = PlotRegistry(cdatWindow)
-    #plotRegistry.loadPlots()    
-    #plotRegistry.registerPlots()
-    #cdatWindow.show()
-    #visApp = QtCore.QCoreApplication.instance()
-    #if visApp:
-    #    visApp.setActiveWindow(cdatWindow)
-    #translator.connect(cdatWindow.recorder, QtCore.SIGNAL('recordCommands'),
-    #                       translator.commandsReceived)
-    #translator.connect(cdatWindow, QtCore.SIGNAL("showVisTrails"),
-    #                   translator.showVisTrails)
-    #translator.connect(cdatWindow, QtCore.SIGNAL("closeVisTrails"),
-    #                   translator.closeVisTrails)
-
-    # end of cdatwindow_init_inc.py
-    ##########################################################################
-
-    
