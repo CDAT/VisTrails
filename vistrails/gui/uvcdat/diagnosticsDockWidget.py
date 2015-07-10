@@ -324,6 +324,18 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
       filefam_menu = datafiles.check_filespec()
       if type(filefam_menu) is dict:
          filefams = filefam_menu.keys()
+      elif type(filefam_menu) is bool:
+          #the following is a total hack to fix a problem with datafiles.check_filespec().
+          #specifically if there is only one family in the directory it returns a bool
+          #not a dictionary of length 1. The code here was stolen from check_filespec
+          #to create that dictionary. Clearly the right thing to do is change check_filespec
+          #except that would cause other problems. So stop the bleeding here!
+         import metrics.fileio.findfiles as FF
+         famdict = { f:FF.extract_filefamilyname(f) for f in datafiles.files }
+         families = list(set([ famdict[f] for f in datafiles.files if famdict[f] is not None]))
+         fam = families[0]
+         filefam_menu = {fam: FF.f_and( datafiles._filt, FF.f_startswith(fam)) }
+         filefams = filefam_menu.keys()
       elif filefam_menu == None:
          print 'ERROR.  No data found in %s' % datafiles
       if type(filefams) is list:
@@ -335,7 +347,6 @@ class DiagnosticsDockWidget(QtGui.QDockWidget, Ui_DiagnosticDockWidget):
          widget.setCurrentIndex(0)
 
       filefam = self.filefilter_menuitem(filefam_menu, widget)
-
       return filefams, filefam_menu, filefam
    def obs1ListChanged(self):
       # Have we already populated the obs1_menu? If so, then just update obsfiles/ft/options.
