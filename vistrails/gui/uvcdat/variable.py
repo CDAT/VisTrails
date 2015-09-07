@@ -696,6 +696,20 @@ class VariableProperties(QtGui.QDialog):
 
         _app = get_vistrails_application()
         controller = _app.uvcdatWindow.get_current_project_controller()
+
+        # Add old collapsed axes
+        axes_info = controller.get_axes_info(original_id)
+        if axes_info:
+            old_axes, old_axes_operations = axes_info
+            # FIXME: Update old_axes_operations?
+            def getKWArgs(**_kwargs):
+                return _kwargs
+            old_kwargs = eval('getKWArgs(%s)' % old_axes)
+
+            for key in old_kwargs:
+                if key not in kwargs:
+                    kwargs[key] = old_kwargs[key]
+
         def get_kwargs_str(kwargs_dict):
             kwargs_str = ""
             for k, v in kwargs_dict.iteritems():
