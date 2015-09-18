@@ -212,9 +212,10 @@ class QEsgfCredentials(QtGui.QDialog):
                 dodsrc_text+="CURL.SSL.KEY=%s\n"%dodsrc_curl_ssl_key
                 dodsrc_text+="CURL.SSL.CAPATH=%s\n"%dodsrc_curl_ssl_capath
                 
-                f=open(os.path.join(os.environ["HOME"],".dodsrc"),'w')
-                f.write(dodsrc_text)
-                f.close()
+                # Commenting out this file format breaks newer NetCDF4 interface
+                # f=open(os.path.join(os.environ["HOME"],".dodsrc"),'w')
+                # f.write(dodsrc_text)
+                # f.close()
             except Exception, err:
                 m = QtGui.QMessageBox()
                 m.setText(str(err))
