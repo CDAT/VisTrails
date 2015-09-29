@@ -497,26 +497,31 @@ class VCSGMRanges:
 
             # Gen colors (Log)
             numIntervals = len(values) - 1
-            
+
         if self.includeZeroButtonGroup.isChecked('On'):
             values.insert(0, 0.0)
-        if hasattr(self,"ext1ButtonGroup"):
+        colors = []
+        if hasattr(self, "ext1ButtonGroup"):
             if str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
-              ## Ok we want a left extension
-              if abs(values[0])<1.e20:
-                values.insert(0,-1.e20)
-            colors = vcs.getcolors(values)
-        else:
-            colors = vcs.getcolors(values+[values[-1],])
+                # Ok we want a left extension
+                if abs(values[0]) < 1.e20:
+                    values.insert(0, -1.e20)
 
-        if hasattr(self,"ext2ButtonGroup") and str(self.ext2ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
-          ## Ok we want a right extension
-          if abs(values[-1])<1.e20:
-            values.append(1.e20)
+            colors = vcs.getcolors(values)
+
+        if hasattr(self, "ext2ButtonGroup"):
+            if str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
+                # Ok we want a right extension
+                if abs(values[-1]) < 1.e20:
+                    values.append(1.e20)
+                    colors = vcs.getcolors(values)
+
+        if not colors:
+            colors = vcs.getcolors(values + [values[-1]])
 
         self.rangeLineEdit.setText(str(values))
         if self.allBlack.isChecked():
-            colors=[1,]
+            colors = [1]
         self.colorsLineEdit.setText(str(colors))
 
     def clearCustomSettings(self):
