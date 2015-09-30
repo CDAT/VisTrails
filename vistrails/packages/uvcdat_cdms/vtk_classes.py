@@ -187,6 +187,7 @@ class QVTKWidget(QCellWidget):
         self.mRenWin = w
 
         if self.mRenWin:
+            w.StencilCapableOn()
             self.mRenWin.Register(None)
             if self.mRenWin.GetMapped():
                 self.mRenWin.Finalize()
