@@ -374,7 +374,7 @@ class VCSGMRanges:
         self.colorsLineEdit = target.addLabeledLineEdit('Colors:')
         self.colorsLineEdit.setToolTip("The level color index values. The index colors range\nfrom 0 to 255. For example:\n   Use explicit indices: 16, 32, 48, 64, 80;\n   Use two values to generate index range: 16, 32")
         self.allBlack = target.addCheckBox("Generate Only Black Color",newRow=False)
-        if hasattr(self.gm,"fillareaindices"):
+        if hasattr(self.gm, "fillareaindices"):
             self.patternsLineEdit = target.addLabeledLineEdit('Patterns:')
             self.patternsLineEdit.setToolTip("The level pattern index values. The index pattern range\nfrom 0 to 18.")
             self.patternTypeButtonGroup = target.addRadioFrame('Type:',
@@ -415,20 +415,20 @@ class VCSGMRanges:
     def applyRangeSettings(self, gm=None):
         if gm is None:
             gm = self.gm
-        if hasattr(gm,"fillareastyle"):
+        if hasattr(gm, "fillareastyle"):
             gm.fillareastyle = str(self.patternTypeButtonGroup.buttonGroup.button(self.patternTypeButtonGroup.buttonGroup.checkedId()).text())
             gm.fillareacolors = eval(str(self.colorsLineEdit.text()))
             gm.fillareaindices = eval(str(self.patternsLineEdit.text()))
         else:
-            gm.linecolors=eval(str(self.colorsLineEdit.text()))
-            gm.line= eval(str(self.patternsLineEdit.text()))
+            gm.linecolors = eval(str(self.colorsLineEdit.text()))
+            gm.line = eval(str(self.patternsLineEdit.text()))
             gm.linewidths = eval(str(self.lineWidthsEdit.text()))
         gm.levels = eval(str(self.rangeLineEdit.text()))
 
     def initRangeValues(self, gm=None):
         if gm is None:
             gm = self.gm
-            
+
         self.minValLineEdit.setText('')
         self.maxValLineEdit.setText('')
         self.expLineEdit.setText('')
@@ -497,26 +497,39 @@ class VCSGMRanges:
 
             # Gen colors (Log)
             numIntervals = len(values) - 1
-            
+
         if self.includeZeroButtonGroup.isChecked('On'):
             values.insert(0, 0.0)
-        if hasattr(self,"ext1ButtonGroup"):
+        colors = []
+        if hasattr(self, "ext1ButtonGroup"):
             if str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
-              ## Ok we want a left extension
-              if abs(values[0])<1.e20:
-                values.insert(0,-1.e20)
-            colors = vcs.getcolors(values)
-        else:
-            colors = vcs.getcolors(values+[values[-1],])
+                # Ok we want a left extension
+                if abs(values[0]) < 1.e20:
+                    values.insert(0, -1.e20)
 
-        if hasattr(self,"ext2ButtonGroup") and str(self.ext2ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
-          ## Ok we want a right extension
-          if abs(values[-1])<1.e20:
-            values.append(1.e20)
+            colors = vcs.getcolors(values)
+
+        if hasattr(self, "ext2ButtonGroup"):
+            if str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]=="y":
+                # Ok we want a right extension
+                if abs(values[-1]) < 1.e20:
+                    values.append(1.e20)
+                    colors = vcs.getcolors(values)
+
+        if hasattr(self.gm, "fillareaindices"):
+            pattern_style = self.patternTypeButtonGroup.buttonGroup.button(self.patternTypeButtonGroup.buttonGroup.checkedId()).text()
+            if pattern_style in ("hatch", "pattern"):
+                patterns = []
+                for i in range(len(colors)):
+                    patterns.append(i % 18 + 1)
+                self.patternsLineEdit.setText(str(patterns))
+
+        if not colors:
+            colors = vcs.getcolors(values + [values[-1]])
 
         self.rangeLineEdit.setText(str(values))
         if self.allBlack.isChecked():
-            colors=[1,]
+            colors = [1]
         self.colorsLineEdit.setText(str(colors))
 
     def clearCustomSettings(self):
