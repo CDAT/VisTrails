@@ -72,8 +72,13 @@ class VariableProperties(QtGui.QDialog):
         sp.addWidget(self.dims)
         v.addWidget(sp)
         h=QtGui.QHBoxLayout()
+
         self.selectRoiButton = QDockPushButton('Select Region Of Interest (ROI)')
         h.addWidget( self.selectRoiButton )
+
+        self.squeezeBox = QCheckBox("Squeeze Dimensions", self)
+        h.addWidget(self.squeezeBox)
+
         s=QtGui.QSpacerItem(40,20,QtGui.QSizePolicy.Expanding,QtGui.QSizePolicy.Preferred)
         h.addItem(s)
         self.btnDefine=QDockPushButton("Load")
@@ -116,6 +121,11 @@ class VariableProperties(QtGui.QDialog):
         self.createOpenDAPTab()
         self.createEditTab()
         self.createInfoTab()
+
+        checked = self.root.preferences.squeeze.isChecked()
+        self.squeezeBox.setChecked(checked)
+        self.squeezeBox.setEnabled(True)
+
         for i in range(self.originTabWidget.count()):
             if self.originTabWidget.tabText(i) == "Edit":
                 self.originTabWidget.setTabEnabled(i,False)
@@ -676,17 +686,14 @@ class VariableProperties(QtGui.QDialog):
         
         self.root.record("%s = %s(%s)" % (targetId,oid,cmds))
         ## Squeeze?
-        if updatedVar.rank() !=0:
-            if self.root.preferences.squeeze.isChecked():
-                #updatedVar=updatedVar(squeeze=1)
+        if updatedVar.rank() != 0:
+            if self.squeezeBox.isChecked():
                 self.root.record("%s = %s(squeeze=1)" % (targetId,targetId))
                 kwargs['squeeze']=1
         else:
             val = QtGui.QMessageBox()
             val.setText("%s = %f" % (updatedVar.id,float(updatedVar)))
             val.exec_()
-
-
 
 
         # Send information to controller so the Variable can be reconstructed
@@ -768,8 +775,7 @@ class VariableProperties(QtGui.QDialog):
                 kwargs[axisWidget.axis.id] = axisWidget.getCurrentValues()
 
         # Generate additional args
-        #kwargs['squeeze'] = 0
-        kwargs['order'] = axisList.getAxesOrderString()
+        kwargs['order'] = axisList.getAxesOrderString(squeeze=self.squeezeBox.isChecked())
         return kwargs
 
     def applyEditsClicked(self):
