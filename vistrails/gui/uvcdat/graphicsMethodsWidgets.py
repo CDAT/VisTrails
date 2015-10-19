@@ -1582,7 +1582,7 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
 
         #Isoline Labels Setting
         self.textSettings = uvcdatCommons.QFramedWidget('Levels Labels Settings')
-        self.textLabelsOnOff = self.textSettings.addRadioFrame("Draw Labels:",["No","Yes"],newRow=False)
+        self.textLabelsOnOff = self.textSettings.addRadioFrame("Draw Labels:", ["No","Yes"], newRow=False)
         self.textFonts = self.textSettings.addLabeledLineEdit("Text Fonts:")
         self.textColors = self.textSettings.addLabeledLineEdit("Text Colors:")
         vbox.addWidget(self.textSettings)
@@ -1618,10 +1618,10 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.initRangeValues(gm)
 
         #Init text labels section
-        if gm.label=="n":
-            self.textLabelsOnOff.setChecked("No")
-        else:
+        if vcs.VCS_validation_functions.checkFuzzyBoolean(None, "", gm.label):
             self.textLabelsOnOff.setChecked("Yes")
+        else:
+            self.textLabelsOnOff.setChecked("No")
         self.textFonts.setText(repr(gm.text))
         self.textColors.setText(repr(gm.textcolors))
 
