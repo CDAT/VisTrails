@@ -4,113 +4,16 @@ import cdutil
 import cdms2
 import numpy
 import genutil
-import re, copy
+import re
 import cdtime
-import MV2
 from gui.application import get_vistrails_application
 import customizeUVCDAT
 
 pins = {}
 
-## class QAxisListTabWidget(QtGui.QTabWidget):
-##     """ TabWidget where each tab contains a QAxisList """
-    
-##     def __init__(self, parent=None):
-##         QtGui.QTabWidget.__init__(self, parent)
-##         self.root = parent.root
-
-##         self.connect(self, QtCore.SIGNAL('currentChanged(int)'),
-##                      self.tabChangeEvent)        
-
-##     def createNewTab(self, axisList, tabName):
-##         """ Create a new tab given the axisList widget and tab name.  If a
-##         tab with the same name exists already, replace it. Set the current tab
-##         to the newly created tab """
-
-##         if (self.tabExists(tabName)):
-##             self.removeTab(self.getTabIndexFromName(tabName))
-
-##         if str(tabName).find("(in file)")>-1:
-##             if str(self.tabText(0)).find("(in file)")>-1:
-##                 self.removeTab(0)
-##             self.insertTab(0, axisList, tabName) # file is always first tab
-##         else:
-##             self.addTab(axisList, tabName)
-            
-##         self.setTabTip(tabName)
-##         self.setCurrentIndex(self.getTabIndexFromName(tabName))
-
-##     def setupQuickplotTab(self, axisList):
-##         """ Create a new quickplot tab if one doesn't exist otherwise replace
-##         the existing quickplot tab """
-
-##         tabName = 'quickplot'
-##         if (self.tabExists(tabName) == True):
-##             index = self.getTabIndexFromName(tabName)
-##             self.removeTab(index)
-            
-##         self.insertTab(0, axisList, tabName)
-##         self.setTabTip(tabName)
-##         self.setCurrentIndex(0)
-
-##     def setTabTip(self, tabName):
-##         if self.tabExists(tabName):
-##             index = self.getTabIndexFromName(tabName)
-##             toolTip = "'%s' axisList tab widget" % tabName
-##             self.setTabToolTip(index, toolTip)        
-
-##     def tabChangeEvent(self, tabIndex):
-##         """ Event handler for when a tab is changed. Update the variable info
-##         text box.
-##         """
-##         axisList = self.widget(tabIndex)
-##         self.parent().parent().updateVarInfo(axisList) # double parent here 'cause it's on a splitter
-
-##     def selectAndUpdateDefinedVarTab(self, tabName, cdmsFile, var):
-##         """ This function selects a tab given the tabName and then updates the
-##         tab's axisList using the passed var's values
-##         """
-##         if (not self.tabExists(tabName)):
-##             raise NameError("Error: tab '%s' was not found" % tabName)
-
-##         tabIndex = self.getTabIndexFromName(tabName)
-##         self.setCurrentIndex(tabIndex)
-
-##         if (tabName == 'quickplot'):
-##             axisList = QAxisList(cdmsFile, var, self)            
-##             self.setupQuickplotTab(axisList)
-##             axisList.setupVariableAxes()
-##         else:
-##             axisList = self.currentWidget()
-##             axisList.setupVariableAxes()
-
-##         self.emit(QtCore.SIGNAL('updateVarInfo'), axisList)        
-
-##     def tabExists(self, name):
-##         """ Returns True if a tab with the given name exists """
-##         numTabs = self.count()        
-##         for i in range(numTabs):
-##             if (name == self.tabText(i)):
-##                 return True
-##         return False
-
-##     def getTabIndexFromName(self, name):
-##         numTabs = self.count()
-##         for i in range(numTabs):
-##             if (name == self.tabText(i)):
-##                 return i
-##         return None
-
-##     def currentTabName(self):
-##         currentTab = self.currentIndex()
-##         return str(self.tabText(currentTab))
-
-#def copy_axis( axis ):
-#    axis1 = axis.subAxis( 0, axis.length )
-#    if axis.isCircular(): axis1.designateCircular(360.0)
-#    return axis1
 
 class QSliderCombo(QtGui.QWidget):
+
     """ Widget containing min slider, max slider, min label, max label, and a
     corresponding combo box.  The comboBox, labels, sliders must always be in
     sync with each other """
@@ -128,7 +31,7 @@ class QSliderCombo(QtGui.QWidget):
         hbox = QtGui.QHBoxLayout()
         vbox = QtGui.QVBoxLayout()
         vbox.setSpacing(0)
-        vbox.setMargin(0)        
+        vbox.setMargin(0)
         self.setLayout(hbox)
 
         # Init combo box
@@ -138,14 +41,14 @@ class QSliderCombo(QtGui.QWidget):
         # Init sliders
         hbox.addLayout(vbox)
         self.topLabel = QtGui.QLabel('From', self)
-        hbox = QtGui.QHBoxLayout()        
+        hbox = QtGui.QHBoxLayout()
         hbox.addWidget(self.topLabel)
         vbox.addLayout(hbox)
         self.topSlider = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.topSlider.setTickPosition(QtGui.QSlider.TicksAbove)
         tip = "Use left/right arrows to move slider by 1 unit"
         self.topSlider.setToolTip(tip)
-        self.bottomSlider = QtGui.QSlider(QtCore.Qt.Horizontal)        
+        self.bottomSlider = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.bottomSlider.setTickPosition(QtGui.QSlider.TicksBelow)
         self.bottomSlider.setToolTip(tip)
         vbox.addWidget(self.topSlider)
@@ -154,26 +57,23 @@ class QSliderCombo(QtGui.QWidget):
         # Init axis slider value labels
         self.bottomLabel = QtGui.QLabel('To', self)
         self.bottomLabel.setAlignment(QtCore.Qt.AlignRight)
-        aLabel = QtGui.QLabel('', self)
-        hbox = QtGui.QHBoxLayout()        
-        #hbox.addWidget(aLabel)
+        hbox = QtGui.QHBoxLayout()
         hbox.addWidget(self.bottomLabel)
         vbox.addLayout(hbox)
 
         # Initialize the sliders' and comboBox's values
-#        self.initialAxis = copy_axis( axis )
         self.initAxisValues(axis)
         self.setSlidersMinMax()
         reload(customizeUVCDAT)
-        Trange = getattr(customizeUVCDAT,"timeRange",None)
-        Zrange = getattr(customizeUVCDAT,"levelRange",None)
-        Yrange = getattr(customizeUVCDAT,"latitudeRange",None)
-        Xrange = getattr(customizeUVCDAT,"longitudeRange",None)
+        Trange = getattr(customizeUVCDAT, "timeRange", None)
+        Zrange = getattr(customizeUVCDAT, "levelRange", None)
+        Yrange = getattr(customizeUVCDAT, "latitudeRange", None)
+        Xrange = getattr(customizeUVCDAT, "longitudeRange", None)
         if self.isModuloed:
             self.updateTopSlider(self.findAxisIndex(axis[0]))
         else:
             self.topSlider.setValue(self.minIndex)
-            
+
         if self.isModuloed:
             self.updateBottomSlider(self.findAxisIndex(axis[-1]))
         else:
@@ -216,103 +116,130 @@ class QSliderCombo(QtGui.QWidget):
             self.updateMin(self.findAxisIndex(axis[0]))
             self.updateMax(self.findAxisIndex(axis[-1]))
 
-        #Ok at tht point let see if it is a "pinned" axis
+        # Ok at tht point let see if it is a "pinned" axis
         if axis.isTime():
-            k="UVTIMEAXIS"
+            k = "UVTIMEAXIS"
         elif axis.isLatitude():
-            k="UVLATAXIS"
+            k = "UVLATAXIS"
             self.isLat = True
         elif axis.isLongitude():
-            k="UVLONAXIS"
+            k = "UVLONAXIS"
             self.isLon = True
         elif axis.isLevel():
-            k="UVLEVELAXIS"
+            k = "UVLEVELAXIS"
         else:
-            k=axis.id
+            k = axis.id
         if k in pins and pins[k]["pinned"]:
-            v1,v2=pins[k]["vals"]
+            v1, v2 = pins[k]["vals"]
             if axis.isTime():
-                v1=cdtime.s2r(v1,axis.units,axis.getCalendar()).value
-                v2=cdtime.s2r(v2,axis.units,axis.getCalendar()).value
-            try: # If this fails then we don't need to worry about resetting or pinning this guy he's outside the range
+                v1 = cdtime.s2r(v1, axis.units, axis.getCalendar()).value
+                v2 = cdtime.s2r(v2, axis.units, axis.getCalendar()).value
+            # If this fails then we don't need to worry about resetting or
+            # pinning this guy he's outside the range
+            try:
                 # But if it fails other should still be able to be pinned
-                i1,i2=axis.mapInterval((v1,v2))
+                i1, i2 = axis.mapInterval((v1, v2))
                 self.updateTopSlider(i1)
                 self.updateBottomSlider(i2)
                 self.parent().pin.click()
             except:
                 pass
-            
-    def checkBounds( self, bounds, dataset ):
+
+    def checkBounds(self, bounds, dataset):
         from gui.application import get_vistrails_application
-        values = sorted( self.axisValues )
-        if ( bounds[0] < values[0] ) or ( bounds[1] > values[-1] ):
-            bounds[0] = max( bounds[0], values[0]  )
-            bounds[1] = min( bounds[1], values[-1] )
-            parent = get_vistrails_application().uvcdatWindow.varProp.roiSelector
-            if dataset == None: QtGui.QMessageBox.warning( parent, "UVCDAT Warning", "Selected bounds are out of range for the transient variable. Please reaccess this variable from the dataset.")
-            else:               QtGui.QMessageBox.warning( parent, "UVCDAT Warning", "Selected bounds are out of range for the dataset.")
+        values = sorted(self.axisValues)
+        if (bounds[0] < values[0]) or (bounds[1] > values[-1]):
+            bounds[0] = max(bounds[0], values[0])
+            bounds[1] = min(bounds[1], values[-1])
+            parent = get_vistrails_application(
+            ).uvcdatWindow.varProp.roiSelector
+            if dataset == None:
+                QtGui.QMessageBox.warning(
+                    parent, "UVCDAT Warning", "Selected bounds are out of range for the transient variable. Please reaccess this variable from the dataset.")
+            else:
+                QtGui.QMessageBox.warning(
+                    parent, "UVCDAT Warning", "Selected bounds are out of range for the dataset.")
         return bounds
 #            self.resetValues()
-                
-    def resetValues( self, axis = None ):     
-        values = self.setDefaultAxisValues() if ( axis == None ) else self.initAxisValues( axis ) 
+
+    def resetValues(self, axis=None):
+        values = self.setDefaultAxisValues() if (
+            axis is None) else self.initAxisValues(axis)
         if values <> None:
             self.setSlidersMinMax()
             if self.isModuloed:
                 self.updateTopSlider(self.findAxisIndex(values[0]))
             else:
                 self.topSlider.setValue(self.minIndex)
-                
+
             if self.isModuloed:
                 self.updateBottomSlider(self.findAxisIndex(values[-1]))
             else:
                 self.bottomSlider.setValue(self.maxIndex)
             self.axisCombo.initValues(self.axisValues)
-   
-    def findAxisIndex(self,val):
+
+    def findAxisIndex(self, val):
         self.axisValues = numpy.array(self.axisValues)
         vals = self.axisValues
         n = len(vals)
-        if vals[-1]<vals[0]:
-            vals=vals[::-1]
-        i=vals.searchsorted(val)
-        if i>0 and i!=n:
-            if (val-vals[i-1])<(vals[i]-val): # closer from lower bound
-                i-=1
-        if self.axisValues[-1]<self.axisValues[0]:
-            i=n-1-i
+        if vals[-1] < vals[0]:
+            vals = vals[::-1]
+        i = vals.searchsorted(val)
+        if i > 0 and i != n:
+            if (val-vals[i-1]) < (vals[i]-val):  # closer from lower bound
+                i -= 1
+        if self.axisValues[-1] < self.axisValues[0]:
+            i = n-1-i
         return i
-    
+
     def initAxisValues(self, axis):
         """ Initialize list containing the axis values and set the top slider /
         combobox value to be the min value and the bottom slider / combobox
         value to be the max value"""
-        
-        if (axis != None):
-            for coordlbls in ["coordinates","coord_labels",]:
-                lbls=getattr(axis,coordlbls,None)
+
+        if axis is not None:
+            for coordlbls in ["coordinates", "coord_labels", ]:
+                lbls = getattr(axis, coordlbls, None)
                 if lbls is not None:
                     break
             if self.isTime:
                 try:
-                    self.axisValues = [repr(t.tocomponent(axis.getCalendar()))
-                                       for t in axis.asRelativeTime()]
+                    # Pretty format time
+                    reltimes = axis.asRelativeTime()
+                    time_increment = axis.units.split(" ")[0]
+                    values = []
+                    for reltime in reltimes:
+                        comptime = reltime.tocomp(axis.getCalendar())
+                        if time_increment[0:6] == "second":
+                            val = "%d-%02d-%02d %02d:%02d:%02d" % (comptime.year, comptime.month, comptime.day, comptime.hour, comptime.minute, comptime.second)
+                        elif time_increment[0:6] == "minute":
+                            val = "%d-%02d-%02d %02d:%02d" % (comptime.year, comptime.month, comptime.day, comptime.hour, comptime.minute)
+                        elif time_increment[0:4] == "hour":
+                            val = "%d-%02d-%02d %02d:00" % (comptime.year, comptime.month, comptime.day, comptime.hour)
+                        elif time_increment[0:3] == "day" or time_increment[0:4] == "week":
+                            val = "%d-%02d-%02d" % (comptime.year, comptime.month, comptime.day)
+                        elif time_increment[0:5] == "month" or time_increment[0:6] == "season":
+                            val = "%d-%02d" % (comptime.year, comptime.month)
+                        elif time_increment[0:4] == "year":
+                            val = str(comptime.year)
+                        values.append(val)
+
+                    self.axisValues = values
                 except:
-                    self.axisValues = axis.getValue()                    
+                    self.axisValues = axis.getValue()
             elif lbls is not None:
                 try:
                     lbls = eval(lbls)
                 except:
                     pass
-                if isinstance(lbls,(list,tuple)):
+                if isinstance(lbls, (list, tuple)):
                     self.axisValues = lbls
-                elif isinstance(axis,cdms2.axis.FileAxis):
-                    ## All right let's fecth the coords
+                elif isinstance(axis, cdms2.axis.FileAxis):
+                    # All right let's fecth the coords
                     try:
                         lbls = axis.parent(lbls)
-                        vals =[]
-                        if lbls.rank()!=2 or lbls.shape[0]!=len(axis):
+                        vals = []
+                        if lbls.rank() != 2 or lbls.shape[0] != len(axis):
                             vals = axis.getValue()
                         else:
                             for i in range(len(axis)):
@@ -321,59 +248,66 @@ class QSliderCombo(QtGui.QWidget):
                     except:
                         self.axisValues = axis.getValue()
                 else:
-                    self.axisValues = axis.getValue()                    
+                    self.axisValues = axis.getValue()
             else:
                 self.axisValues = axis.getValue()
         else:
             raise TypeError("Error: axis is not defined")
 
         self.axisIndices = range(len(self.axisValues))
-        ## Ok here we check for circular axes
+        # Ok here we check for circular axes
         if axis.isCircular():
             try:
                 modulo = float(axis.modulo)
             except:
                 if axis.isLongitude():
-                    modulo=360.
+                    modulo = 360.
                 else:
                     modulo = None
             if modulo is not None and self.isModuloed is False:
                 self.isModuloed = True
-                n=len(axis)
-                self.axisValues=numpy.concatenate((self.axisValues[:]-modulo,self.axisValues,self.axisValues[:]+modulo))
-                self.axisIndices=numpy.concatenate((self.axisIndices[:],self.axisIndices,self.axisIndices[:]))
+                n = len(axis)
+                self.axisValues = numpy.concatenate(
+                    (self.axisValues[:]-modulo, self.axisValues, self.axisValues[:]+modulo))
+                self.axisIndices = numpy.concatenate(
+                    (self.axisIndices[:], self.axisIndices, self.axisIndices[:]))
         self.updateMin(0)
         self.updateMax(len(self.axisValues) - 1)
         nticks = len(self.axisValues)
         if nticks > 15:
             nticks /= 15
         else:
-            nticks=1
+            nticks = 1
         self.topSlider.setTickInterval(nticks)
         self.bottomSlider.setTickInterval(nticks)
         return self.axisValues
 
-    def setDefaultAxisValues( self ):               
-        if self.isLat:  axisValues = [ float(fval) for fval in range(0,360) ]
-        if self.isLon:  axisValues = [ float(fval) for fval in range(-90,90) ]
-        else:           axisValues = None 
+    def setDefaultAxisValues(self):
+        if self.isLat:
+            axisValues = [float(fval) for fval in range(0, 360)]
+        if self.isLon:
+            axisValues = [float(fval) for fval in range(-90, 90)]
+        else:
+            axisValues = None
         if axisValues:
-            n=len(axisValues)
-            self.axisValues = numpy.array( axisValues )  
+            n = len(axisValues)
+            self.axisValues = numpy.array(axisValues)
             self.axisIndices = range(n)
             if self.isLon:
                 modulo = 360.0
                 self.isModuloed = True
-                self.axisValues=numpy.concatenate((self.axisValues[n/2:]-modulo,self.axisValues,self.axisValues[:n/2]+modulo))
-                self.axisIndices=numpy.concatenate((self.axisIndices[n/2:],self.axisIndices,self.axisIndices[:n/2]))
-                n=len(axisValues)
+                self.axisValues = numpy.concatenate(
+                    (self.axisValues[n/2:]-modulo, self.axisValues, self.axisValues[:n/2]+modulo))
+                self.axisIndices = numpy.concatenate(
+                    (self.axisIndices[n/2:], self.axisIndices, self.axisIndices[:n/2]))
+                n = len(axisValues)
             self.updateMin(0)
             self.updateMax(n - 1)
             nticks = n
             if nticks > 15:
                 nticks /= 15
             else:
-                nticks=1
+                nticks = 1
             self.topSlider.setTickInterval(nticks)
             self.bottomSlider.setTickInterval(nticks)
         return self.axisValues
@@ -396,44 +330,48 @@ class QSliderCombo(QtGui.QWidget):
     def updateMin(self, minIndex=None):
         """ Set min value, update the slider label and the comboBox line edit
         to show the new min value"""
-        
-        ## For longitude bug 373 requests that we cannot flip them, not sure it's right thing to do but "fixing" it.
+
+        # For longitude bug 373 requests that we cannot flip them, not sure
+        # it's right thing to do but "fixing" it.
         bindex = self.bottomSlider.value()
         if self.isLon and minIndex > bindex:
             minIndex = bindex
             self.topSlider.setValue(minIndex)
-        if not minIndex is None:
+        if minIndex is not None:
             self.minIndex = minIndex
-            
-        if (self.indexMode == True):
+
+        if self.indexMode is True:
             minValue = self.minIndex + self.startIndex
         else:
             minValue = self.axisValues[self.minIndex]
-            
+
         self.topLabel.setText(str(minValue))
         self.axisCombo.setMinValue(minValue)
         if self.parent().pin.isChecked():
             self.parent().pin.click()
-            
-    def boundIndex( self, index ):
-        if index >= len( self.axisValues ): return len( self.axisValues ) - 1
-        if index <= 0: return 0
+
+    def boundIndex(self, index):
+        if index >= len(self.axisValues):
+            return len(self.axisValues) - 1
+        if index <= 0:
+            return 0
         return index
 
     def updateMax(self, maxIndex=None):
         """ Set max value, update the slider label and the comboBox line edit
         to show the new max value"""
-        
-        ## For longitude bug 373 requests that we cannot flip them, not sure it's right thing to do but "fixing" it.
+
+        # For longitude bug 373 requests that we cannot flip them, not sure
+        # it's right thing to do but "fixing" it.
         tindex = self.topSlider.value()
         if self.isLon and maxIndex < tindex:
             maxIndex = tindex
             self.bottomSlider.setValue(maxIndex)
 
-        if not maxIndex is None:
-            self.maxIndex = self.boundIndex( maxIndex )
-            
-        if (self.indexMode == True):
+        if maxIndex is not None:
+            self.maxIndex = self.boundIndex(maxIndex)
+
+        if self.indexMode is True:
             maxValue = self.maxIndex + self.startIndex
         else:
             maxValue = self.axisValues[self.maxIndex]
@@ -444,14 +382,14 @@ class QSliderCombo(QtGui.QWidget):
             self.parent().pin.click()
 
     def updateTopSlider(self, index):
-        index = self.boundIndex( index )
+        index = self.boundIndex(index)
         self.minIndex = index
         self.topSlider.setValue(index)
         if self.parent().pin.isChecked():
             self.parent().pin.click()
 
     def updateBottomSlider(self, index):
-        index = self.boundIndex( index )
+        index = self.boundIndex(index)
         self.maxIndex = index
         self.bottomSlider.setValue(index)
         if self.parent().pin.isChecked():
@@ -462,15 +400,15 @@ class QSliderCombo(QtGui.QWidget):
 
     def getAxisIndices(self):
         return self.axisIndices
-    
+
     def getAxisValues(self):
         return self.axisValues
 
     def getCurrentValues(self):
-        if int(self.axisCombo.stride)==1:
+        if int(self.axisCombo.stride) == 1:
             return (self.axisValues[self.minIndex], self.axisValues[self.maxIndex])
         else:
-            return slice(self.minIndex,self.maxIndex,int(self.axisCombo.stride))
+            return slice(self.minIndex, self.maxIndex, int(self.axisCombo.stride))
 
     def getCurrentValuesAsStr(self):
         if self.isTime:
@@ -488,21 +426,22 @@ class QSliderCombo(QtGui.QWidget):
 
 
 class QAxis(QtGui.QWidget):
+
     """ Axis widget containing: a button + popup-menu for modifying an axis, combobox
     and sliders for setting axis values, and a function def button + popup-menu """
 
-    def __init__(self, axis, axisName, axisIndex, parent=None,virtual=False):
+    def __init__(self, axis, axisName, axisIndex, parent=None, virtual=False):
         QtGui.QWidget.__init__(self, parent)
         self.root = parent.root
         self.axis = axis
-        self.axisName = axisName # Axis name including the label
+        self.axisName = axisName  # Axis name including the label
         self.axisIndex = axisIndex
-        self.parent=parent
-        self.virtual=virtual
-            
+        self.parent = parent
+        self.virtual = virtual
+
         hbox = QtGui.QHBoxLayout()
         hbox.setSpacing(0)
-        hbox.setMargin(0)                
+        hbox.setMargin(0)
         self.pin = QtGui.QToolButton()
         self.pin.setIcon(QtGui.QIcon(":/icons/resources/icons/unpinned.png"))
         self.pin.setCheckable(True)
@@ -510,7 +449,7 @@ class QAxis(QtGui.QWidget):
         self.sliderCombo = QSliderCombo(axis, self)
         hbox.addWidget(self.sliderCombo)
         hbox.addWidget(self.pin)
-        self.setLayout(hbox)        
+        self.setLayout(hbox)
 
         # These buttons aren't added to the layout here, instead they are added
         # in QAxisList which has a grid layout so they can line up properly
@@ -520,7 +459,7 @@ class QAxis(QtGui.QWidget):
 
         row = parent.gridLayout.rowCount()
         parent.gridLayout.addWidget(self.getAxisButton(), row, 0)
-        parent.gridLayout.addWidget(self, row, 1)            
+        parent.gridLayout.addWidget(self, row, 1)
         parent.gridLayout.addWidget(self.getAxisOperationsButton(), row, 2)
         # Create separator line between each axis widget
         vline = QtGui.QFrame()
@@ -528,68 +467,61 @@ class QAxis(QtGui.QWidget):
         vline.setMidLineWidth(37)
         palette = vline.palette()
         role = vline.backgroundRole()
-        palette.setColor(role, QtGui.QColor(220,213,226))
+        palette.setColor(role, QtGui.QColor(220, 213, 226))
         vline.setPalette(palette)
         vline.setAutoFillBackground(True)
         parent.gridLayout.addWidget(vline, row+1, 0, 1,
-                                  parent.gridLayout.columnCount())
+                                    parent.gridLayout.columnCount())
 
-        #Nowturn off if can be replaced by lat/lon virtual
-        if self.virtual==-1:
+        # Nowturn off if can be replaced by lat/lon virtual
+        if self.virtual == -1:
             self.hide()
             self.axisOperationsButton.hide()
             self.axisButton.hide()
             vline.hide()
-            
-
-        # Connect signals such that when the value of the axis slider is changed,
-        # a signal will be emitted to update the value in the corresponding
-        # Vistrails 'Variable' or 'Quickplot' box.
-        ## self.connect(self.sliderCombo.topSlider,
-        ##              QtCore.SIGNAL('valueChanged (int)'),
-        ##              parent.setVistrailsVariableAxes)
-        ## self.connect(self.sliderCombo.bottomSlider,
-        ##              QtCore.SIGNAL('valueChanged (int)'),
-        ##              parent.setVistrailsVariableAxes)
 
     def pinClicked(self):
         if self.axis.isTime():
-            k="UVTIMEAXIS"
+            k = "UVTIMEAXIS"
         elif self.axis.isLatitude():
-            k="UVLATAXIS"
+            k = "UVLATAXIS"
         elif self.axis.isLongitude():
-            k="UVLONAXIS"
+            k = "UVLONAXIS"
         elif self.axis.isLevel():
-            k="UVLEVELAXIS"
+            k = "UVLEVELAXIS"
         else:
-            k=self.axisName
+            k = self.axisName
         if self.pin.isChecked():
             self.pin.setIcon(QtGui.QIcon(":/icons/resources/icons/pinned.png"))
-            ## Ok now we need to remember the actual values
-            try: # try because when setting up a new Axis it's not ready but we don't really care since it would be the same
-                v1,v2 = self.getCurrentValues()
-                pins[k]={"vals":(v1,v2),"pinned":True}
+            # Ok now we need to remember the actual values
+            # try because when setting up a new Axis it's not ready but we
+            # don't really care since it would be the same
+            try:
+                v1, v2 = self.getCurrentValues()
+                pins[k] = {"vals": (v1, v2), "pinned": True}
             except:
                 pass
         else:
-            self.pin.setIcon(QtGui.QIcon(":/icons/resources/icons/unpinned.png"))
-            pins[k]["pinned"]=False
+            self.pin.setIcon(
+                QtGui.QIcon(":/icons/resources/icons/unpinned.png"))
+            pins[k]["pinned"] = False
+
     def createAxisOperationsButtonAndMenu(self):
         """ Initialize the button to the right of the axis sliders and it's menu
         with operations: def, sum, avg, wgt, gtm, awt, std
         """
         button = QtGui.QToolButton()
-        menu = QtGui.QMenu(self)        
-        
+        menu = QtGui.QMenu(self)
+
         opDefs = ['def default axis points',
                   'sum summation of selected axis points',
                   'avg average of selected axis points',
                   'wgt weighted average of selected axis points',
                   'gtm geometrical mean of selected axis points',
-                  'std standard deviation of selected axis points',]
+                  'std standard deviation of selected axis points', ]
         if self.axis.getBounds() is None:
             opDefs.pop(3)
-        if self.virtual>0:
+        if self.virtual > 0:
             opDefs = opDefs[:1]
         for op in opDefs:
             action = menu.addAction(op)
@@ -612,24 +544,10 @@ class QAxis(QtGui.QWidget):
         sum, avg, awt, gtm, etc ...
         """
         # Get the operation selected by getting the text of who sent the signal
-        op = self.sender().text()[:3] # def, sum, avg, wgt, awt, gtm, or std
-
-        # If the operation is 'awt' ask the user for an alternate weight var
-        # C. Doutriaux 2012-12-19: Removing for now since code seems to have disappeared... nowhere in the repo....
-        ## if op == 'awt':
-        ##     definedVars = self.parent.parent.getDefinedVars()
-        ##     QReplaceAxisWeightsDialog(definedVars, self).show()
-        ##     return
+        op = self.sender().text()[:3]  # def, sum, avg, wgt, awt, gtm, or std
 
         # Set button text to what the user selected
         self.axisOperationsButton.setText(" %s  " % op)
-
-        # Update the vistrails 'Variable' module's axesOperations input
-        #axesOperations = self.parent.getAxesOperations()
-        #varWidget = self.parent.parent
-        #varWidget.emit(QtCore.SIGNAL('updateModule'),
-        #               self.parent.currentTabName(), 'axesOperations',
-        #               str(axesOperations)) 
 
     def createAxisButtonAndMenu(self):
         """ createAxisButtonAndMenu(axesNames: list)
@@ -650,23 +568,23 @@ class QAxis(QtGui.QWidget):
         if self.axis.isTime():
             rawIndexAction = axisMenu.addAction(self.axis.id + '_raw')
             rawIndexAction.setCheckable(True)
-        
+
         axisMenu.addSeparator()
 
         # Add axis value options to the menu
         axisOptions = ['Get Axis Values', 'Get Axis Weight Values',
-                       'Replace Axis Values','Virtual Lat/Lon On/Off']
-        if self.virtual!=0:
+                       'Replace Axis Values', 'Virtual Lat/Lon On/Off']
+        if self.virtual != 0:
             switchVirtualAxisAction = axisMenu.addAction(axisOptions[3])
         else:
             getAxisValuesAction = axisMenu.addAction(axisOptions[0])
             getAxisWeightValuesAction = axisMenu.addAction(axisOptions[1])
             replaceAxisValuesAction = axisMenu.addAction(axisOptions[2])
-        if self.virtual<=0:
+        if self.virtual <= 0:
             # Add 're-order dimensions' option to menu
             axisMenu.addSeparator()
             reorderAxesMenu = axisMenu.addMenu('Re-Order Dimensions')
-            axesNames = self.parent.getAxesNames()                
+            axesNames = self.parent.getAxesNames()
             for axisID in axesNames:
                 reorderAction = reorderAxesMenu.addAction(axisID)
                 self.connect(reorderAction, QtCore.SIGNAL('triggered()'),
@@ -682,45 +600,47 @@ class QAxis(QtGui.QWidget):
                            axisButton.showMenu)
         self.connect(indexAction, QtCore.SIGNAL('toggled (bool)'),
                      self.setIndexModeEvent)
-        if self.virtual!=0:
+        if self.virtual != 0:
             self.connect(switchVirtualAxisAction, QtCore.SIGNAL('triggered ()'),
                          self.switchVirtual)
         else:
             self.connect(getAxisValuesAction, QtCore.SIGNAL('triggered ()'),
                          self.getAxisValuesEvent)
             self.connect(replaceAxisValuesAction, QtCore.SIGNAL('triggered ()'),
-                         self.getReplacementAxisValuesEvent)        
+                         self.getReplacementAxisValuesEvent)
             self.connect(getAxisWeightValuesAction, QtCore.SIGNAL('triggered ()'),
                          self.getAxisWeightValuesEvent)
-        
+
         if self.axis.isTime():
             self.connect(rawIndexAction, QtCore.SIGNAL('toggled (bool)'),
                          self.setRawIndexModeEvent)
             # Dont allow _raw and _index to be checked simultaneously
             self.connect(rawIndexAction, QtCore.SIGNAL('toggled (bool)'),
-                         lambda : indexAction.setChecked(False))
+                         lambda: indexAction.setChecked(False))
             self.connect(indexAction, QtCore.SIGNAL('toggled (bool)'),
-                         lambda : rawIndexAction.setChecked(False))                        
-            
+                         lambda: rawIndexAction.setChecked(False))
+
         return axisButton
 
     def switchVirtual(self):
         for i in range(self.parent.gridLayout.rowCount()):
-            it=self.parent.gridLayout.itemAtPosition(i,1)
+            it = self.parent.gridLayout.itemAtPosition(i, 1)
             if it is not None:
-                a=it.widget()
-                if hasattr(a,"virtual"):
+                a = it.widget()
+                if hasattr(a, "virtual"):
                     if a.isHidden():
                         a.show()
                         a.getAxisButton().show()
                         a.getAxisOperationsButton().show()
-                        self.parent.gridLayout.itemAtPosition(i+1,1).widget().show()
+                        self.parent.gridLayout.itemAtPosition(
+                            i+1, 1).widget().show()
                     else:
                         a.hide()
                         a.getAxisButton().hide()
                         a.getAxisOperationsButton().hide()
-                        self.parent.gridLayout.itemAtPosition(i+1,1).widget().hide()
-    
+                        self.parent.gridLayout.itemAtPosition(
+                            i+1, 1).widget().hide()
+
     def reorderAxesEvent(self):
         """ reorderAxesEvent is called when the user selects 're-order
         dimensions from the axis button. Swap this axis with the selected axis
@@ -728,7 +648,7 @@ class QAxis(QtGui.QWidget):
         """
         axisB = self.sender().text()
         self.parent.swapAxes(self.axisName, axisB)
-        #self.parent.setVistrailsVariableAxes()
+        # self.parent.setVistrailsVariableAxes()
 
     def getReplacementAxisValuesEvent(self):
         """ getReplacementAxisValuesEvent is called when the user selects
@@ -737,7 +657,7 @@ class QAxis(QtGui.QWidget):
         """
         definedVars = self.parent.parent.getDefinedVars()
         QReplaceAxisValuesDialog(definedVars, self).show()
-        
+
     def replaceAxisValues(self, newValuesVar):
         """ replaceAxisValues(newValuesVar: tvariable)
 
@@ -762,33 +682,35 @@ class QAxis(QtGui.QWidget):
         """
         var = self.parent.getVar()
         _app = get_vistrails_application()
-        w=_app.uvcdatWindow.dockCalculator.widget()
-        le=w.le
+        w = _app.uvcdatWindow.dockCalculator.widget()
+        le = w.le
         #axisVar = genutil.getAxisWeightByName(var, self.axis.id)
-        axisVarid = var.id +'_' + self.axis.id + '_weight'
+        axisVarid = var.id + '_' + self.axis.id + '_weight'
 
         # Generate teaching command string
         fileID = self.parent.cdmsFile.id
         le.setText("cdmsFile=cdms2.open('%s')" % fileID)
         w.run_command()
-        le.setText("%s = genutil.getAxisWeightByName(cdmsFile[\"%s\"], \"%s\")\n" % (axisVarid, var.id, self.axis.id))
+        le.setText("%s = genutil.getAxisWeightByName(cdmsFile[\"%s\"], \"%s\")\n" % (
+            axisVarid, var.id, self.axis.id))
         w.run_command()
-        le.setText( "%s.id = \"%s\"\n" % (axisVarid, axisVarid) )
+        le.setText("%s.id = \"%s\"\n" % (axisVarid, axisVarid))
         w.run_command()
 
     def getAxisValuesEvent(self):
         """ getAxisValuesEvent is called when the user selects 'Get Axis
          Values' from the axis button menu.  This method will create and
         define a new variable / tab with the axis' values
-        """        
+        """
         varID = self.parent.getVar().id
         _app = get_vistrails_application()
-        w=_app.uvcdatWindow.dockCalculator.widget()
-        le=w.le
-        axisVarid = varID +'_' + self.axis.id + '_axis'
+        w = _app.uvcdatWindow.dockCalculator.widget()
+        le = w.le
+        axisVarid = varID + '_' + self.axis.id + '_axis'
         le.setText("cdmsFile=cdms2.open('%s')" % self.parent.cdmsFile.id)
         w.run_command()
-        le.setText("%s = MV2.array(cdmsFile['%s'],axes=[cdmsFile['%s'],],id='%s')" % (axisVarid,self.axis.id,self.axis.id,axisVarid))
+        le.setText("%s = MV2.array(cdmsFile['%s'],axes=[cdmsFile['%s'],],id='%s')" % (
+            axisVarid, self.axis.id, self.axis.id, axisVarid))
         w.run_command()
 
     def setIndexModeEvent(self, indexMode):
@@ -799,9 +721,9 @@ class QAxis(QtGui.QWidget):
         combobox and slider values to be the actual axis values.
         """
         axisIndices = self.sliderCombo.getAxisIndices()
-        axisValues = self.sliderCombo.getAxisValues()        
-        
-        self.sliderCombo.setIndexMode(indexMode)        
+        axisValues = self.sliderCombo.getAxisValues()
+
+        self.sliderCombo.setIndexMode(indexMode)
         if (indexMode == True):
             self.sliderCombo.setStartIndex(0)
             self.sliderCombo.replaceComboBoxValues(axisIndices)
@@ -813,20 +735,21 @@ class QAxis(QtGui.QWidget):
 
     def setRawIndexModeEvent(self, rawIndexMode):
         """ setRawIndexModeEvent(rawIndexMode: bool)
-        
+
         If rawIndexMode is True then set the combobox and
-        slider values to be indices since january 1st 1979.  
+        slider values to be indices since january 1st 1979.
         otherwise set the combobox and slider values to be the actual axis
         values.
         """
         self.sliderCombo.setIndexMode(rawIndexMode)
         axisValues = self.sliderCombo.getAxisValues()
         axisIndices = self.sliderCombo.getAxisIndices()
-        
+
         if (rawIndexMode == True):
             # Calculate months since jan 1st, 1979
             firstTimeEntry = axisValues[0]
-            match = re.compile('(\d\d\d\d)(-)(.+)(-)(.*)').match(firstTimeEntry)
+            match = re.compile(
+                '(\d\d\d\d)(-)(.+)(-)(.*)').match(firstTimeEntry)
 
             if match is None:
                 raise NameError("Invalid time string: %s" % firstTimeEntry)
@@ -851,7 +774,7 @@ class QAxis(QtGui.QWidget):
         """
         varID = var.id
         var = cdutil.averager(var, axis="(%s)" % self.axis.id, weight='equal',
-                              action='sum')        
+                              action='sum')
         var.id = varID
         return var
 
@@ -897,7 +820,7 @@ class QAxis(QtGui.QWidget):
         """
         varID = var.id
         var = cdutil.averager(var, axis="(%s)" % self.axis.id,
-                             weight=self.alteredWeightsVar.filled())
+                              weight=self.alteredWeightsVar.filled())
         var.id = varID
         return var
 
@@ -907,7 +830,7 @@ class QAxis(QtGui.QWidget):
 
     def setAxisButtonText(self, name):
         self.axisButton.setText(name + ' ')
-        
+
     def getCurrentValues(self):
         return self.sliderCombo.getCurrentValues()
 
@@ -934,13 +857,14 @@ class QAxis(QtGui.QWidget):
 
 
 class QAxisComboWidget(QtGui.QComboBox):
+
     """ Specialized ComboBox widget for Axis Values listing / selecting the
     axis' values. """
-    
+
     def __init__(self, parent=None):
         QtGui.QComboBox.__init__(self, parent)
         self.setMin = False
-        self.stride = 1 # TODO : Changing the stride does nothing as of now
+        self.stride = 1  # TODO : Changing the stride does nothing as of now
         self.minValue = 0
         self.maxValue = 0
 
@@ -949,11 +873,13 @@ class QAxisComboWidget(QtGui.QComboBox):
         self.setMinimumContentsLength(10)
         self.setCurrentIndex(1)
         self.setMaxVisibleItems(10)
-        self.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.setSizeAdjustPolicy(
+            QtGui.QComboBox.AdjustToMinimumContentsLengthWithIcon)
 
         # Set highlighted text color to gray instead of default white
         comboPalette = self.view().palette()
-        comboPalette.setColor(QtGui.QPalette.HighlightedText, QtCore.Qt.darkGray)
+        comboPalette.setColor(
+            QtGui.QPalette.HighlightedText, QtCore.Qt.darkGray)
         self.view().setPalette(comboPalette)
 
         # Connect Signals
@@ -973,7 +899,8 @@ class QAxisComboWidget(QtGui.QComboBox):
 
         self.minValue = axisValues[0]
         self.maxValue = axisValues[-1]
-        self.setLineEditText() # Set lineedit text to be valueA : valueB by stride
+        # Set lineedit text to be valueA : valueB by stride
+        self.setLineEditText()
 
     def replaceComboBoxValues(self, axisValues):
         """ replaceComboBoxValues(axisValues: list)
@@ -982,7 +909,8 @@ class QAxisComboWidget(QtGui.QComboBox):
         or actual values.
         """
         for i in range(len(axisValues)):
-            data = QtCore.QVariant(QtCore.QStringList(['variables', str(axisValues[i])]))
+            data = QtCore.QVariant(
+                QtCore.QStringList(['variables', str(axisValues[i])]))
             self.setItemData(i, data)
             self.setItemText(i, str(axisValues[i]))
 
@@ -997,7 +925,7 @@ class QAxisComboWidget(QtGui.QComboBox):
     def setMaxValue(self, maxValue):
         self.maxValue = maxValue
         self.setLineEditText()
-        
+
     def setLineEditText(self):
         """ Set the comboBox's lineEdit to show:  minValue : maxValue by stride
         """
@@ -1012,25 +940,7 @@ class QAxisComboWidget(QtGui.QComboBox):
         value or entering a value into the line edit.  Update the corresponding
         slider / label with the same value
         """
-        index = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(axisValue)])))
-        # If user entered a value into the lineEdit.
-        if 1:#index == -1:
-            self.updateValueFromLineEditText(axisValue)
-            return
-
-        # If user selected a value from the combo box.
-        # Selecting values from the combo box will alternate between setting the
-        # min and max values & emit a signal to update corresponding slider
-        if (self.setMin == True):
-            self.setMin = False
-            self.minValue = axisValue
-            self.emit(QtCore.SIGNAL('axisComboMinValueChanged (int)'), self.currentIndex())
-        else:
-            self.setMin = True
-            self.maxValue = axisValue
-            self.emit(QtCore.SIGNAL('axisComboMaxValueChanged (int)'), self.currentIndex())
-
-        self.setLineEditText()
+        self.updateValueFromLineEditText(axisValue)
 
     def updateValueFromLineEditText(self, axisValue):
         """ updateValueFromLineEditText(axisValue: str)
@@ -1043,47 +953,56 @@ class QAxisComboWidget(QtGui.QComboBox):
         pattern = re.compile("(.*)\s:\s(.*)\sby\s(\w*)")
         result = pattern.match(axisValue)
         # If invalid string format, do nothing
-        if (result == None):
-            return
+        if result is None:
+            # Check if the axisValue is an actual value
+            if self.findData(QtCore.QVariant(QtCore.QStringList(['variables', axisValue]))) != -1:
+                minValue = axisValue
+                maxValue = axisValue
+            else:
+                return
+        else:
+            minValue = result.group(1)
+            maxValue = result.group(2)
+            # Set stride if it is a valid digit
+            # Stride functionality not implemented yet
+            if (str(result.group(3)).isdigit() == True):
+                self.stride = result.group(3)
 
-        # Set stride if it is a valid digit
-        # Stride functionality not implemented yet
-        if (str(result.group(3)).isdigit() == True):
-            self.stride = result.group(3)
-
-        minValue = result.group(1)
-        maxValue = result.group(2)
-        #minIndex,maxIndex = self.parent().parent().axis.mapInterval((float(minValue),float(maxValue)))
-        minIndex = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(minValue)])))
-        maxIndex = self.findData(QtCore.QVariant(QtCore.QStringList(['variables', str(maxValue)])))
+        minIndex = self.findData(
+            QtCore.QVariant(QtCore.QStringList(['variables', str(minValue)])))
+        maxIndex = self.findData(
+            QtCore.QVariant(QtCore.QStringList(['variables', str(maxValue)])))
         # If min or max values are not in the list of values do nothing
         if (minIndex == -1 or maxIndex == -1):
             return
 
-        # LineEdit string is valid, emit signal to update the corresponding axis sliders
+        # LineEdit string is valid, emit signal to update the corresponding
+        # axis sliders
         self.emit(QtCore.SIGNAL('axisComboMinValueChanged (int)'), minIndex)
-        self.emit(QtCore.SIGNAL('axisComboMaxValueChanged (int)'), maxIndex)            
+        self.emit(QtCore.SIGNAL('axisComboMaxValueChanged (int)'), maxIndex)
+
 
 class QAxisList(QtGui.QWidget):
+
     """ Widget containing a list of axis widgets for the selected variable """
 
     def __init__(self, cdmsFile=None, var=None, parent=None):
         QtGui.QWidget.__init__(self, parent)
-        self.axisWidgets = [] # List of QAxis widgets
-        self.axesNames = [] # List of axis names (including labels)
-        self.axisOrder = [] # List of ints to specify axes ordering
-        self.cdmsFile = cdmsFile # cdms file associated with the variable
-        self.var = var # variable associated with the axes
-        self.axisList = None # list of axes from the variable
+        self.axisWidgets = []  # List of QAxis widgets
+        self.axesNames = []  # List of axis names (including labels)
+        self.axisOrder = []  # List of ints to specify axes ordering
+        self.cdmsFile = cdmsFile  # cdms file associated with the variable
+        self.var = var  # variable associated with the axes
+        self.axisList = None  # list of axes from the variable
         self.root = parent.root
-        self.parent=parent
-        
+        self.parent = parent
+
         # Init & set the layout
         vbox = QtGui.QVBoxLayout()
         self.gridLayout = QtGui.QGridLayout()
         self.gridLayout.setMargin(0)
         self.gridLayout.setSpacing(0)
-        l=QtGui.QLabel("Dimensions")
+        l = QtGui.QLabel("Dimensions")
         vbox.addWidget(l)
         vbox.addLayout(self.gridLayout)
         vbox.addStretch()
@@ -1105,7 +1024,7 @@ class QAxisList(QtGui.QWidget):
                 axis.deleteLater()
             else:
                 self.gridLayout.removeItem(item)
-                
+
         self.axisWidgets = []
         self.axesNames = []
 
@@ -1115,47 +1034,52 @@ class QAxisList(QtGui.QWidget):
         """
         if self.var is None:
             return
-        
+
         if (self.axisList is None):
             if self.cdmsFile is None:
                 self.axisList = self.var.getAxisList()
-                self.grid=self.var.getGrid()
+                self.grid = self.var.getGrid()
             else:
                 try:
                     self.axisList = self.cdmsFile[self.var].getAxisList()
-                    self.grid=self.cdmsFile[self.var].getGrid()
+                    self.grid = self.cdmsFile[self.var].getGrid()
                 except:
-                    ## Ok this is probably a simple axis
-                    self.axisList=[self.cdmsFile[self.var],]
-                    self.grid=None
+                    # Ok this is probably a simple axis
+                    self.axisList = [self.cdmsFile[self.var], ]
+                    self.grid = None
             self.axisOrder = range(len(self.axisList))
 
-        self.clear()            
+        self.clear()
         self.setAxesNames()
-        
+
         # Iterate through the variables axes & init each axis widget
         axisIndex = 0
-        didVirtual=False
+        didVirtual = False
         for axis, axisName in zip(self.axisList, self.axesNames):
             virtual = 0
-            if  isinstance(self.grid,(cdms2.hgrid.AbstractHorizontalGrid,cdms2.gengrid.AbstractHorizontalGrid)) and axis in self.grid.getLatitude().getAxisList():
-                    virtual = -1
-                    if didVirtual is False:
-                        didVirtual=True
-                        minLat,maxLat=genutil.minmax(self.grid.getLatitude())
-                        minLon,maxLon=genutil.minmax(self.grid.getLongitude())
-                        vLat=cdms2.createAxis(numpy.arange(numpy.floor(minLat),numpy.ceil(maxLat)+.1,.1),id="latitude")
-                        vLon=cdms2.createAxis(numpy.arange(numpy.floor(minLon),numpy.ceil(maxLon)+.1,.1),id="longitude")
-                        virtualLatWidget=QAxis(vLat, "latitude", axisIndex, self,virtual=1)
-                        virtualLonWidget=QAxis(vLon, "longitude", axisIndex, self,virtual=2)
-                        self.axisWidgets.append(virtualLatWidget)
-                        self.axisWidgets.append(virtualLonWidget)
+            if isinstance(self.grid, (cdms2.hgrid.AbstractHorizontalGrid, cdms2.gengrid.AbstractHorizontalGrid)) and axis in self.grid.getLatitude().getAxisList():
+                virtual = -1
+                if didVirtual is False:
+                    didVirtual = True
+                    minLat, maxLat = genutil.minmax(self.grid.getLatitude())
+                    minLon, maxLon = genutil.minmax(self.grid.getLongitude())
+                    vLat = cdms2.createAxis(
+                        numpy.arange(numpy.floor(minLat), numpy.ceil(maxLat)+.1, .1), id="latitude")
+                    vLon = cdms2.createAxis(
+                        numpy.arange(numpy.floor(minLon), numpy.ceil(maxLon)+.1, .1), id="longitude")
+                    virtualLatWidget = QAxis(
+                        vLat, "latitude", axisIndex, self, virtual=1)
+                    virtualLonWidget = QAxis(
+                        vLon, "longitude", axisIndex, self, virtual=2)
+                    self.axisWidgets.append(virtualLatWidget)
+                    self.axisWidgets.append(virtualLonWidget)
             # Create the axis widget
             # Virtual: 0: Not virtual
             #         -1: options to switch to virtual
             #          1: is latitude virtual needs option to switch back
             #          2: is longitude virtual needs option to switch back
-            axisWidget = QAxis(axis, axisName, axisIndex, self,virtual=virtual)
+            axisWidget = QAxis(
+                axis, axisName, axisIndex, self, virtual=virtual)
             self.axisWidgets.append(axisWidget)
             axisIndex += 1
         self.gridLayout.setRowStretch(self.gridLayout.rowCount(), 1)
@@ -1174,8 +1098,10 @@ class QAxisList(QtGui.QWidget):
         if axisA in self.axesNames and axisB in self.axesNames:
             i = self.axesNames.index(axisA)
             j = self.axesNames.index(axisB)
-            self.axisList[i], self.axisList[j] = self.axisList[j], self.axisList[i]
-            self.axisOrder[i], self.axisOrder[j] = self.axisOrder[j], self.axisOrder[i]
+            self.axisList[i], self.axisList[
+                j] = self.axisList[j], self.axisList[i]
+            self.axisOrder[i], self.axisOrder[
+                j] = self.axisOrder[j], self.axisOrder[i]
             self.setupVariableAxes()
 
     def execAxesOperations(self, var):
@@ -1208,35 +1134,41 @@ class QAxisList(QtGui.QWidget):
         for axis in self.axisWidgets:
             axisID = axis.getID()
             op = str(axis.getAxisOperationsButton().text()).strip()
-            
+
             if op == 'sum':
-                commands += "%s=cdutil.averager(%s, axis='(%s)', weight='equal', action='sum')\n" % (varID, varID, axisID)
-                commands += "%s.id = '%s'\n" % (varID, varID)                
+                commands += "%s=cdutil.averager(%s, axis='(%s)', weight='equal', action='sum')\n" % (
+                    varID, varID, axisID)
+                commands += "%s.id = '%s'\n" % (varID, varID)
             elif op == 'avg':
-                commands += "%s=cdutil.averager(%s, axis='(%s)', weight='equal')\n" % (varID, varID, axisID)                
+                commands += "%s=cdutil.averager(%s, axis='(%s)', weight='equal')\n" % (
+                    varID, varID, axisID)
                 commands += "%s.id = '%s'\n" % (varID, varID)
             elif op == 'wgt':
-                commands += "%s=cdutil.averager(%s, axis='(%s)')\n" % (varID, varID, axisID)                
+                commands += "%s=cdutil.averager(%s, axis='(%s)')\n" % (
+                    varID, varID, axisID)
                 commands += "%s.id = '%s'\n" % (varID, varID)
             elif op == 'awt':
                 alteredWeightsID = axis.getAlteredWeightsVar().id
-                commands += "%s=cdutil.averager(%s, axis='(%s)', weight=%s.filled())" % (varID, varID, axisID, alteredWeightsID)
+                commands += "%s=cdutil.averager(%s, axis='(%s)', weight=%s.filled())" % (
+                    varID, varID, axisID, alteredWeightsID)
                 commands += "\n# Currently, VCDAT cannot record the altered average weight command."
             elif op == 'gtm':
-                commands += "%s=genutil.statistics.geometricmean(%s, axis='(%s)')\n" % (varID, varID, axisID)
+                commands += "%s=genutil.statistics.geometricmean(%s, axis='(%s)')\n" % (
+                    varID, varID, axisID)
                 commands += "%s.id = '%s'\n" % (varID, varID)
             elif op == 'std':
-                commands += "%s=genutil.statistics.std(%s, axis='(%s)')\n" % (varID, varID, axisID)
-                commands += "%s.id = '%s'\n" % (varID, varID)                                
+                commands += "%s=genutil.statistics.std(%s, axis='(%s)')\n" % (
+                    varID, varID, axisID)
+                commands += "%s.id = '%s'\n" % (varID, varID)
         return commands
 
     def getAxesOperations(self):
         """ Return a dict where keys are axis names, and values are the
         operation to be done on the axis such as: def, sum, avg, etc ... """
-        
+
         axisOpsDict = {}
-        
-        #init with values from var module if any
+
+        # init with values from var module if any
         varname = None
         if self.var is not None:
             if hasattr(self.var, 'id'):
@@ -1245,29 +1177,28 @@ class QAxisList(QtGui.QWidget):
                 varname = self.var
             else:
                 print "Warning: unkown self.var param in axis list"
-            
-            
+
         if varname is not None:
             projectController = self.root.get_current_project_controller()
-            
+
             varModule = None
-            
+
             if varname in projectController.defined_variables:
                 varModule = projectController.defined_variables[varname]
             elif varname in projectController.computed_variables_ops:
                 varModule = projectController.computed_variables_ops[varname]
-            
+
             if varModule is not None and varModule.axesOperations.strip() != '':
                 try:
                     axisOpsDict = eval(varModule.axesOperations)
                 except:
                     format = "Warning: invalid string 'axesOperations': %s"
                     print format % str(varModule.axesOperations)
-        
+
         for axis in self.axisWidgets:
             op = str(axis.getAxisOperationsButton().text()).strip()
             axisOpsDict[axis.getID()] = op
-            
+
         return axisOpsDict
 
     def getAxesNames(self):
@@ -1318,37 +1249,19 @@ class QAxisList(QtGui.QWidget):
     def setAxesNames(self):
         """ Generate a list with the axis label + axis name and store it in
         self.axesNames """
-        
+
         labels = ['T', 'Z', 'Y', 'X'] + [chr(ord('S')-i) for i in xrange(18)]
         if (len(self.axisList) >= 4):
             i = 0
         else:
             i = 4 - len(self.axisList)
-            
+
         for axis in self.axisList:
             self.axesNames.append(labels[i] + ' - ' + axis.id)
             i += 1
-            
+
     def setFile(self, cdmsFile):
         self.cdmsFile = cdmsFile
 
     def setVar(self, var):
         self.var = var
-
-    ## def currentTabName(self):
-    ##     return self.parent.tabWidget.currentTabName()
-
-    ## def setVistrailsVariableAxes(self):
-    ##     """ Vistrails: Update the vistrails Variable modules 'axes' input. This
-    ##     method is called whenever the sliders values are changed.
-    ##     """
-    ##     axesKwargs = {}
-    ##     # Add the each axes' args for example: latitude: (-90, 90)
-    ##     for axisWidget in self.axisWidgets:
-    ##         axesKwargs[axisWidget.axis.id] = axisWidget.getCurrentValues()
-    ##     # Add other args
-    ##     axesKwargs['squeeze'] = 0
-    ##     axesKwargs['order'] = self.getAxesOrderString()
-
-    ##     self.parent.emit(QtCore.SIGNAL('updateModule'),
-    ##                      self.parent.currentTabName(), 'axes', str(axesKwargs))
