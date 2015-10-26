@@ -204,8 +204,27 @@ class QSliderCombo(QtGui.QWidget):
                     break
             if self.isTime:
                 try:
-                    self.axisValues = [repr(t.tocomponent(axis.getCalendar()))
-                                       for t in axis.asRelativeTime()]
+                    # Pretty format time
+                    reltimes = axis.asRelativeTime()
+                    time_increment = axis.units.split(" ")[0]
+                    values = []
+                    for reltime in reltimes:
+                        comptime = reltime.tocomp(axis.getCalendar())
+                        if time_increment[0:6] == "second":
+                            val = "%d-%02d-%02d %02d:%02d:%02d" % (comptime.year, comptime.month, comptime.day, comptime.hour, comptime.minute, comptime.second)
+                        elif time_increment[0:6] == "minute":
+                            val = "%d-%02d-%02d %02d:%02d" % (comptime.year, comptime.month, comptime.day, comptime.hour, comptime.minute)
+                        elif time_increment[0:4] == "hour":
+                            val = "%d-%02d-%02d %02d:00" % (comptime.year, comptime.month, comptime.day, comptime.hour)
+                        elif time_increment[0:3] == "day" or time_increment[0:4] == "week":
+                            val = "%d-%02d-%02d" % (comptime.year, comptime.month, comptime.day)
+                        elif time_increment[0:5] == "month" or time_increment[0:6] == "season":
+                            val = "%d-%02d" % (comptime.year, comptime.month)
+                        elif time_increment[0:4] == "year":
+                            val = str(comptime.year)
+                        values.append(val)
+
+                    self.axisValues = values
                 except:
                     self.axisValues = axis.getValue()
             elif lbls is not None:
@@ -921,28 +940,7 @@ class QAxisComboWidget(QtGui.QComboBox):
         value or entering a value into the line edit.  Update the corresponding
         slider / label with the same value
         """
-        index = self.findData(
-            QtCore.QVariant(QtCore.QStringList(['variables', str(axisValue)])))
-        # If user entered a value into the lineEdit.
-        if 1:  # index == -1:
-            self.updateValueFromLineEditText(axisValue)
-            return
-
-        # If user selected a value from the combo box.
-        # Selecting values from the combo box will alternate between setting the
-        # min and max values & emit a signal to update corresponding slider
-        if (self.setMin == True):
-            self.setMin = False
-            self.minValue = axisValue
-            self.emit(
-                QtCore.SIGNAL('axisComboMinValueChanged (int)'), self.currentIndex())
-        else:
-            self.setMin = True
-            self.maxValue = axisValue
-            self.emit(
-                QtCore.SIGNAL('axisComboMaxValueChanged (int)'), self.currentIndex())
-
-        self.setLineEditText()
+        self.updateValueFromLineEditText(axisValue)
 
     def updateValueFromLineEditText(self, axisValue):
         """ updateValueFromLineEditText(axisValue: str)
@@ -955,16 +953,21 @@ class QAxisComboWidget(QtGui.QComboBox):
         pattern = re.compile("(.*)\s:\s(.*)\sby\s(\w*)")
         result = pattern.match(axisValue)
         # If invalid string format, do nothing
-        if (result == None):
-            return
+        if result is None:
+            # Check if the axisValue is an actual value
+            if self.findData(QtCore.QVariant(QtCore.QStringList(['variables', axisValue]))) != -1:
+                minValue = axisValue
+                maxValue = axisValue
+            else:
+                return
+        else:
+            minValue = result.group(1)
+            maxValue = result.group(2)    
+            # Set stride if it is a valid digit
+            # Stride functionality not implemented yet
+            if (str(result.group(3)).isdigit() == True):
+                self.stride = result.group(3)
 
-        # Set stride if it is a valid digit
-        # Stride functionality not implemented yet
-        if (str(result.group(3)).isdigit() == True):
-            self.stride = result.group(3)
-
-        minValue = result.group(1)
-        maxValue = result.group(2)
         minIndex = self.findData(
             QtCore.QVariant(QtCore.QStringList(['variables', str(minValue)])))
         maxIndex = self.findData(
