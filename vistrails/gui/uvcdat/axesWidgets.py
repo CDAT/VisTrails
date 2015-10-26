@@ -962,7 +962,7 @@ class QAxisComboWidget(QtGui.QComboBox):
                 return
         else:
             minValue = result.group(1)
-            maxValue = result.group(2)    
+            maxValue = result.group(2)
             # Set stride if it is a valid digit
             # Stride functionality not implemented yet
             if (str(result.group(3)).isdigit() == True):
