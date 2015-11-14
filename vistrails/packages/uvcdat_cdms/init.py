@@ -33,6 +33,7 @@ from packages.uvcdat.init import Variable, Plot
 from gui.application import get_vistrails_application
 from gui.uvcdat.theme import UVCDATTheme
 from gui.uvcdat.cdmsCache import CdmsCache
+from gui.uvcdat.uvcdatCommons import QSimpleMessageBox
 import gui.uvcdat.regionExtractor #for certain toPython commands
 import vtk, ast
 #from packages.vtDV3D.PersistentModule import AlgorithmOutputModule3D, PersistentVisualizationModule
@@ -1448,10 +1449,11 @@ class QCDATWidget(QVTKWidget):
                     self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module
                     self.canvas.flush() # update the canvas by processing all the X events
             
-#            try:
-            kwargs[ 'cell_coordinates' ] = self.cell_coordinates
-            self.canvas.plot(cgm,*args,**kwargs)
-#             except Exception, e:
+            try:
+               kwargs[ 'cell_coordinates' ] = self.cell_coordinates
+               self.canvas.plot(cgm,*args,**kwargs)
+            except Exception, e:
+               QSimpleMessageBox("Error plotting: %s" % e,self).show()
 #                 print "cgm=",cgm,"args=",args,"kwargs=",kwargs
 #                 spreadsheetWindow.setUpdatesEnabled(True)
 #                 raise e
