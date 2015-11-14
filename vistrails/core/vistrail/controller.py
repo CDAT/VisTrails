@@ -2317,13 +2317,6 @@ class VistrailController(object):
             error = None
             (locator, version, pipeline, view, aliases, params, reason, extra_info) = vis
             temp_folder_used = False
-            if (not extra_info or not extra_info.has_key('pathDumpCells') or 
-                not extra_info['pathDumpCells']):
-                if extra_info is None:
-                    extra_info = {}
-                extra_info['pathDumpCells'] = create_temp_folder(prefix='vt_thumb')
-                temp_folder_used = True
-#           
             kwargs = {'locator': locator,
                       'current_version': version,
                       'view': view,
@@ -2333,12 +2326,12 @@ class VistrailController(object):
                       'params': params,
                       'reason': reason,
                       'extra_info': extra_info,
-                      }    
+                      }
             result = interpreter.execute(pipeline, **kwargs)
-            
+
             thumb_cache = ThumbnailCache.getInstance()
-            
-            if len(result.errors) == 0 and \
+
+            if len(result.errors) == 0 and extra_info is not None and \
             (thumb_cache.conf.autoSave or 'compare_thumbnails' in extra_info):
                 old_thumb_name = self.vistrail.get_thumbnail(version)
                 if 'compare_thumbnails' in extra_info:
