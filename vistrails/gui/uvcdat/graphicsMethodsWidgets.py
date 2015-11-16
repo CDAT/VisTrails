@@ -268,7 +268,7 @@ class VCSGMs():
         if "yaxisconvert" in self.gmAttributes:
             gm.yaxisconvert = str(self.yaxisconvert.buttonGroup.button(self.yaxisconvert.buttonGroup.checkedId()).text())
 
-    def saveChanges(self,click):
+    def saveChanges(self, click):
         self.applyChanges()
         self.root.record(self.changesString())
         
@@ -1568,9 +1568,8 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             _app = get_vistrails_application()
             self.root =_app.uvcdatWindow
         self.gm = self.root.canvas[0].getisoline(gm)
-            
-        self.gmAttributes = [ 'datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2', 'level', 'line','linecolors','linewidths','text','textcolors','clockwise','scale','angle','spacing']
-        
+        self.gmAttributes = ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2', 'level', 'line','linecolors','linewidths','text','textcolors','clockwise','scale','angle','spacing', 'labelskipdistance']
+
         self.saveOriginalValues()
         self.setupCommonSection()
 
@@ -1585,6 +1584,7 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.textLabelsOnOff = self.textSettings.addRadioFrame("Draw Labels:", ["No","Yes"], newRow=False)
         self.textFonts = self.textSettings.addLabeledLineEdit("Text Fonts:")
         self.textColors = self.textSettings.addLabeledLineEdit("Text Colors:")
+        self.textSpacing = self.textSettings.addLabeledLineEdit("Text Spacings:")
         vbox.addWidget(self.textSettings)
 
         # Isoline Streamline Settings 
@@ -1610,7 +1610,6 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
     def initValues(self, gm=None):
         if gm is None:
             gm = self.gm
-            
         # Init common area
         self.initCommonValues(gm)
         
@@ -1624,6 +1623,7 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             self.textLabelsOnOff.setChecked("No")
         self.textFonts.setText(repr(gm.text))
         self.textColors.setText(repr(gm.textcolors))
+        self.textSpacing.setText(repr(gm.labelskipdistance))
 
         #init Streamlines section
         self.streamDirection.setText(repr(gm.clockwise))
@@ -1649,7 +1649,8 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         gm.label = str(self.textLabelsOnOff.buttonGroup.button(self.textLabelsOnOff.buttonGroup.checkedId()).text()).lower()[0]
         gm.text = eval(str(self.textFonts.text()))
         gm.textcolors = eval(str(self.textColors.text()))
-        #Applies changes to streamlines
+        gm.labelskipdistance = eval(str(self.textSpacing.text()))
+        # Applies changes to streamlines
         gm.clockwise = eval(str(self.streamDirection.text()))
         gm.scale = eval(str(self.streamScale.text()))
         gm.angle = eval(str(self.streamAngle.text()))
