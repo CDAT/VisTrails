@@ -1983,7 +1983,8 @@ def get_input_ports(plot_type):
                                   ('clockwise', 'basic:List', True),
                                   ('scale', 'basic:List', True),
                                   ('angle', 'basic:List', True),
-                                  ('spacing', 'basic:List', True)
+                                  ('spacing', 'basic:List', True),
+                                  ('labelskipdistance', 'basic:Float', True)
                                   ]) 
     elif plot_type == "Meshfill":
         return expand_port_specs([('levels', 'basic:List', True),
@@ -2101,7 +2102,7 @@ def get_gm_attributes(plot_type):
                 'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
                 'ymtics2', 'yticlabels1', 'yticlabels2', 'label', 'level', 'levels', 
                 'line', 'linecolors','linewidths','text','textcolors','clockwise',
-                'scale', 'angle','spacing']
+                'scale', 'angle','spacing', "labelskipdistance"]
     elif plot_type == "Meshfill":
         return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
                 'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 
