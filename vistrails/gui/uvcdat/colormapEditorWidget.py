@@ -39,6 +39,7 @@ class QColormapEditor(QtGui.QColorDialog):
         self.root = parent.root
         self.setOption(QtGui.QColorDialog.DontUseNativeDialog, True)
         self.setOption(QtGui.QColorDialog.NoButtons)
+        self.setOption(QtGui.QColorDialog.ShowAlphaChannel, True)
         self.activeCanvas = self.root.canvas[0]
         self.vcscolor = [0, 0, 0]
         self.ignoreColorMapComboChange = False
@@ -366,6 +367,10 @@ class QColormapEditor(QtGui.QColorDialog):
 
     def colorButtonClicked(self, b):
         self.vcscolor = b.vcscolor
+        i, j, _ = self.vcscolor
+        br, bg, bb, ba = self.getRgba(i, j)
+        color = QtGui.QColor(br, bg, bb, ba)
+        self.setCurrentColor(color)
         self.nclicks += 1
         if self.nclicks == 3:
             self.nclicks = 1
@@ -477,7 +482,6 @@ class QColormapEditor(QtGui.QColorDialog):
         button = uvcdatCommons.CustomFrame("%i" % icolor, 30, 25, signal="clickedVCSColorButton")
         stsh = button.styleSheet()
         stsh += " background-color : rgba(%i,%i,%i,%i)" % (r, g, b, a)
-        print icolor, stsh
         button.setStyleSheet(stsh)
         button.vcscolor = (i, j, icolor)
         self.connect(button, QtCore.SIGNAL("clickedVCSColorButton"),
