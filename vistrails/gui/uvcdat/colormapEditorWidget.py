@@ -39,6 +39,7 @@ class QColormapEditor(QtGui.QColorDialog):
         self.root = parent.root
         self.setOption(QtGui.QColorDialog.DontUseNativeDialog, True)
         self.setOption(QtGui.QColorDialog.NoButtons)
+        self.setOption(QtGui.QColorDialog.ShowAlphaChannel, True)
         self.activeCanvas = self.root.canvas[0]
         self.vcscolor = [0, 0, 0]
         self.ignoreColorMapComboChange = False
@@ -155,16 +156,17 @@ class QColormapEditor(QtGui.QColorDialog):
             self.initializeColorTable(name)
 
 
-    def getRgb(self, i, j=None, maximum=255):
+    def getRgba(self, i, j=None, maximum=255):
         if j is None:
             if maximum >= 100:
                 mx = maximum / 100.
             else:
                 mx = maximum
-            nr, ng, nb = self.cmap.index[i]
+            nr, ng, nb, na = self.cmap.index[i]
             nr = int(nr * mx)
             ng = int(ng * mx)
             nb = int(nb * mx)
+            na = int(na * mx)
         else:
             if maximum >= 100:
                 mx = maximum / 255.
@@ -175,14 +177,15 @@ class QColormapEditor(QtGui.QColorDialog):
             for style in styles:
                 sp = style.split(":")
                 if sp[0].strip() == "background-color":
-                    r, g, b = eval(sp[1].strip()[4:-1])
+                    r, g, b, a = eval(sp[1].strip()[4:])
                     r = int(r * mx)
                     g = int(g * mx)
                     b = int(b * mx)
-                    return r, g, b
-            return 0, 0, 0
+                    a = int(a * mx)
+                    return r, g, b, a
+            return 0, 0, 0, 100
 
-        return nr, ng, nb
+        return nr, ng, nb, na
 
     def activateFromCell(self, canvas):
         self.activeCanvas = canvas
@@ -228,11 +231,12 @@ class QColormapEditor(QtGui.QColorDialog):
         n = 0
         for i in range(15):
             for j in range(16):
-                r, g, b = cmap.index[n]
+                r, g, b, a = cmap.index[n]
                 r = int(r * 2.55)
                 g = int(g * 2.55)
                 b = int(b * 2.55)
-                self.setButton(i, j, n, r, g, b)
+                a = int(a * 2.55)
+                self.setButton(i, j, n, r, g, b, a)
                 n += 1
         self.update()
 
@@ -246,11 +250,12 @@ class QColormapEditor(QtGui.QColorDialog):
         n = 0
         for i in range(15):
             for j in range(16):
-                r, g, b = self.activeCanvas.getcolorcell(n)
+                r, g, b, a = self.activeCanvas.getcolorcell(n)
                 r = int(r * 2.55)
                 g = int(g * 2.55)
                 b = int(b * 2.55)
-                self.setButton(i, j, n, r, g, b)
+                a = int(a * 2.55)
+                self.setButton(i, j, n, r, g, b, a)
                 n += 1
 
     def setColorsFromPlot(self, plot):
@@ -286,20 +291,16 @@ class QColormapEditor(QtGui.QColorDialog):
             n = 0
             for i in range(15):
                 for j in range(16):
-                    r, g, b = self.getRgb(i, j, maximum=100)
-                    ored, og, ob = self.activeCanvas.getcolorcell(n)
-                    if r != ored or og != g or ob != b:
-                        rec = "vcs_canvas[%i].setcolorcell(%d, %d, %d, %d)" % (
-                            self.activeCanvas.canvasid() - 1, n, r, g, b)
+                    r, g, b, a = self.getRgba(i, j, maximum=100)
+                    ored, og, ob, oa = self.activeCanvas.getcolorcell(n)
+                    if r != ored or og != g or ob != b or oa != a:
+                        rec = "vcs_canvas[%i].setcolorcell(%d, %d, %d, %d, %d)" % (
+                            self.activeCanvas.canvasid() - 1, n, r, g, b, a)
                         self.root.record(rec)
-                        #self.activeCanvas.setcolorcell(n,r,g,b)
-                        #calling this directly to avoid flushing and updating segments on every cell update
-                        self.activeCanvas.setcolorcell(n, r, g, b)
-                        cells.append((n, r, g, b))
+                        self.activeCanvas.setcolorcell(n, r, g, b, a)
+                        cells.append((n, r, g, b, a))
                     n += 1
-            #see vcs.Canvas.setcolorcell
-            self.activeCanvas.update(
-                self.activeCanvas.mode)  # pass down self and mode to _vcs module
+            self.activeCanvas.update(self.activeCanvas.mode)  # pass down self and mode to _vcs module
             self.activeCanvas.flush()  # update the canvas by processing all the X events
 
         self.controller.change_selected_version(self.controller.current_version)
@@ -342,12 +343,11 @@ class QColormapEditor(QtGui.QColorDialog):
 
     def colorChanged(self):
         current = self.currentColor()
-        cr, cg, cb, ca = current.getRgb()
-
+        cr, cg, cb, ca = current.red(), current.green(), current.blue(), current.alpha()
         button = self.grid.itemAtPosition(self.vcscolor[0], self.vcscolor[1]).widget()
-        stsh = "background-color : rgb(%i, %i, %i)" % (cr, cg, cb)
+        stsh = "background-color : rgba(%i, %i, %i, %i)" % (cr, cg, cb, ca)
         button.setStyleSheet(stsh)
-        button.vcscolor = (self.vcscolor[0], self.vcscolor[1], self.vcscolor[2])
+        button.vcscolor = tuple(self.vcscolor)
         self.cellsDirty = True
 
     def save(self):
@@ -367,6 +367,10 @@ class QColormapEditor(QtGui.QColorDialog):
 
     def colorButtonClicked(self, b):
         self.vcscolor = b.vcscolor
+        i, j, _ = self.vcscolor
+        br, bg, bb, ba = self.getRgba(i, j)
+        color = QtGui.QColor(br, bg, bb, ba)
+        self.setCurrentColor(color)
         self.nclicks += 1
         if self.nclicks == 3:
             self.nclicks = 1
@@ -429,12 +433,13 @@ class QColormapEditor(QtGui.QColorDialog):
         if n < 2:
             return
 
-        fr, fg, fb = self.getRgb(*first[:2])
-        lr, lg, lb = self.getRgb(*last[:2])
+        fr, fg, fb, fa = self.getRgba(*first[:2])
+        lr, lg, lb, la = self.getRgba(*last[:2])
 
         dr = float(lr - fr) / float(n - 1)
         dg = float(lg - fg) / float(n - 1)
         db = float(lb - fb) / float(n - 1)
+        da = float(la - fa) / float(n - 1)
 
         n = 0
         if first[0] < last[0] + 1:
@@ -453,14 +458,15 @@ class QColormapEditor(QtGui.QColorDialog):
                 r = int(fr + n * dr)
                 g = int(fg + n * dg)
                 b = int(fb + n * db)
-                self.setButton(i, j, button.vcscolor[2], r, g, b)
+                a = int(fa + n * da)
+                self.setButton(i, j, button.vcscolor[2], r, g, b, a)
                 self.setAButtonFrame(button)
                 n += 1
 
         button = self.grid.itemAtPosition(first[0], first[1]).widget()
-        button.mousePressEvent(None);
+        button.mousePressEvent(None)
         button = self.grid.itemAtPosition(last[0], last[1]).widget()
-        button.mousePressEvent(None);
+        button.mousePressEvent(None)
 
     def setAButtonFrame(self, button, on=True):
         if on:
@@ -468,14 +474,14 @@ class QColormapEditor(QtGui.QColorDialog):
         else:
             button.flipFrameShadow(0, 0)
 
-    def setButton(self, i, j, icolor, r, g, b):
+    def setButton(self, i, j, icolor, r, g, b, a):
         it = self.grid.itemAtPosition(i, j)
         if it is not None:
             self.grid.removeItem(it)
             it.widget().destroy()
         button = uvcdatCommons.CustomFrame("%i" % icolor, 30, 25, signal="clickedVCSColorButton")
         stsh = button.styleSheet()
-        stsh += " background-color : rgb(%i,%i,%i)" % (r, g, b)
+        stsh += " background-color : rgba(%i,%i,%i,%i)" % (r, g, b, a)
         button.setStyleSheet(stsh)
         button.vcscolor = (i, j, icolor)
         self.connect(button, QtCore.SIGNAL("clickedVCSColorButton"),
