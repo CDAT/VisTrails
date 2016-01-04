@@ -67,7 +67,6 @@ class VCSGMs():
             if a.find(".")>-1:
                 sp=a.split(".")
                 self.originalValues[a] = getattr(getattr(self.gm,sp[0]),sp[1])
-                
             else:
                 self.originalValues[a] = getattr(self.gm,a)
                 
@@ -257,10 +256,22 @@ class VCSGMs():
             gm.ymtics2 = eval(str(self.ymtics2.text()))
         except:
             gm.ymtics2 = str(self.ymtics2.text())
-        gm.datawc_x1 = eval(str(self.datawc_x1.text()))
-        gm.datawc_x2 = eval(str(self.datawc_x2.text()))
-        gm.datawc_y1 = eval(str(self.datawc_y1.text()))
-        gm.datawc_y2 = eval(str(self.datawc_y2.text()))
+        try:
+            gm.datawc_x1 = eval(str(self.datawc_x1.text()))
+        except SyntaxError:
+            gm.datawc_x1 = self.originalValues["datawc_x1"]
+        try:
+            gm.datawc_x2 = eval(str(self.datawc_x2.text()))
+        except SyntaxError:
+            gm.datawc_x2 = self.originalValues["datawc_x2"]
+        try:
+            gm.datawc_y1 = eval(str(self.datawc_y1.text()))
+        except SyntaxError:
+            gm.datawc_y1 = self.originalValues["datawc_y1"]
+        try:
+            gm.datawc_y2 = eval(str(self.datawc_y2.text()))
+        except SyntaxError:
+            gm.datawc_y2 = self.originalValues["datawc_y2"]
         ## gm.datawc_time_units = 
         ## gm.datawc_time_calendar =
         if "xaxisconvert" in self.gmAttributes:
@@ -417,13 +428,31 @@ class VCSGMRanges:
             gm = self.gm
         if hasattr(gm, "fillareastyle"):
             gm.fillareastyle = str(self.patternTypeButtonGroup.buttonGroup.button(self.patternTypeButtonGroup.buttonGroup.checkedId()).text())
-            gm.fillareacolors = eval(str(self.colorsLineEdit.text()))
-            gm.fillareaindices = eval(str(self.patternsLineEdit.text()))
+            try:
+                gm.fillareacolors = eval(str(self.colorsLineEdit.text()))
+            except SyntaxError:
+                gm.fillareacolors = self.originalValues["fillareacolors"]
+            try:
+                gm.fillareaindices = eval(str(self.patternsLineEdit.text()))
+            except SyntaxError:
+                gm.fillareaindices = self.originalValues["fillareaindices"]
         else:
-            gm.linecolors = eval(str(self.colorsLineEdit.text()))
-            gm.line = eval(str(self.patternsLineEdit.text()))
-            gm.linewidths = eval(str(self.lineWidthsEdit.text()))
-        gm.levels = eval(str(self.rangeLineEdit.text()))
+            try:
+                gm.linecolors = eval(str(self.colorsLineEdit.text()))
+            except SyntaxError:
+                gm.linecolors = self.originalValues["linecolors"]
+            try:
+                gm.line = eval(str(self.patternsLineEdit.text()))
+            except SyntaxError:
+                gm.line = self.originalValues["line"]
+            try:
+                gm.linewidths = eval(str(self.lineWidthsEdit.text()))
+            except SyntaxError:
+                gm.linewidths = self.originalValues["linewidths"]
+        try:
+            gm.levels = eval(str(self.rangeLineEdit.text()))
+        except SyntaxError:
+            gm.levels = self.originalValues["levels"]
 
     def initRangeValues(self, gm=None):
         if gm is None:
@@ -1551,8 +1580,14 @@ class QIsofillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         setGMLegend(gm, self.legendLineEdit)
         gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
         gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
-        gm.missing = eval(str(self.missingLineEdit.text()))
-        gm.levels = eval(str(self.rangeLineEdit.text()))
+        try:
+            gm.missing = eval(str(self.missingLineEdit.text()))
+        except SyntaxError:
+            gm.missing = self.originalValues["missing"]
+        try:
+            gm.levels = eval(str(self.rangeLineEdit.text()))
+        except SyntaxError:
+            gm.levels = self.originalValues["levels"]
         self.applyRangeSettings(gm)
 
 class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
@@ -1647,15 +1682,39 @@ class QIsolineEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         self.applyRangeSettings(gm)
         # Applies changes to text
         gm.label = str(self.textLabelsOnOff.buttonGroup.button(self.textLabelsOnOff.buttonGroup.checkedId()).text()).lower()[0]
-        gm.text = eval(str(self.textFonts.text()))
-        gm.textcolors = eval(str(self.textColors.text()))
-        gm.labelskipdistance = eval(str(self.textSpacing.text()))
+        try:
+            gm.text = eval(str(self.textFonts.text()))
+        except SyntaxError:
+            gm.text = self.originalValues["text"]
+        try:
+            gm.textcolors = eval(str(self.textColors.text()))
+        except SyntaxError:
+            gm.textcolors = self.originalValues["textcolors"]
+        try:
+            gm.labelskipdistance = eval(str(self.textSpacing.text()))
+        except SyntaxError:
+            gm.labelskipdistance = self.originalValues["labelskipdistance"]
         # Applies changes to streamlines
-        gm.clockwise = eval(str(self.streamDirection.text()))
-        gm.scale = eval(str(self.streamScale.text()))
-        gm.angle = eval(str(self.streamAngle.text()))
-        gm.spacing = eval(str(self.streamSpacing.text()))
-        gm.level = eval(str(self.rangeLineEdit.text()))
+        try:
+            gm.clockwise = eval(str(self.streamDirection.text()))
+        except SyntaxError:
+            gm.clockwise = self.originalValues["clockwise"]
+        try:
+            gm.scale = eval(str(self.streamScale.text()))
+        except SyntaxError:
+            gm.scale = self.originalValues["scale"]
+        try:
+            gm.angle = eval(str(self.streamAngle.text()))
+        except SyntaxError:
+            gm.angle = self.originalValues["angle"]
+        try:
+            gm.spacing = eval(str(self.streamSpacing.text()))
+        except SyntaxError:
+            gm.spacing = self.originalValues["spacing"]
+        try:
+            gm.level = eval(str(self.rangeLineEdit.text()))
+        except SyntaxError:
+            gm.level = self.originalValues["level"]
 
         
 class QContourEditor():
@@ -2033,19 +2092,42 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
         if gm:
             self.applyCommonChanges(gm)
             gm.boxfill_type = str(self.boxfillTypeButtonGroup.buttonGroup.button(self.boxfillTypeButtonGroup.buttonGroup.checkedId()).text())
-            gm.level_1 = eval(str(self.level1LineEdit.text()))
-            gm.level_2 = eval(str(self.level2LineEdit.text()))
-            gm.color_1 = eval(str(self.color1LineEdit.text()))
-            gm.color_2 = eval(str(self.color2LineEdit.text()))
+            
+            try:
+                gm.level_1 = eval(str(self.level1LineEdit.text()))
+            except SyntaxError:
+                gm.level_1 = self.originalValues["level_1"]
+            try:
+                gm.level_2 = eval(str(self.level2LineEdit.text()))
+            except SyntaxError:
+                gm.level_2 = self.originalValues["level_2"]
+            try:
+                gm.color_1 = eval(str(self.color1LineEdit.text()))
+            except SyntaxError:
+                gm.color_1 = self.originalValues["color_1"]
+            try:
+                gm.color_2 = eval(str(self.color2LineEdit.text()))
+            except SyntaxError:
+                gm.color_2 = self.originalValues["color_2"]
+
             setGMLegend(gm, self.legendLineEdit)
             gm.ext_1 = str(self.ext1ButtonGroup.buttonGroup.button(self.ext1ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
             gm.ext_2 = str(self.ext2ButtonGroup.buttonGroup.button(self.ext2ButtonGroup.buttonGroup.checkedId()).text()).lower()[0]
-            gm.missing = eval(str(self.missingLineEdit.text()))
-            gm.levels = eval(str(self.rangeLineEdit.text()))
+
+            try:
+                gm.missing = eval(str(self.missingLineEdit.text()))
+            except SyntaxError:
+                gm.missing = self.originalValues["missing"]
+
+            try:
+                gm.levels = eval(str(self.rangeLineEdit.text()))
+            except SyntaxError:
+                gm.levels = self.originalValues["levels"]
+
             self.applyRangeSettings(gm)
         ## Need command to plot here?
         ## self.root.tabView.widget(1).plot()
-        
+
 
     def clickedBoxType(self,*args):
 
@@ -2112,4 +2194,3 @@ class QBoxfillEditor(QtGui.QScrollArea,VCSGMs,VCSGMRanges):
             return convertType(lineEdit.text())
         except:
             return default
-        
