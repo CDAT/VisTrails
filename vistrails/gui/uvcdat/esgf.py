@@ -185,9 +185,9 @@ class QEsgfCredentials(QtGui.QDialog):
         try:
             f=open(os.path.join(os.environ["HOME"],".dodsrc"))
             for l in f.xreadlines():
-                if l[:20]=="CURL.SSL.CERTIFICATE":
+                if l[:20]=="HTTP.SSL.CERTIFICATE":
                     self.cert_file == l.split("=")[1].strip()
-                if l[:12]=="CURL.SSL.KEY":
+                if l[:12]=="HTTP.SSL.KEY":
                     self.key_file == l.split("=")[1].strip()
             f.close()
         except:
@@ -205,17 +205,16 @@ class QEsgfCredentials(QtGui.QDialog):
                 dodsrc_text+="DEFAULT_EXPIRES=86400\n"
                 dodsrc_text+="ALWAYS_VALIDATE=0\n"
                 dodsrc_text+="DEFLATE=0\n"
-                dodsrc_text+="VALIDATE_SSL=1\n"
-                dodsrc_text+="CURL.COOKIEJAR=.dods_cookies\n"
-                dodsrc_text+="CURL.SSL.VALIDATE=1\n"
-                dodsrc_text+="CURL.SSL.CERTIFICATE=%s\n"%dodsrc_curl_ssl_certificate
-                dodsrc_text+="CURL.SSL.KEY=%s\n"%dodsrc_curl_ssl_key
-                dodsrc_text+="CURL.SSL.CAPATH=%s\n"%dodsrc_curl_ssl_capath
-                
+                dodsrc_text+="VALIDATE_SSL=0\n"
+                dodsrc_text+="HTTP.COOKIEJAR=.dods_cookies\n"
+                dodsrc_text+="HTTP.SSL.VALIDATE=0\n"
+                dodsrc_text+="HTTP.SSL.CERTIFICATE=%s\n"%dodsrc_curl_ssl_certificate
+                dodsrc_text+="HTTP.SSL.KEY=%s\n"%dodsrc_curl_ssl_key
+                dodsrc_text+="HTTP.SSL.CAPATH=%s\n"%dodsrc_curl_ssl_capath
                 # Commenting out this file format breaks newer NetCDF4 interface
-                # f=open(os.path.join(os.environ["HOME"],".dodsrc"),'w')
-                # f.write(dodsrc_text)
-                # f.close()
+                f=open(os.path.join(os.environ["HOME"],".dodsrc"),'w')
+                f.write(dodsrc_text)
+                f.close()
             except Exception, err:
                 m = QtGui.QMessageBox()
                 m.setText(str(err))
