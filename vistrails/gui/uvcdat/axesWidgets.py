@@ -1226,24 +1226,15 @@ class QAxisList(QtGui.QWidget):
         order = list(self.axisOrder)
         if squeeze:
             order = []
-            removed_axes = []
             for axis_ind in self.axisOrder:
                 axis = self.axisList[axis_ind]
                 axis_widget = self.axisWidgets[axis_ind]
                 indices = axis_widget.getIndexes()
                 if len(axis) == 1 or indices[-1] - indices[0] == 0:
-                    removed_axes.append(axis_ind)
                     continue
-                else:
-                    order.append(axis_ind)
-
-            adjusted_order = []
-            for o in order:
-                for removed in removed_axes:
-                    if o > removed:
-                        o -= 1
-                adjusted_order.append(o)
-            order = adjusted_order
+                order.append(axis_ind)
+            ordered = sorted(order)
+            order = [ordered.index(i) for i in order]
         return ''.join(map(str, order))
 
     def setAxesNames(self):
