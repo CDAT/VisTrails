@@ -43,7 +43,7 @@ original_gm_attributes = {}
 def getNonEmptyList( elem ):
     if isinstance( elem, ( list, tuple ) ): return elem if ( len( elem ) > 0 ) else None
     return [ elem ] if elem else None
-    
+
 def expand_port_specs(port_specs, pkg_identifier=None):
     if pkg_identifier is None:
         pkg_identifier = identifier
@@ -58,7 +58,7 @@ def expand_port_specs(port_specs, pkg_identifier=None):
             out_specs.append((port_spec[0],
                               reg.expand_port_spec_string(port_spec[1],
                                                           pkg_identifier),
-                              port_spec[2])) 
+                              port_spec[2]))
     return out_specs
 
 class QtAnimationStepper( QtCore.QObject ):
@@ -66,12 +66,12 @@ class QtAnimationStepper( QtCore.QObject ):
     def __init__( self, target ):
         QtCore.QObject.__init__( self )
         self.target = target
-    
+
     def startAnimation(self):
         self.target.notifyStartAnimation()
         self.target.animating = True
         self.stepAnimation()
-        
+
     def stepAnimation(self):
         if self.target.animating:
             self.target.stepAnimation()
@@ -81,41 +81,41 @@ class QtAnimationStepper( QtCore.QObject ):
     def stopAnimation(self):
         self.target.animating = False
         self.target.notifyStopAnimation()
-        
+
 class StandardGrid():
     cache={}
 
     @classmethod
-    def clear_cache(cls): 
-        cls.cache={}  
-         
+    def clear_cache(cls):
+        cls.cache={}
+
     @classmethod
     def regrid( cls, var ):
         from api import get_current_project_controller
-        from packages.serverside_data_processing.standard_grid import standard_regrid 
-        
+        from packages.serverside_data_processing.standard_grid import standard_regrid
+
         proj_controller = get_current_project_controller()
-        cdms_var = proj_controller.defined_variables[ var.id ]  
+        cdms_var = proj_controller.defined_variables[ var.id ]
 #        cell_info = [ str(val) for val in proj_controller.get_current_cell_info() ]
         file_path = cdms_var.filename
         cache_id = ':'.join( [ file_path, var.id ] )
         cached_std_var = cls.cache.get( cache_id, None )
-        if id(cached_std_var) <> id(None): return cached_std_var 
+        if id(cached_std_var) <> id(None): return cached_std_var
 
         file = None
         if file_path:
             file = CdmsCache.d.get( file_path, None )
             if not file:
                 file = CdmsCache.d[file_path] = cdms2.open( file_path )
-    
+
         if not file: return var
-               
-        regrid_var = standard_regrid( file, var, cache=cls.cache ) 
-        
+
+        regrid_var = standard_regrid( file, var, cache=cls.cache )
+
         cls.cache[ cache_id ] = regrid_var
         return regrid_var
 
-    
+
 class CDMSVariable(Variable):
     _input_ports = expand_port_specs([("axes", "basic:String"),
                                       ("axesOperations", "basic:String"),
@@ -137,7 +137,7 @@ class CDMSVariable(Variable):
         self.axisAttributes = axisAttributes
         self.timeBounds = timeBounds
         self.var = None
-        
+
         if varNameInFile is None:
             self.varname = name
         else:
@@ -160,7 +160,7 @@ class CDMSVariable(Variable):
         cp.axisAttributes = self.axisAttributes
         cp.timeBounds = self.timeBounds
         return cp
-        
+
     def to_module(self, controller):
         module = Variable.to_module(self, controller, identifier)
         functions = []
@@ -179,8 +179,8 @@ class CDMSVariable(Variable):
         functions = controller.create_functions(module, functions)
         for f in functions:
             module.add_function(f)
-        return module        
-    
+        return module
+
     def to_python(self):
 #        from packages.vtDV3D.vtUtilities import memoryLogger
         if self.source:
@@ -201,26 +201,26 @@ class CDMSVariable(Variable):
             else:
                 #print "Loading file6 %s" % file_path
                 cdmsfile = CdmsCache.d[file_path] = cdms2.open( file_path )
-        
+
         varName = self.name
         if self.varNameInFile is not None:
             varName = self.varNameInFile
-            
+
         # get file var to see if it is axis or not
         fvar = cdmsfile[varName]
         if isinstance(fvar, cdms2.axis.FileAxis):
             var = cdms2.MV2.array(fvar)
-        
-#        memoryLogger.log("start cdms variable read") 
+
+#        memoryLogger.log("start cdms variable read")
 
         if self.axes is not None:
             #convert string into kwargs
             #example axis string:
             #lon=(0.0, 358.5),lev=(3.54, 992.55),time=('301-1-1 0:0:0.0', '301-2-1 0:0:0.0'),lat=(-88.92, 88.92),squeeze=1,
-            
+
             def getKWArgs(**kwargs):
                 return kwargs
-            
+
             try:
                 kwargs = eval('getKWArgs(%s)' % self.axes)
             except Exception, e:
@@ -238,12 +238,12 @@ class CDMSVariable(Variable):
                 var = cdmsfile.__call__(varName, **kwargs)
         elif not isinstance(fvar, cdms2.axis.FileAxis):
             var = cdmsfile.__call__(varName)
-            
-#        memoryLogger.log("finish cdms variable read")    
-            
+
+#        memoryLogger.log("finish cdms variable read")
+
         if self.axesOperations is not None:
             var = CDMSVariable.applyAxesOperations(var, self.axesOperations)
-            
+
         #make sure that var.id is the same as self.name
         var.id = self.name
         if self.attributes is not None:
@@ -252,8 +252,8 @@ class CDMSVariable(Variable):
                     attValue=eval(str(self.attributes[attr]).strip())
                 except:
                     attValue=str(self.attributes[attr]).strip()
-                setattr(var,attr, attValue) 
-                       
+                setattr(var,attr, attValue)
+
         if self.axisAttributes is not None:
             for axName in self.axisAttributes:
                 for attr in self.axisAttributes[axName]:
@@ -263,12 +263,12 @@ class CDMSVariable(Variable):
                         attValue=str(self.axisAttributes[axName][attr]).strip()
                     ax = var.getAxis(var.getAxisIndex(axName))
                     setattr(ax,attr, attValue)
-                    
+
         if self.timeBounds is not None:
             var = self.applySetTimeBounds(var, self.timeBounds)
-                   
+
         return var
-    
+
     def to_python_script(self, include_imports=False, ident=""):
         text = ''
         if include_imports:
@@ -279,7 +279,7 @@ class CDMSVariable(Variable):
             text += ident + "cdmsfile = cdms2.open('%s')\n" % os.path.expanduser(self.url)
         elif self.file:
             text += ident + "cdmsfile = cdms2.open('%s')\n" % os.path.expanduser(self.file)
-            
+
         if self.varNameInFile is not None:
             text += ident + "%s = cdmsfile('%s')\n" % (self.name, self.varNameInFile)
         else:
@@ -290,7 +290,7 @@ class CDMSVariable(Variable):
             text += ident + "axesOperations = eval(\"%s\")\n"%self.axesOperations
             text += ident + "for axis in list(axesOperations):\n"
             text += ident + "    if axesOperations[axis] == 'sum':\n"
-            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal', action='sum')\n"% (self.name, self.name) 
+            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal', action='sum')\n"% (self.name, self.name)
             text += ident + "    elif axesOperations[axis] == 'avg':\n"
             text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal')\n"% (self.name, self.name)
             text += ident + "    elif axesOperations[axis] == 'wgt':\n"
@@ -299,13 +299,13 @@ class CDMSVariable(Variable):
             text += ident + "        %s = genutil.statistics.geometricmean(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
             text += ident + "    elif axesOperations[axis] == 'std':\n"
             text += ident + "        %s = genutil.statistics.std(%s, axis='(%%s)'%%axis)\n"% (self.name, self.name)
-       
+
         if self.attributes is not None:
             text += "\n" + ident + "#modifying variable attributes\n"
             for attr in self.attributes:
                 text += ident + "%s.%s = %s\n" % (self.name, attr,
                                                   repr(self.attributes[attr]))
-                
+
         if self.axisAttributes is not None:
             text += "\n" + ident + "#modifying axis attributes\n"
             for axName in self.axisAttributes:
@@ -313,7 +313,7 @@ class CDMSVariable(Variable):
                 for attr in self.axisAttributes[axName]:
                     text += ident + "ax.%s = %s\n" % ( attr,
                                         repr(self.axisAttributes[axName][attr]))
-        
+
         if self.timeBounds is not None:
             data = self.timeBounds.split(":")
             if len(data) == 2:
@@ -336,9 +336,9 @@ class CDMSVariable(Variable):
                 text += ident + "cdutil.times.setTimeBoundsDaily(%s,24)\n"%self.name
             elif timeBounds == "Set Bounds For X-Daily Data":
                 text += ident + "cdutil.times.setTimeBoundsDaily(%s,%g)\n"%(self.name,val)
-                
+
         return text
-    
+
     @staticmethod
     def from_module(module):
         from pipeline_helper import CDMSPipelineHelper
@@ -353,7 +353,7 @@ class CDMSVariable(Variable):
             var.attributes = ast.literal_eval(attrs)
         else:
             var.attributes = attrs
-            
+
         axattrs = CDMSPipelineHelper.get_value_from_function(module, 'axisAttributes')
         if axattrs is not None:
             var.axisAttributes = ast.literal_eval(axattrs)
@@ -362,7 +362,7 @@ class CDMSVariable(Variable):
         var.timeBounds = CDMSPipelineHelper.get_value_from_function(module, 'setTimeBounds')
         var.__class__ = CDMSVariable
         return var
-        
+
     def compute(self):
 #        from packages.vtDV3D.vtUtilities import memoryLogger
 #        memoryLogger.log("start CDMSVariable.compute")
@@ -432,11 +432,11 @@ class CDMSVariableOperation(Module):
                                       ("attributes", "basic:Dictionary"),
                                       ("axisAttributes", "basic:Dictionary"),
                                       ("timeBounds", "basic:String")])
-    
+
     _output_ports = expand_port_specs([("output_var", "CDMSVariable")])
-    
-    def __init__(self, varname=None, python_command=None, axes=None, 
-                 axesOperations=None, attributes=None, axisAttributes=None, 
+
+    def __init__(self, varname=None, python_command=None, axes=None,
+                 axesOperations=None, attributes=None, axisAttributes=None,
                  timeBounds=None ):
         Module.__init__(self)
         self.varname = varname
@@ -469,8 +469,8 @@ class CDMSVariableOperation(Module):
         functions = controller.create_functions(module, functions)
         for f in functions:
             module.add_function(f)
-        return module        
-    
+        return module
+
     @staticmethod
     def from_module(module):
         from pipeline_helper import CDMSPipelineHelper
@@ -484,7 +484,7 @@ class CDMSVariableOperation(Module):
             op.attributes = ast.literal_eval(attrs)
         else:
             op.attributes = attrs
-            
+
         axattrs = CDMSPipelineHelper.get_value_from_function(module, 'axisAttributes')
         if axattrs is not None:
             op.axisAttributes = ast.literal_eval(axattrs)
@@ -492,7 +492,7 @@ class CDMSVariableOperation(Module):
             op.axisAttributes = axattrs
         op.timeBounds = CDMSPipelineHelper.get_value_from_function(module, 'setTimeBounds')
         return op
-    
+
     def get_port_values(self):
         if not self.hasInputFromPort("varname"):
             raise ModuleError(self, "'varname' is mandatory.")
@@ -505,8 +505,8 @@ class CDMSVariableOperation(Module):
         self.attributes = self.forceGetInputFromPort("attributes")
         self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
         self.timeBounds = self.forceGetInputFromPort("timeBounds")
-        
-    @staticmethod              
+
+    @staticmethod
     def find_variable_in_command(v, command, startpos=0):
         """find_variable(v:str,command:str) -> int
         find the first occurrence of v in command, respecting identifier
@@ -530,11 +530,11 @@ class CDMSVariableOperation(Module):
         if before >= 0:
             if command[before] in bidentchars:
                 ok_before = False
-        
+
         if after < len(command):
             if command[after] in aidentchars:
                 ok_after = False
-        
+
         if ok_after and ok_before:
             return i
         else:
@@ -542,7 +542,7 @@ class CDMSVariableOperation(Module):
             while spos<len(command)-1 and command[spos] in aidentchars:
                 spos+=1
             return CDMSVariableOperation.find_variable_in_command(v,command,spos)
-        
+
     @staticmethod
     def replace_variable_in_command(command, oldv, newv):
         newcommand=""
@@ -554,14 +554,14 @@ class CDMSVariableOperation(Module):
             changedcommand = changedcommand[i+len(oldv):]
             i = CDMSVariableOperation.find_variable_in_command(oldv,changedcommand)
         newcommand += changedcommand
-        return newcommand  
-    
+        return newcommand
+
     def compute(self):
         pass
-    
+
     def set_variables(self, vars):
         pass
-    
+
     def applyOperations(self, var):
         if self.axes is not None:
             try:
@@ -571,15 +571,15 @@ class CDMSVariableOperation(Module):
                                       str(e))
         if self.axesOperations is not None:
             var = CDMSVariable.applyAxesOperations(var, self.axesOperations)
-            
+
         if self.attributes is not None:
             for attr in self.attributes:
                 try:
                     attValue=eval(str(self.attributes[attr]).strip())
                 except:
                     attValue=str(self.attributes[attr]).strip()
-                setattr(var,attr, attValue) 
-                       
+                setattr(var,attr, attValue)
+
         if self.axisAttributes is not None:
             for axName in self.axisAttributes:
                 for attr in self.axisAttributes[axName]:
@@ -589,11 +589,11 @@ class CDMSVariableOperation(Module):
                         attValue=str(self.axisAttributes[axName][attr]).strip()
                     ax = var.getAxis(var.getAxisIndex(axName))
                     setattr(ax,attr, attValue)
-                    
+
         if self.timeBounds is not None:
             var = CDMSVariable.applySetTimeBounds(var, self.timeBounds)
         return var
-    
+
     def to_python_script(self, ident=""):
         text = ''
         if self.axes is not None:
@@ -602,7 +602,7 @@ class CDMSVariableOperation(Module):
             text += ident + "axesOperations = eval(\"%s\")\n"%self.axesOperations
             text += ident + "for axis in list(axesOperations):\n"
             text += ident + "    if axesOperations[axis] == 'sum':\n"
-            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal', action='sum')\n"% (self.varname, self.varname) 
+            text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal', action='sum')\n"% (self.varname, self.varname)
             text += ident + "    elif axesOperations[axis] == 'avg':\n"
             text += ident + "        %s = cdutil.averager(%s, axis='(%%s)'%%axis, weight='equal')\n"% (self.varname, self.varname)
             text += ident + "    elif axesOperations[axis] == 'wgt':\n"
@@ -611,7 +611,7 @@ class CDMSVariableOperation(Module):
             text += ident + "        %s = genutil.statistics.geometricmean(%s, axis='(%%s)'%%axis)\n"% (self.varname, self.varname)
             text += ident + "    elif axesOperations[axis] == 'std':\n"
             text += ident + "        %s = genutil.statistics.std(%s, axis='(%%s)'%%axis)\n"% (self.varname, self.varname)
-       
+
         if self.attributes is not None:
             text += "\n" + ident + "#modifying variable attributes\n"
             if 'id' not in self.attributes:
@@ -619,7 +619,7 @@ class CDMSVariableOperation(Module):
             for attr in self.attributes:
                 text += ident + "%s.%s = %s\n" % (self.varname, attr,
                                                   repr(self.attributes[attr]))
-                
+
         if self.axisAttributes is not None:
             text += "\n" + ident + "#modifying axis attributes\n"
             for axName in self.axisAttributes:
@@ -627,7 +627,7 @@ class CDMSVariableOperation(Module):
                 for attr in self.axisAttributes[axName]:
                     text += ident + "ax.%s = %s\n" % ( attr,
                                         repr(self.axisAttributes[axName][attr]))
-        
+
         if self.timeBounds is not None:
             data = self.timeBounds.split(":")
             if len(data) == 2:
@@ -650,24 +650,24 @@ class CDMSVariableOperation(Module):
                 text += ident + "cdutil.times.setTimeBoundsDaily(%s,24)\n"%self.varname
             elif timeBounds == "Set Bounds For X-Daily Data":
                 text += ident + "cdutil.times.setTimeBoundsDaily(%s,%g)\n"%(self.varname,val)
-                
+
         return text
-    
-        
+
+
 class CDMSUnaryVariableOperation(CDMSVariableOperation):
     _input_ports = expand_port_specs([("input_var", "CDMSVariable")
                                       ])
-    def __init__(self, varname=None, python_command=None, axes=None, 
-                 axesOperations=None, attributes=None, axisAttributes=None, 
+    def __init__(self, varname=None, python_command=None, axes=None,
+                 axesOperations=None, attributes=None, axisAttributes=None,
                  timeBounds=None ):
-        CDMSVariableOperation.__init__(self, varname, python_command, axes, 
-                                       axesOperations, attributes, axisAttributes, 
+        CDMSVariableOperation.__init__(self, varname, python_command, axes,
+                                       axesOperations, attributes, axisAttributes,
                                        timeBounds)
         self.var = None
-        
+
     def to_python(self):
         self.python_command = self.replace_variable_in_command(self.python_command,
-                                                               self.var.name, 
+                                                               self.var.name,
                                                                "self.var.var")
 
         res = None
@@ -683,78 +683,78 @@ class CDMSUnaryVariableOperation(CDMSVariableOperation):
                     var = r
                     break
         else:
-            var = res 
-        
+            var = res
+
         if isinstance(var, cdms2.tvariable.TransientVariable):
             var.id = self.varname
             var = self.applyOperations(var)
         return var
-    
+
     def to_python_script(self, ident=""):
         text = ident + "%s = %s\n"%(self.varname,
                                     self.python_command)
         text += CDMSVariableOperation.to_python_script(self, ident)
         return text
-    
+
     def compute(self):
         if not self.hasInputFromPort('input_var'):
             raise ModuleError(self, "'input_var' is mandatory.")
-        
+
         self.var = self.getInputFromPort('input_var')
         self.get_port_values()
         self.outvar = CDMSVariable(filename=None,name=self.varname)
         self.outvar.var = self.to_python()
         self.setResult("output_var", self.outvar)
-    
+
     def set_variables(self, vars):
         self.var = vars[0]
-        
+
     @staticmethod
     def from_module(module):
         op = CDMSVariableOperation.from_module(module)
         op.__class__ = CDMSUnaryVariableOperation
         op.var = None
         return op
-        
+
     def to_module(self, controller):
-        module = CDMSVariableOperation.to_module(self, controller)   
-        return module        
-            
+        module = CDMSVariableOperation.to_module(self, controller)
+        return module
+
 class CDMSBinaryVariableOperation(CDMSVariableOperation):
     _input_ports = expand_port_specs([("input_var1", "CDMSVariable"),
                                       ("input_var2", "CDMSVariable")
                                       ])
-    def __init__(self, varname=None, python_command=None, axes=None, 
-                 axesOperations=None, attributes=None, axisAttributes=None, 
+    def __init__(self, varname=None, python_command=None, axes=None,
+                 axesOperations=None, attributes=None, axisAttributes=None,
                  timeBounds=None ):
-        CDMSVariableOperation.__init__(self, varname, python_command, axes, 
-                                       axesOperations, attributes, axisAttributes, 
+        CDMSVariableOperation.__init__(self, varname, python_command, axes,
+                                       axesOperations, attributes, axisAttributes,
                                        timeBounds)
         self.var1 = None
         self.var2 = None
-    
+
     def compute(self):
         if not self.hasInputFromPort('input_var1'):
             raise ModuleError(self, "'input_var1' is mandatory.")
-        
+
         if not self.hasInputFromPort('input_var2'):
             raise ModuleError(self, "'input_var2' is mandatory.")
-        
+
         self.var1 = self.getInputFromPort('input_var1')
         self.var2 = self.getInputFromPort('input_var2')
         self.get_port_values()
         self.outvar = CDMSVariable(filename=None,name=self.varname)
         self.outvar.var = self.to_python()
         self.setResult("output_var", self.outvar)
-        
+
     def set_variables(self, vars):
         self.var1 = vars[0]
         self.var2 = vars[1]
-        
+
     def to_python(self):
         replace_map = {self.var1.name: "self.var1.var",
                        self.var2.name: "self.var2.var"}
-        
+
         vars = [self.var1,self.var2]
         for v in vars:
             self.python_command = self.replace_variable_in_command(self.python_command,
@@ -768,18 +768,18 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
                     break
         else:
             var = res
-        
+
         if isinstance(var, cdms2.tvariable.TransientVariable):
             var.id = self.varname
             var = self.applyOperations(var)
         return var
-        
+
     def to_python_script(self, ident=""):
         text = ident + "%s = %s\n"%(self.varname,
                                     self.python_command)
         text += CDMSVariableOperation.to_python_script(self, ident)
         return text
-    
+
     @staticmethod
     def from_module(module):
         op = CDMSVariableOperation.from_module(module)
@@ -787,26 +787,26 @@ class CDMSBinaryVariableOperation(CDMSVariableOperation):
         op.var1 = None
         op.var2 = None
         return op
-    
+
     def to_module(self, controller, pkg_identifier=None):
         module = CDMSVariableOperation.to_module(self, controller)
         return module
-            
+
 class CDMSGrowerOperation(CDMSBinaryVariableOperation):
-    
+
     _input_ports = expand_port_specs([("varname2", "basic:String")])
-    
+
     _output_ports = expand_port_specs([("output_var", "CDMSVariable"),
                                       ("output_var2", "CDMSVariable")
                                       ])
-    
+
     def compute(self):
         if not self.hasInputFromPort('input_var1'):
             raise ModuleError(self, "'input_var1' is mandatory.")
-        
+
         if not self.hasInputFromPort('input_var2'):
             raise ModuleError(self, "'input_var2' is mandatory.")
-        
+
         self.var1 = self.getInputFromPort('input_var1')
         self.var2 = self.getInputFromPort('input_var2')
         self.get_port_values()
@@ -816,7 +816,7 @@ class CDMSGrowerOperation(CDMSBinaryVariableOperation):
         self.outvar2.var = self.result2
         self.setResult("output_var", self.outvar)
         self.setResult("output_var2", self.outvar2)
-    
+
     def get_port_values(self):
         if not self.hasInputFromPort("varname"):
             raise ModuleError(self, "'varname' is mandatory.")
@@ -832,11 +832,11 @@ class CDMSGrowerOperation(CDMSBinaryVariableOperation):
         self.attributes = self.forceGetInputFromPort("attributes")
         self.axisAttributes = self.forceGetInputFromPort("axisAttributes")
         self.timeBounds = self.forceGetInputFromPort("timeBounds")
-        
+
     def to_python(self):
         replace_map = {self.var1.name: "self.var1.var",
                        self.var2.name: "self.var2.var"}
-        
+
         vars = [self.var1,self.var2]
         for v in vars:
             self.python_command = self.replace_variable_in_command(self.python_command,
@@ -847,17 +847,17 @@ class CDMSGrowerOperation(CDMSBinaryVariableOperation):
             raise ModuleError("Expecting tuple output from grower, got %s instead." % str(type(res)))
         elif len(res) != 2:
             raise ModuleError("Expecting 2 outputs from grower, got %s instead." % str(len(res)))
-        
+
         var = res[0]
         var.id = self.varname
         var = self.applyOperations(var)
-        
+
         self.result2 = res[1]
         self.result2.id = self.varname2
         self.result2 = self.applyOperations(self.result2)
-        
+
         return var
-    
+
     @staticmethod
     def from_module(module):
         op = CDMSVariableOperation.from_module(module)
@@ -874,19 +874,19 @@ class CDMSGrowerOperation(CDMSBinaryVariableOperation):
         functions = controller.create_functions(module, functions)
         for f in functions:
             module.add_function(f)
-        return module        
-        
+        return module
+
 class CDMSNaryVariableOperation(CDMSVariableOperation):
     _input_ports = expand_port_specs([("input_vars", "CDMSVariable"),
                                       ])
-    def __init__(self, varname=None, python_command=None, axes=None, 
-                 axesOperations=None, attributes=None, axisAttributes=None, 
+    def __init__(self, varname=None, python_command=None, axes=None,
+                 axesOperations=None, attributes=None, axisAttributes=None,
                  timeBounds=None ):
-        CDMSVariableOperation.__init__(self, varname, python_command, axes, 
-                                       axesOperations, attributes, axisAttributes, 
+        CDMSVariableOperation.__init__(self, varname, python_command, axes,
+                                       axesOperations, attributes, axisAttributes,
                                        timeBounds)
         self.vars = None
-        
+
     def compute(self):
         if self.hasInputFromPort('input_vars'):
             self.vars = self.getInputListFromPort('input_vars')
@@ -896,20 +896,20 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
         self.outvar = CDMSVariable(filename=None,name=self.varname)
         self.outvar.var = self.to_python()
         self.setResult("output_var", self.outvar)
-        
+
     def set_variables(self, vars):
         for v in vars:
             self.vars.append(v)
-        
+
     def to_python(self):
         replace_map = {}
         for i in range(len(self.vars)):
             replace_map[self.vars[i].name] = "self.vars[%s].var"%i
-            
+
         for v in self.vars:
             self.python_command = self.replace_variable_in_command(self.python_command,
                                                                    v.name, replace_map[v.name])
- 
+
         res = eval(self.python_command)
         if type(res) == tuple:
             for r in res:
@@ -918,25 +918,25 @@ class CDMSNaryVariableOperation(CDMSVariableOperation):
                     break
         else:
             var = res
-        
+
         if isinstance(var, cdms2.tvariable.TransientVariable):
             var.id = self.varname
             var = self.applyOperations(var)
         return var
-        
+
     def to_python_script(self, ident=""):
         text = ident + "%s = %s\n"%(self.varname,
                                     self.python_command)
         text += CDMSVariableOperation.to_python_script(self, ident)
         return text
-    
+
     @staticmethod
     def from_module(module):
         op = CDMSVariableOperation.from_module(module)
         op.__class__ = CDMSNaryVariableOperation
         op.vars = []
         return op
-    
+
     def to_module(self, controller, pkg_identifier=None):
         module = CDMSVariableOperation.to_module(self, controller)
         return module
@@ -953,7 +953,7 @@ class CDMS3DPlot(CDMSBasePlot):
                                       ("template", "basic:String") ])
 
     gm_attributes = [ 'projection' ]
-    
+
     plot_type = None
 
     def __init__(self):
@@ -965,7 +965,7 @@ class CDMS3DPlot(CDMSBasePlot):
         self.plot_order = -1
         self.default_values = {}
         self.colorMap = None
-        
+
     def compute(self):
         import vcs
         from packages.uvcdat_cdms.pipeline_helper import CDMSPipelineHelper
@@ -974,46 +974,46 @@ class CDMS3DPlot(CDMSBasePlot):
         self.graphics_method_name =  self.forceGetInputFromPort("graphicsMethodName", "default")
         #self.set_default_values()
         self.template = self.forceGetInputFromPort("template", "starter")
-        
+
         if not self.hasInputFromPort('variable'):
             raise ModuleError(self, "'variable' is mandatory.")
         self.var = self.getInputFromPort('variable')
-        
+
         self.var2 = None
         if self.hasInputFromPort('variable2'):
             self.var2 = self.getInputFromPort('variable2')
 
         if self.hasInputFromPort("plotOrder"):
             self.plot_order = self.getInputFromPort("plotOrder")
-         
-        pipeline = self.moduleInfo[ 'pipeline' ]   
+
+        pipeline = self.moduleInfo[ 'pipeline' ]
         cell_coords = CDMSPipelineHelper.getCellLoc(pipeline)
-       
-#        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes ) 
-        gm = vcs.elements[ self.plot_type.lower() ][ self.graphics_method_name ] 
+
+#        print "CDMS3DPlot, gm_attributes: " , str( self.gm_attributes )
+        gm = vcs.elements[ self.plot_type.lower() ][ self.graphics_method_name ]
 #        canvas = get_canvas()
         for attr in self.gm_attributes:
             if self.hasInputFromPort(attr):
                 value = self.getInputFromPort(attr)
-                if isinstance( value, str ): 
+                if isinstance( value, str ):
                     try: value = ast.literal_eval( value )
                     except ValueError: pass
                 values = getNonEmptyList( value )
                 if values <> None:
 #                    print "Set PORT %s value: " % str(attr), str( values )
                     for value in values:
-                        if   value == "vcs.on":  
+                        if   value == "vcs.on":
                             gm.setParameter( attr, None, state=1 ) ; print " --> state = 1 "
-                        elif value == "vcs.off": 
-                            gm.setParameter( attr, None, state=0 ) ; print " --> state = 0 " 
+                        elif value == "vcs.off":
+                            gm.setParameter( attr, None, state=0 ) ; print " --> state = 0 "
                     setattr(self,attr,values)
                     gm.setParameter( attr, values, cell=cell_coords )
-            
+
 
     def to_module(self, controller):
         module = Plot.to_module(self, controller, identifier)
         functions = []
-        
+
         #only when graphics_method_name is different from default the user can
         #change the values of the properties
         if self.graphics_method_name != "default":
@@ -1022,12 +1022,12 @@ class CDMS3DPlot(CDMSBasePlot):
                     functions.append((attr, [str(getattr(self,attr))]))
         if self.template != "starter":
             functions.append(("template", [self.template]))
-            
+
         functions = controller.create_functions(module, functions)
         for f in functions:
             module.add_function(f)
-        return module        
-    
+        return module
+
     @classmethod
     def from_module(klass, module):
         from pipeline_helper import CDMSPipelineHelper
@@ -1049,18 +1049,18 @@ class CDMS3DPlot(CDMSBasePlot):
             for attr in self.gm_attributes:
                 setattr(self,attr,getattr(gm,attr))
                 self.default_values[attr] = getattr(gm,attr)
-    
+
     @staticmethod
     def get_canvas_graphics_method( plotType, gmName):
         method_name = "get"+str(plotType).lower()
         return getattr(get_canvas(),method_name)(gmName)
-    
-    @classmethod    
+
+    @classmethod
     def get_initial_values(klass, gmName):
         global original_gm_attributes
         return original_gm_attributes[klass.plot_type][gmName]
-    
-    @classmethod 
+
+    @classmethod
     def addPlotPorts(cls):
         from vcs.dv3d import Gfdv3d
         plist = Gfdv3d.getParameterList()
@@ -1070,15 +1070,15 @@ class CDMS3DPlot(CDMSBasePlot):
             cls.gm_attributes.append( pname )
             cls._input_ports.append( ( pname,  reg.expand_port_spec_string("basic:String",pkg_identifier), True ) )
 #            print " CDMS3DPlot.addPlotPort: ", pname
-            
-# CDMS3DPlot.addPlotPorts()  
-          
+
+# CDMS3DPlot.addPlotPorts()
+
 #        cgm = CDMSPlot.get_canvas_graphics_method(klass.plot_type, gmName)
 #        attribs = {}
 #        for attr in klass.gm_attributes:
 #            attribs[attr] = getattr(cgm,attr)
 #        return InstanceObject(**attribs)
-        
+
 class CDMSPlot(CDMSBasePlot):
     _input_ports = expand_port_specs([("variable", "CDMSVariable"),
                                       ("variable2", "CDMSVariable", True),
@@ -1106,9 +1106,9 @@ class CDMSPlot(CDMSBasePlot):
 
     gm_attributes = [ 'datawc_calendar', 'datawc_timeunits',
                       'datawc_x1', 'datawc_x2', 'datawc_y1', 'datawc_y2',
-                      'xticlabels1', 'xticlabels2', 'yticlabels1', 'yticlabels2', 
+                      'xticlabels1', 'xticlabels2', 'yticlabels1', 'yticlabels2',
                       'xmtics1', 'xmtics2', 'ymtics1', 'ymtics2', 'projection']
-    
+
     plot_type = None
 
     def __init__(self):
@@ -1119,39 +1119,39 @@ class CDMSPlot(CDMSBasePlot):
         self.plot_order = -1
         self.kwargs = {}
         self.default_values = {}
-        
+
     def compute(self):
         Plot.compute(self)
         self.graphics_method_name = \
                 self.forceGetInputFromPort("graphicsMethodName", "default")
         #self.set_default_values()
         self.template = self.forceGetInputFromPort("template", "starter")
-        
+
         if not self.hasInputFromPort('variable'):
             raise ModuleError(self, "'variable' is mandatory.")
         self.var = self.getInputFromPort('variable')
-        
+
         self.var2 = None
         if self.hasInputFromPort('variable2'):
             self.var2 = self.getInputFromPort('variable2')
 
         if self.hasInputFromPort("plotOrder"):
             self.plot_order = self.getInputFromPort("plotOrder")
-            
+
         for attr in self.gm_attributes:
             if self.hasInputFromPort(attr):
                 setattr(self,attr,self.getInputFromPort(attr))
                 if attr == 'Marker':
                     setattr(self, attr, pickle.loads(getattr(self, attr)))
-            
+
         self.colorMap = None
         if self.hasInputFromPort('colorMap'):
             self.colorMap = self.getInputFromPort('colorMap')
-            
+
         self.kwargs['continents'] = 1
         if self.hasInputFromPort('continents'):
             self.kwargs['continents'] = self.getInputFromPort('continents')
-            
+
         self.kwargs['ratio'] = 'autot'
         if self.hasInputFromPort('ratio'):
             self.kwargs['ratio'] = self.getInputFromPort('ratio')
@@ -1164,7 +1164,7 @@ class CDMSPlot(CDMSBasePlot):
     def to_module(self, controller):
         module = Plot.to_module(self, controller, identifier)
         functions = []
-        
+
         #only when graphics_method_name is different from default the user can
         #change the values of the properties
         if self.graphics_method_name != "default":
@@ -1176,12 +1176,12 @@ class CDMSPlot(CDMSBasePlot):
                     functions.append((attr, [str(getattr(self,attr))]))
         if self.template != "starter":
             functions.append(("template", [self.template]))
-            
+
         functions = controller.create_functions(module, functions)
         for f in functions:
             module.add_function(f)
-        return module        
-    
+        return module
+
     @classmethod
     def from_module(klass, module):
         from pipeline_helper import CDMSPipelineHelper
@@ -1203,23 +1203,23 @@ class CDMSPlot(CDMSBasePlot):
             for attr in self.gm_attributes:
                 setattr(self,attr,getattr(gm,attr))
                 self.default_values[attr] = getattr(gm,attr)
-    
+
     @staticmethod
     def get_canvas_graphics_method( plotType, gmName):
         method_name = "get"+str(plotType).lower()
         return getattr(get_canvas(),method_name)(gmName)
-    
-    @classmethod    
+
+    @classmethod
     def get_initial_values(klass, gmName):
         global original_gm_attributes
         return original_gm_attributes[klass.plot_type][gmName]
-            
+
 #        cgm = CDMSPlot.get_canvas_graphics_method(klass.plot_type, gmName)
 #        attribs = {}
 #        for attr in klass.gm_attributes:
 #            attribs[attr] = getattr(cgm,attr)
 #        return InstanceObject(**attribs)
-      
+
 class CDMSTDMarker(Module):
     _input_ports = expand_port_specs([("status", "basic:List", True),
                                       ("line", "basic:List", True),
@@ -1241,19 +1241,19 @@ class CDMSColorMap(Module):
     _input_ports = expand_port_specs([("colorMapName", "basic:String"),
                                       ("colorCells", "basic:List")])
     _output_ports = expand_port_specs([("self", "CDMSColorMap")])
-    
+
     def __init__(self):
         Module.__init__(self)
         self.colorMapName = None
         self.colorCells = None
-        
+
     def compute(self):
         self.colorMapName = self.forceGetInputFromPort('colorMapName')
         self.colorCells = self.forceGetInputFromPort("colorCells")
         self.setResult("self", self)
-    
-    def to_module(self, controller): 
-        reg = get_module_registry()   
+
+    def to_module(self, controller):
+        reg = get_module_registry()
         module = controller.create_module_from_descriptor(
         reg.get_descriptor_by_name(identifier, self.__class__.__name__))
         functions = []
@@ -1265,14 +1265,13 @@ class CDMSColorMap(Module):
         for f in functions:
             module.add_function(f)
         return module
-     
+
 class CDMSCell(SpreadsheetCell):
     _input_ports = expand_port_specs([("plot", "CDMSBasePlot")])
     def __init__(self,*args,**kargs):
         SpreadsheetCell.__init__(self)
         print "Made CDMSCell"
     def compute(self):
-        import pdb; pdb.set_trace()
         input_ports = []
         plots = []
         for plot in sorted(self.getInputListFromPort('plot'),  key=lambda obj: obj.plot_order):
@@ -1285,13 +1284,13 @@ class QCDATWidget(QVTKWidget):
     The widget interacts with the underlying C++, VCSQtManager through SIP.
     This enables QCDATWidget to get a reference to the Qt MainWindow that the
     plot will be displayed in and send signals (events) to that window widget.
-    windowIndex is an index to the VCSQtManager window array so we can 
-    communicate with the C++ Qt windows which the plots show up in.  If this 
-    number is no longer consistent with the number of C++ Qt windows due to 
+    windowIndex is an index to the VCSQtManager window array so we can
+    communicate with the C++ Qt windows which the plots show up in.  If this
+    number is no longer consistent with the number of C++ Qt windows due to
     adding or removing vcs.init() calls, then when you plot, it will plot into a
     separate window instead of in the cell and may crash.
     vcdat already creates 5 canvas objects
-    
+
     """
     save_formats = ["PNG file (*.png)",
                     "GIF file (*.gif)",
@@ -1299,10 +1298,10 @@ class QCDATWidget(QVTKWidget):
                     "Postscript file (*.ps)",
                     "SVG file (*.svg)"]
 
-    #startIndex = 2 #this should be the current number of canvas objects created 
+    #startIndex = 2 #this should be the current number of canvas objects created
     #maxIndex = 9999999999
     #usedIndexes = []
-    
+
     def __init__(self, parent=None):
         QVTKWidget.__init__(self, parent)
         self.toolBarType = QCDATWidgetToolBar
@@ -1318,11 +1317,11 @@ class QCDATWidget(QVTKWidget):
         parameter_name  = args[1]
         parameter_values  = args[2]
         CDMSPipelineHelper.change_parameters( [ ( parameter_name, parameter_values ), ] )
-        
+
     def createCanvas(self):
         if self.canvas is not None:
           return
-        
+
         self.canvas = vcs.init(backend=self.GetRenderWindow())
         self.canvas.ParameterChanged.connect( self.processParameterChange )
         ren = vtk.vtkRenderer()
@@ -1345,9 +1344,9 @@ class QCDATWidget(QVTKWidget):
             if d in var.getAxisIds():
                 k[d]=slice(i,None)
         return k
-    
+
     def updateContents(self, inputPorts, fromToolBar=False):
-        """ Get the vcs canvas, setup the cell's layout, and plot """      
+        """ Get the vcs canvas, setup the cell's layout, and plot """
         self.createCanvas()
 
         spreadsheetWindow = spreadsheetController.findSpreadsheetWindow()
@@ -1363,7 +1362,7 @@ class QCDATWidget(QVTKWidget):
                 spreadsheetWindow.setUpdatesEnabled(True)
                 raise e
         #print self.windowId, self.canvas
-            
+
         #get reparented window if it's there
         #if self.windowId in reparentedVCSWindows:
         #    self.window = reparentedVCSWindows[self.windowId]
@@ -1372,12 +1371,12 @@ class QCDATWidget(QVTKWidget):
         #    print "yes we come here"
         #    self.window = self.canvas
         #pass
-            
+
         #self.layout().addWidget(self.window)
-        #self.window.setVisible(True)    
+        #self.window.setVisible(True)
         # Place the mainwindow that the plot will be displayed in, into this
         # cell widget's layout
-           
+
         self.canvas.clear()
         if not fromToolBar:
             self.extraDimsNames=inputPorts[0][0].var.var.getAxisIds()[:-2]
@@ -1416,15 +1415,15 @@ class QCDATWidget(QVTKWidget):
                                 except:
                                     setattr(cgm,k,getattr(plot,k))
                         #print k, " = ", getattr(cgm,k)
-                            
+
             kwargs = plot.kwargs
-            file_path = None 
+            file_path = None
             for fname in [ plot.var.file, plot.var.filename ]:
                 if fname and ( os.path.isfile(fname) or fname.startswith('http://') ):
                     file_path = fname
-                    break 
-            if not file_path and plot.var.url: 
-                file_path = plot.var.url   
+                    break
+            if not file_path and plot.var.url:
+                file_path = plot.var.url
             if file_path: kwargs['cdmsfile'] =  file_path
             #record commands
             cmd+=" '%s', '%s'" %( plot.template,cgm.name)
@@ -1436,20 +1435,20 @@ class QCDATWidget(QVTKWidget):
             conf = get_vistrails_configuration()
             interactive = conf.check('interactiveMode')
             if interactive:
-                _app.uvcdatWindow.record(cmd)                
-            
+                _app.uvcdatWindow.record(cmd)
+
             #apply colormap
             if plot.colorMap is not None:
                 if plot.colorMap.colorMapName is not None:
                     self.canvas.setcolormap(str(plot.colorMap.colorMapName))
-                    
+
                 if plot.colorMap.colorCells is not None:
                     for (n,r,g,b) in plot.colorMap.colorCells:
                         self.canvas.canvas.setcolorcell(n,r,g,b);
                     #see vcs.Canvas.setcolorcell
                     self.canvas.canvas.updateVCSsegments(self.canvas.mode) # pass down self and mode to _vcs module
                     self.canvas.flush() # update the canvas by processing all the X events
-            
+
 #            try:
             kwargs[ 'cell_coordinates' ] = self.cell_coordinates
             self.canvas.plot(cgm,*args,**kwargs)
@@ -1460,17 +1459,17 @@ class QCDATWidget(QVTKWidget):
         self.canvas.setAnimationStepper( QtAnimationStepper )
         spreadsheetWindow.setUpdatesEnabled(True)
         self.update()
-        
+
         #make sure reparented windows stay invisible
         #for windowId in reparentedVCSWindows:
         #    reparentedVCSWindows[windowId].setVisible(False)
-        
+
     def get_graphics_method(self, plotType, gmName):
         method_name = "get"+str(plotType).lower()
         return getattr(self.canvas,method_name)(gmName)
-    
+
     def deleteLater(self):
-        """ deleteLater() -> None        
+        """ deleteLater() -> None
         Make sure to free render window resource when
         deallocating. Overriding PyQt deleteLater to free up
         resources
@@ -1486,12 +1485,12 @@ class QCDATWidget(QVTKWidget):
         #    self.window.setVisible(False)
             #reparentedVCSWindows[self.windowId] = self.window
         self.canvas.onClosing( self.cell_coordinates )
-        
+
         self.canvas = None
         #self.window = None
-        
-        QCellWidget.deleteLater(self)    
-        
+
+        QCellWidget.deleteLater(self)
+
     def dumpToFile(self, filename):
         """ dumpToFile(filename: str, dump_as_pdf: bool) -> None
         Dumps itself as an image to a file, calling grabWindowPixmap """
@@ -1524,28 +1523,28 @@ class QCDATWidget(QVTKWidget):
     def saveToPNG(self, filename):
         """ saveToPNG(filename: str) -> bool
         Save the current widget contents to an image file
-        
+
         """
-        
+
         self.canvas.png(filename)
-        
+
     def saveToPDF(self, filename):
         """ saveToPDF(filename: str) -> bool
         Save the current widget contents to a pdf file
-        
-        """   
+
+        """
         self.canvas.pdf(filename)#, width=11.5)
 
 class QCDATWidgetToolBar(QCellToolBar):
     """
     QCDATWidgetToolBar derives from QCellToolBar to give CDMSCell
     a customizable toolbar
-    
+
     """
     def createToolBar(self):
         """ createToolBar() -> None
         This will get call initially to add customizable widgets
-        
+
         """
         use_vcs_toolbar = True
         cell = self.parent().getCell(self.parent().parentRow,self.parent().parentCol)
@@ -1555,25 +1554,25 @@ class QCDATWidgetToolBar(QCellToolBar):
                 use_vcs_toolbar = False
         except:
             pass
-        
+
         if use_vcs_toolbar:
             if cell.inputPorts[0][0].var.var.rank()>2:  # no inputPorts here
-                self.prevAction=QCDATWidgetPrev(self)
+                self.prevAction = QCDATWidgetPrev(self)
                 self.prevAction.setEnabled(False)
                 self.appendAction(self.prevAction)
                 self.dimSelector = QCDATDimSelector(self,cell)
                 self.addWidget(self.dimSelector)
-                self.nextAction=QCDATWidgetNext(self)
+                self.nextAction = QCDATWidgetNext(self)
                 self.addWidget(self.nextAction)
                 self.nextAction.toolBar = self
-                
-    
+
+
             self.appendAction(QCDATWidgetPrint(self))
             self.appendAction(QCDATWidgetColormap(self))
             #self.appendAction(QCDATWidgetAnimation(self))		#Commented out (removed) the animate icon till it works proper
         else:
             pass  # TODO: setup toolbar for dv3d
-        
+
     def updateStatus(self, cellWidget):
         if (cellWidget is not None and
                 hasattr(cellWidget, 'canvas') and
@@ -1594,7 +1593,7 @@ class QCDATDimSelector(QtGui.QComboBox):
 
 class QCDATWidgetPrev(QtGui.QAction):
     """
-    QCDATWidgetColormap is the action to export the plot 
+    QCDATWidgetColormap is the action to export the plot
     of the current cell to a file
 
     """
@@ -1602,19 +1601,19 @@ class QCDATWidgetPrev(QtGui.QAction):
         """ QCDATWidgetAnimation(icon: QIcon, parent: QWidget)
                                    -> QCDATWidgetAnimation
         Brings up the naimation
-        
+
         """
         QtGui.QAction.__init__(self,
                                UVCDATTheme.PLOT_PREVIOUS_ICON,
                                "Previous",
                                parent)
         self.setStatusTip("Move to Previous Dimensions")
-        
+
 
     def triggeredSlot(self, checked=False):
         """ toggledSlot(checked: boolean) -> None
         Execute the action when the button is clicked
-        
+
         """
         #make sure we get the canvas object used in the cell
         cellWidget = self.toolBar.getSnappedWidget()
@@ -1624,29 +1623,29 @@ class QCDATWidgetPrev(QtGui.QAction):
         cellWidget.updateContents(cellWidget.inputPorts,True)
         self.parent().nextAction.setEnabled(True)
         if  cellWidget.extraDimsIndex[i]==0:
-            self.setEnabled(False) 
-        
+            self.setEnabled(False)
+
     def updateStatus(self, info):
         """ updateStatus(info: tuple) -> None
         Updates the status of the button based on the input info
-        
+
         """
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
-        # Will not show up if there is no cell selected  
+        # Will not show up if there is no cell selected
         proj_controller = _app.uvcdatWindow.get_current_project_controller()
-        sheetName = sheet.getSheetName()        
-        if (len(selectedCells)==1 and 
+        sheetName = sheet.getSheetName()
+        if (len(selectedCells)==1 and
             proj_controller.is_cell_ready(sheetName,row,col)):
                 self.setVisible(True)
         else:
             self.setVisible(False)
-        
-        self.parent().updateStatus(cellWidget)    
-        
+
+        self.parent().updateStatus(cellWidget)
+
 class QDimsSlider(QtGui.QWidget):
     def updateLabels(self,val=None,fromDimension=False):
         selectedDim = str(self.parent().parent().parent().dimSelector.currentText())
@@ -1676,7 +1675,7 @@ class QDimsSlider(QtGui.QWidget):
     def __init__(self,parent):
         super(QDimsSlider,self).__init__(parent)
         toolBar = parent.parent().parent()
-        self.cell = toolBar.parent().getCell(toolBar.parent().parentRow,toolBar.parent().parentCol) 
+        self.cell = toolBar.parent().getCell(toolBar.parent().parentRow,toolBar.parent().parentCol)
         self.V = self.cell.inputPorts[0][0].var.var
         l = QtGui.QVBoxLayout()
         self.current = QtGui.QLabel("Date")
@@ -1692,7 +1691,7 @@ class QDimsSlider(QtGui.QWidget):
         self.setLayout(l)
         self.updateLabels()
         self.connect(self.slider,QtCore.SIGNAL("valueChanged(int)"),self.updateLabels)
-        
+
 class QDIMSSliderAction(QtGui.QWidgetAction):
     def __init__(self,parent):
         super(QDIMSSliderAction,self).__init__(parent)
@@ -1704,7 +1703,7 @@ class QDIMSSliderAction(QtGui.QWidgetAction):
 
 class QCDATWidgetNext(QtGui.QToolButton):
     """
-    QCDATWidgetColormap is the action to export the plot 
+    QCDATWidgetColormap is the action to export the plot
     of the current cell to a file
 
     """
@@ -1712,7 +1711,7 @@ class QCDATWidgetNext(QtGui.QToolButton):
         """ QCDATWidgetAnimation(icon: QIcon, parent: QWidget)
                                    -> QCDATWidgetAnimation
         Brings up the naimation
-        
+
         """
         super(QCDATWidgetNext,self).__init__(parent)
         #QtGui.QAbstractButton.__init__(self,
@@ -1730,7 +1729,7 @@ class QCDATWidgetNext(QtGui.QToolButton):
     def clicked(self, fromSlider=False,index=0):
         """ toggledSlot(checked: boolean) -> None
         Execute the action when the button is clicked
-        
+
         """
         #make sure we get the canvas object used in the cell
         cellWidget = self.toolBar.getSnappedWidget()
@@ -1739,7 +1738,7 @@ class QCDATWidgetNext(QtGui.QToolButton):
         if not fromSlider:
             if cellWidget.extraDimsIndex[i]!=cellWidget.extraDimsLen[i]-1:
                 cellWidget.extraDimsIndex[i]+=1
-        else: 
+        else:
             cellWidget.extraDimsIndex[i]=index
         cellWidget.updateContents(cellWidget.inputPorts,True)
         if cellWidget.extraDimsIndex[i]!=0:
@@ -1747,22 +1746,22 @@ class QCDATWidgetNext(QtGui.QToolButton):
         else:
             self.parent().prevAction.setEnabled(False)
         if  not fromSlider and cellWidget.extraDimsIndex[i]==cellWidget.extraDimsLen[i]-1:
-            self.setEnabled(False) 
-        
+            self.setEnabled(False)
+
     def updateStatus(self, info):
         """ updateStatus(info: tuple) -> None
         Updates the status of the button based on the input info
-        
+
         """
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
-        # Will not show up if there is no cell selected  
+        # Will not show up if there is no cell selected
         proj_controller = _app.uvcdatWindow.get_current_project_controller()
-        sheetName = sheet.getSheetName()        
-        if (len(selectedCells)==1 and 
+        sheetName = sheet.getSheetName()
+        if (len(selectedCells)==1 and
             proj_controller.is_cell_ready(sheetName,row,col)):
                 self.setVisible(True)
         else:
@@ -1770,7 +1769,7 @@ class QCDATWidgetNext(QtGui.QToolButton):
 
 class QCDATWidgetPrint(QtGui.QAction):
     """
-    QCDATWidgetExport is the action to export the plot 
+    QCDATWidgetExport is the action to export the plot
     of the current cell to a file
 
     """
@@ -1778,7 +1777,7 @@ class QCDATWidgetPrint(QtGui.QAction):
         """ QCDATWidgetExport(icon: QIcon, parent: QWidget)
                                    -> QCDATWidgetExport
         Setup the image, status tip, etc. of the action
-        
+
         """
         QtGui.QAction.__init__(self,
                                UVCDATTheme.PLOT_PRINTER_ICON,
@@ -1789,9 +1788,9 @@ class QCDATWidgetPrint(QtGui.QAction):
     def triggeredSlot(self, checked=False):
         """ toggledSlot(checked: boolean) -> None
         Execute the action when the button is clicked
-        
+
         """
-        
+
         cellWidget = self.toolBar.getSnappedWidget()
         printer,ok = QtGui.QInputDialog.getText(self.parent(),"Send Picture To A Printer",
                                              "Printer",text=os.environ.get("PRINTER",""))
@@ -1801,17 +1800,17 @@ class QCDATWidgetPrint(QtGui.QAction):
     def updateStatus(self, info):
         """ updateStatus(info: tuple) -> None
         Updates the status of the button based on the input info
-        
+
         """
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
-        # Will not show up if there is no cell selected  
+        # Will not show up if there is no cell selected
         proj_controller = _app.uvcdatWindow.get_current_project_controller()
-        sheetName = sheet.getSheetName()        
-        if (len(selectedCells)==1 and 
+        sheetName = sheet.getSheetName()
+        if (len(selectedCells)==1 and
             proj_controller.is_cell_ready(sheetName,row,col)):
                 self.setVisible(True)
         else:
@@ -1819,7 +1818,7 @@ class QCDATWidgetPrint(QtGui.QAction):
 
 class QCDATWidgetAnimation(QtGui.QAction):
     """
-    QCDATWidgetColormap is the action to export the plot 
+    QCDATWidgetColormap is the action to export the plot
     of the current cell to a file
 
     """
@@ -1827,20 +1826,20 @@ class QCDATWidgetAnimation(QtGui.QAction):
         """ QCDATWidgetAnimation(icon: QIcon, parent: QWidget)
                                    -> QCDATWidgetAnimation
         Brings up the naimation
-        
+
         """
         QtGui.QAction.__init__(self,
                                UVCDATTheme.PLOT_ANIMATION_ICON,
                                "",
                                parent)
         self.setStatusTip("Animate this plot")
-        self.setEnabled(True) 
-        
+        self.setEnabled(True)
+
 
     def triggeredSlot(self, checked=False):
         """ toggledSlot(checked: boolean) -> None
         Execute the action when the button is clicked
-        
+
         """
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
@@ -1849,21 +1848,21 @@ class QCDATWidgetAnimation(QtGui.QAction):
         canvas = cellWidget.canvas
         _app.uvcdatWindow.dockAnimate.widget().setCanvas(canvas)
         _app.uvcdatWindow.dockAnimate.show()
-        
+
     def updateStatus(self, info):
         """ updateStatus(info: tuple) -> None
         Updates the status of the button based on the input info
-        
+
         """
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
-        # Will not show up if there is no cell selected  
+        # Will not show up if there is no cell selected
         proj_controller = _app.uvcdatWindow.get_current_project_controller()
-        sheetName = sheet.getSheetName()        
-        if (len(selectedCells)==1 and 
+        sheetName = sheet.getSheetName()
+        if (len(selectedCells)==1 and
             proj_controller.is_cell_ready(sheetName,row,col)):
                 self.setVisible(True)
         else:
@@ -1871,7 +1870,7 @@ class QCDATWidgetAnimation(QtGui.QAction):
 
 class QCDATWidgetColormap(QtGui.QAction):
     """
-    QCDATWidgetColormap is the action to export the plot 
+    QCDATWidgetColormap is the action to export the plot
     of the current cell to a file
 
     """
@@ -1879,7 +1878,7 @@ class QCDATWidgetColormap(QtGui.QAction):
         """ QCDATWidgetColormap(icon: QIcon, parent: QWidget)
                                    -> QCDATWidgetColormap
         Setup the colormapeditor
-        
+
         """
         QtGui.QAction.__init__(self,
                                UVCDATTheme.PLOT_COLORMAP_ICON,
@@ -1890,7 +1889,7 @@ class QCDATWidgetColormap(QtGui.QAction):
     def triggeredSlot(self, checked=False):
         """ toggledSlot(checked: boolean) -> None
         Execute the action when the button is clicked
-        
+
         """
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
@@ -1898,29 +1897,29 @@ class QCDATWidgetColormap(QtGui.QAction):
         cellWidget = self.toolBar.getSnappedWidget()
         canvas = cellWidget.canvas
         _app.uvcdatWindow.colormapEditor.activateFromCell(canvas)
-        
+
 
     def updateStatus(self, info):
         """ updateStatus(info: tuple) -> None
         Updates the status of the button based on the input info
-        
+
         """
         from gui.application import get_vistrails_application
         _app = get_vistrails_application()
         (sheet, row, col, cellWidget) = info
         selectedCells = sorted(sheet.getSelectedLocations())
 
-        # Will not show up if there is no cell selected  
+        # Will not show up if there is no cell selected
         proj_controller = _app.uvcdatWindow.get_current_project_controller()
-        sheetName = sheet.getSheetName()        
-        if (len(selectedCells)==1 and 
+        sheetName = sheet.getSheetName()
+        if (len(selectedCells)==1 and
             proj_controller.is_cell_ready(sheetName,row,col)):
                 self.setVisible(True)
         else:
             self.setVisible(False)
 
 _modules = [CDMSVariable, CDMSBasePlot, CDMSPlot, CDMS3DPlot, CDMSCell, CDMSTDMarker, CDMSVariableOperation,
-            CDMSUnaryVariableOperation, CDMSBinaryVariableOperation, 
+            CDMSUnaryVariableOperation, CDMSBinaryVariableOperation,
             CDMSNaryVariableOperation, CDMSColorMap, CDMSGrowerOperation]
 
 def get_input_ports(plot_type):
@@ -1956,7 +1955,7 @@ def get_input_ports(plot_type):
         parameterList = cfgManager.getParameterList( extras=PlotButtonNames + [ 'axes' ] )
         port_specs = [ ( pname, 'basic:String', True ) for pname in parameterList ]
         return expand_port_specs( port_specs )
-    
+
     elif plot_type == "Isofill":
         return expand_port_specs([('levels', 'basic:List', True),
                                   ('ext_1', 'basic:Boolean', True),
@@ -1968,7 +1967,7 @@ def get_input_ports(plot_type):
                                   ('missing', 'basic:List', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
-                                  ]) 
+                                  ])
     elif plot_type == "Isoline":
         return expand_port_specs([('label', 'basic:String', True),
                                   ('levels', 'basic:List', True),
@@ -1987,7 +1986,7 @@ def get_input_ports(plot_type):
                                   ('angle', 'basic:List', True),
                                   ('spacing', 'basic:List', True),
                                   ('labelskipdistance', 'basic:Float', True)
-                                  ]) 
+                                  ])
     elif plot_type == "Meshfill":
         return expand_port_specs([('levels', 'basic:List', True),
                                   ('ext_1', 'basic:Boolean', True),
@@ -2001,14 +2000,14 @@ def get_input_ports(plot_type):
                                   ('missing', 'basic:List', True),
                                   ('mesh', 'basic:String', True),
                                   ('wrap', 'basic:List', True)
-                                  ]) 
+                                  ])
     elif plot_type == "Scatter":
         return expand_port_specs([('markercolor', 'basic:Integer', True),
                                   ('marker', 'basic:String', True),
                                   ('markersize', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
-                                  ]) 
+                                  ])
     elif plot_type == "Vector":
         return expand_port_specs([('scale', 'basic:Float', True),
                                   ('alignment', 'basic:String', True),
@@ -2019,7 +2018,7 @@ def get_input_ports(plot_type):
                                   ('linewidth', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
-                                  ]) 
+                                  ])
     elif plot_type == "XvsY":
         return expand_port_specs([('linecolor', 'basic:Integer', True),
                                   ('line', 'basic:String', True),
@@ -2029,7 +2028,7 @@ def get_input_ports(plot_type):
                                   ('markersize', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
-                                  ]) 
+                                  ])
     elif plot_type == "Xyvsy":
         return expand_port_specs([('linecolor', 'basic:Integer', True),
                                   ('line', 'basic:String', True),
@@ -2038,7 +2037,7 @@ def get_input_ports(plot_type):
                                   ('marker', 'basic:String', True),
                                   ('markersize', 'basic:Integer', True),
                                   ('yaxisconvert', 'basic:String', True),
-                                  ]) 
+                                  ])
     elif plot_type == "Yxvsx":
         return expand_port_specs([('linecolor', 'basic:Integer', True),
                                   ('line', 'basic:String', True),
@@ -2047,7 +2046,7 @@ def get_input_ports(plot_type):
                                   ('marker', 'basic:String', True),
                                   ('markersize', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
-                                  ]) 
+                                  ])
     elif plot_type=="Taylordiagram":
         return expand_port_specs([('detail', 'basic:Integer', True),
                                   ('max', 'basic:Integer', True),
@@ -2063,17 +2062,17 @@ def get_input_ports(plot_type):
                                   ('cmtics1', 'basic:String', True),
                                   ('cticlabels1', 'basic:String', True),
                                   ('Marker', 'basic:String', True),
-                                  ]) 
+                                  ])
     else:
         return []
 def get_gm_attributes(plot_type):
     if plot_type == "Boxfill":
-        return  ['boxfill_type', 'color_1', 'color_2' ,'datawc_calendar', 
-                    'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1', 
-                    'datawc_y2', 'levels','ext_1', 'ext_2', 'fillareacolors', 
-                    'fillareaindices', 'fillareastyle', 'legend', 'level_1', 
-                    'level_2', 'missing', 'projection', 'xaxisconvert', 'xmtics1', 
-                    'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 
+        return  ['boxfill_type', 'color_1', 'color_2' ,'datawc_calendar',
+                    'datawc_timeunits', 'datawc_x1', 'datawc_x2', 'datawc_y1',
+                    'datawc_y2', 'levels','ext_1', 'ext_2', 'fillareacolors',
+                    'fillareaindices', 'fillareastyle', 'legend', 'level_1',
+                    'level_2', 'missing', 'projection', 'xaxisconvert', 'xmtics1',
+                    'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert',
                     'ymtics1', 'ymtics2', 'yticlabels1', 'yticlabels2']
 
     elif ( plot_type == "3D_Scalar" ) or ( plot_type == "3D_Dual_Scalar" ):
@@ -2089,73 +2088,73 @@ def get_gm_attributes(plot_type):
         cfgManager = ConfigManager()
         parameterList = cfgManager.getParameterList( extras=[ 'axes' ]+PlotButtonNames )
         return  parameterList
-        
+
     elif plot_type == "Isofill":
-        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
-                'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 
-                'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend', 
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2',
+                'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2',
+                'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend',
                 'missing', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
-                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1',
                 'ymtics2', 'yticlabels1', 'yticlabels2']
-        
+
     elif plot_type == "Isoline":
-        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
-                'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1', 
-                'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
-                'ymtics2', 'yticlabels1', 'yticlabels2', 'label', 'level', 'levels', 
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2',
+                'datawc_y1', 'datawc_y2', 'projection', 'xaxisconvert', 'xmtics1',
+                'xmtics2', 'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1',
+                'ymtics2', 'yticlabels1', 'yticlabels2', 'label', 'level', 'levels',
                 'line', 'linecolors','linewidths','text','textcolors','clockwise',
                 'scale', 'angle','spacing', "labelskipdistance"]
     elif plot_type == "Meshfill":
-        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
-                'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2', 
-                'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend', 
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2',
+                'datawc_y1', 'datawc_y2', 'levels','ext_1', 'ext_2',
+                'fillareacolors', 'fillareaindices', 'fillareastyle', 'legend',
                 'missing', 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
-                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1',
                 'ymtics2', 'yticlabels1', 'yticlabels2', 'mesh', 'wrap']
     elif plot_type == "Scatter":
-        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
-                'datawc_y1', 'datawc_y2', 
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2',
+                'datawc_y1', 'datawc_y2',
                 'markercolor', 'marker', 'markersize',
                 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
-                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1',
                 'ymtics2', 'yticlabels1', 'yticlabels2']
     elif plot_type == "Vector":
-        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2',
                 'datawc_y1', 'datawc_y2',
                 'linecolor', 'line', 'linewidth','scale','alignment','type','reference',
                 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
-                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1',
                 'ymtics2', 'yticlabels1', 'yticlabels2']
     elif plot_type == "XvsY":
-        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2',
                 'datawc_y1', 'datawc_y2',
                 'linecolor', 'line', 'linewidth','markercolor', 'marker', 'markersize',
                 'projection', 'xaxisconvert', 'xmtics1', 'xmtics2',
-                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1',
                 'ymtics2', 'yticlabels1', 'yticlabels2']
     elif plot_type == "Xyvsy":
-        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2',
                 'datawc_y1', 'datawc_y2',
                 'linecolor', 'line', 'linewidth','markercolor', 'marker', 'markersize',
                 'projection', 'xmtics1', 'xmtics2',
-                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1', 
+                'xticlabels1', 'xticlabels2', 'yaxisconvert', 'ymtics1',
                 'ymtics2', 'yticlabels1', 'yticlabels2']
     elif plot_type == "Yxvsx":
-        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2', 
+        return ['datawc_calendar', 'datawc_timeunits', 'datawc_x1', 'datawc_x2',
                 'datawc_y1', 'datawc_y2',
                 'linecolor', 'line', 'linewidth','markercolor', 'marker', 'markersize',
                 'projection', 'xmtics1', 'xmtics2',
-                'xticlabels1', 'xticlabels2', 'xaxisconvert', 'ymtics1', 
+                'xticlabels1', 'xticlabels2', 'xaxisconvert', 'ymtics1',
                 'ymtics2', 'yticlabels1', 'yticlabels2']
     elif plot_type == "Taylordiagram":
         return ['detail','max','quadrans',
                 'skillValues','skillColor','skillDrawLabels','skillCoefficient',
                 'referencevalue','arrowlength','arrowangle','arrowbase',
-                'xmtics1', 'xticlabels1', 'ymtics1', 
+                'xmtics1', 'xticlabels1', 'ymtics1',
                 'yticlabels1','cmtics1', 'cticlabels1', 'Marker']
     else:
         print "Unable to get gm attributes for plot type %s" % plot_type
-    
+
 def get_canvas():
     global canvas
     if canvas is None:
@@ -2166,7 +2165,7 @@ def get_canvas():
         except:
             pass
     return canvas
-    
+
 for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', \
                   'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
                   'Xyvsy', 'Yxvsx' ]:
@@ -2179,36 +2178,36 @@ for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', \
         def is_cacheable(self):
             return False
         return is_cacheable
-    
-    klass = type('CDMS' + plot_type, (CDMSPlot,), 
+
+    klass = type('CDMS' + plot_type, (CDMSPlot,),
                  {'__init__': get_init_method(),
                   'plot_type': plot_type,
                   '_input_ports': get_input_ports(plot_type),
                   'gm_attributes': get_gm_attributes(plot_type),
                   'is_cacheable': get_is_cacheable_method()})
-    
+
     _modules.append((klass,{'configureWidgetType':GraphicsMethodConfigurationWidget}))
 
 
 for plot_type in [ '3D_Scalar', '3D_Dual_Scalar', '3D_Vector' ]:
-    
+
     def get_init_method():
         def __init__(self):
             CDMS3DPlot.__init__(self)
         return __init__
-    
+
     def get_is_cacheable_method():
         def is_cacheable(self):
             return False
         return is_cacheable
-    
-    klass = type('CDMS' + plot_type, (CDMS3DPlot,), 
+
+    klass = type('CDMS' + plot_type, (CDMS3DPlot,),
                  {'__init__': get_init_method(),
                   'plot_type': plot_type,
                   '_input_ports': get_input_ports(plot_type),
                   'gm_attributes': get_gm_attributes(plot_type),
                   'is_cacheable': get_is_cacheable_method()})
-    
+
     _modules.append((klass,{'configureWidgetType':GraphicsMethodConfigurationWidget}))
 
 def initialize(*args, **keywords):
@@ -2217,7 +2216,7 @@ def initialize(*args, **keywords):
     canvas = get_canvas()
 #    app = QtGui.QApplication.instance()
 #    app.connect( app,  QtCore.SIGNAL("focusChanged(QWidget*,QWidget*)"), canvas.applicationFocusChanged )
-    
+
     for plot_type in ['Boxfill', 'Isofill', 'Isoline', 'Meshfill', \
                   'Scatter', 'Taylordiagram', 'Vector', 'XvsY', \
                   'Xyvsy', 'Yxvsx', '3D_Dual_Scalar', '3D_Scalar', '3D_Vector' ]:
@@ -2245,8 +2244,8 @@ def initialize(*args, **keywords):
                 elif attr == 'max' and attrs[attr] == None:
                     attrs[attr] = 1
             original_gm_attributes[plot_type][gmname] = InstanceObject(**attrs)
-            
 
-        
-   
-    
+
+
+
+
