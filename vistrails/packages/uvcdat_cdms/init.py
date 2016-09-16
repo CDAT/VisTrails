@@ -1270,7 +1270,9 @@ class CDMSCell(SpreadsheetCell):
     _input_ports = expand_port_specs([("plot", "CDMSBasePlot")])
     def __init__(self,*args,**kargs):
         SpreadsheetCell.__init__(self)
+        print "Made CDMSCell"
     def compute(self):
+        import pdb; pdb.set_trace()
         input_ports = []
         plots = []
         for plot in sorted(self.getInputListFromPort('plot'),  key=lambda obj: obj.plot_order):
@@ -1935,7 +1937,7 @@ def get_input_ports(plot_type):
                                   ('legend', 'basic:String', True),
                                   ('level_1', 'basic:Float', True),
                                   ('level_2', 'basic:Float', True),
-                                  ('missing', 'basic:Integer', True),
+                                  ('missing', 'basic:List', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
@@ -1963,7 +1965,7 @@ def get_input_ports(plot_type):
                                   ('fillareaindices', 'basic:List', True),
                                   ('fillareastyle', 'basic:String', True),
                                   ('legend', 'basic:String', True),
-                                  ('missing', 'basic:Integer', True),
+                                  ('missing', 'basic:List', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ]) 
@@ -1996,7 +1998,7 @@ def get_input_ports(plot_type):
                                   ('legend', 'basic:String', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
-                                  ('missing', 'basic:Integer', True),
+                                  ('missing', 'basic:List', True),
                                   ('mesh', 'basic:String', True),
                                   ('wrap', 'basic:List', True)
                                   ]) 
