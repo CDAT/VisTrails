@@ -14,7 +14,6 @@
     <package name="ParaView"/>
     <package name="pvclimate"/>
     <package name="vis_analytics"/>
-    <package name="scikit_learn"/>
     <package name="VisIt"/>
   </packages>
   <disabledpackages/>
