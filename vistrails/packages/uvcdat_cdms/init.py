@@ -1603,6 +1603,8 @@ class QCDATWidgetToolBar(QCellToolBar):
 
     def getAxis(self):
         cellWidget = self.getCell()
+        if cellWidget is None:
+            return None
         variable = cellWidget.inputPorts[0][0].var.var
         return variable.getAxisList()[self.dimSelector.currentIndex()]
 
@@ -1611,6 +1613,8 @@ class QCDATWidgetToolBar(QCellToolBar):
 
     def changeDimensionIndex(self, index):
         cellWidget = self.getCell()
+        if cellWidget is None:
+            return
         self.dimSelector.changedDimValue(cellWidget, index)
         self.slider.slider.setValue(index)
         axis = self.getAxis()
@@ -1715,6 +1719,8 @@ class QDimsSlider(QtGui.QWidget):
     sliderChanged = QtCore.pyqtSignal(int)
 
     def setDimension(self, axis, cell, axis_index):
+        if axis is None:
+            return
         self.slider.setMaximum(len(axis) - 1)
         new_val = axis[cell.extraDimsIndex[axis_index]]
         self.slider.setValue(new_val)
