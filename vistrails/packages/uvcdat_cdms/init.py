@@ -1609,7 +1609,23 @@ class QCDATWidgetToolBar(QCellToolBar):
         return variable.getAxisList()[self.dimSelector.currentIndex()]
 
     def changeDimension(self, index):
-        self.slider.setDimension(self.getAxis(), self.getCell(), index)
+        cellWidget = self.getCell()
+        if cellWidget is None:
+            return
+
+        axis = cellWidget.inputPorts[0][0].var.var.getAxisList()[index]
+        i = cellWidget.extraDimsIndex[index]
+
+        if i == len(axis) - 1:
+            self.nextAction.setEnabled(False)
+        else:
+            self.nextAction.setEnabled(True)
+        if i == 0:
+            self.prevAction.setEnabled(False)
+        else:
+            self.prevAction.setEnabled(True)
+
+        self.slider.setDimension(axis, self.getCell(), index)
 
     def changeDimensionIndex(self, index):
         cellWidget = self.getCell()
@@ -1719,11 +1735,20 @@ class QDimsSlider(QtGui.QWidget):
     sliderChanged = QtCore.pyqtSignal(int)
 
     def setDimension(self, axis, cell, axis_index):
+
         if axis is None:
             return
-        self.slider.setMaximum(len(axis) - 1)
-        new_val = axis[cell.extraDimsIndex[axis_index]]
-        self.slider.setValue(new_val)
+
+        new_val = cell.extraDimsIndex[axis_index]
+
+        # Make sure the slider isn't set outside the bounds...
+        if new_val > self.slider.maximum():
+            self.slider.setMaximum(len(axis) - 1)
+            self.slider.setValue(new_val)
+        else:
+            self.slider.setValue(new_val)
+            self.slider.setMaximum(len(axis) - 1)
+
         formatter = axis_info.format_axis(axis)
         self.first.setText(formatter(0))
         self.last.setText(formatter(len(axis) - 1))
@@ -1768,7 +1793,7 @@ class QCDATWidgetPrint(QtGui.QAction):
         """
 
         cellWidget = self.toolBar.getSnappedWidget()
-        printer,ok = QtGui.QInputDialog.getText(self.parent(),"Send Picture To A Printer",
+        printer, ok = QtGui.QInputDialog.getText(self.parent(),"Send Picture To A Printer",
                                              "Printer",text=os.environ.get("PRINTER",""))
         if ok:
             cellWidget.canvas.printer(str(printer))

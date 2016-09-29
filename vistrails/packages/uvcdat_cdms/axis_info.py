@@ -1,6 +1,14 @@
 import cdtime
 
 
+def has_valid_units(ax):
+    try:
+        t = cdtime.reltime(ax[0], ax.units)
+        return True
+    except:
+        return False
+
+
 def axis_values(axis):
     formatter = format_axis(axis)
     values = []
@@ -17,12 +25,12 @@ def selector_value(index, axis):
 
 def format_axis(axis):
     """Returns a function that converts values from this axis into human readable values"""
-    if axis.isTime():
+    if axis.isTime() and has_valid_units(axis):
         return format_time_axis(axis)
     elif axis.isLatitude() or axis.isLongitude():
         return format_degrees(axis)
     else:
-        return lambda i: unicode(axis[i]) + axis.units
+        return lambda i: unicode(axis[i]) + " " + axis.units
 
 
 def parse_axis(axis):
