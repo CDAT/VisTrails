@@ -1404,7 +1404,6 @@ class QCDATWidget(QVTKWidget):
             cgm = self.get_graphics_method(plot.plot_type, plot.graphics_method_name)
 #            cgm.setProvenanceHandler( plot.processParameterUpdate )
             if plot.graphics_method_name != 'default':
-                #cgm.list()
                 for k in plot.gm_attributes:
                     if hasattr(plot,k):
                         if k in ['legend']:
@@ -1924,6 +1923,7 @@ _modules = [CDMSVariable, CDMSBasePlot, CDMSPlot, CDMS3DPlot, CDMSCell, CDMSTDMa
             CDMSNaryVariableOperation, CDMSColorMap, CDMSGrowerOperation]
 
 def get_input_ports(plot_type):
+    color_port_type = 'basic:List'
     if plot_type == "Boxfill":
         return expand_port_specs([('boxfill_type', 'basic:String', True),
                                   ('color_1', 'basic:Integer', True),
@@ -1937,7 +1937,7 @@ def get_input_ports(plot_type):
                                   ('legend', 'basic:String', True),
                                   ('level_1', 'basic:Float', True),
                                   ('level_2', 'basic:Float', True),
-                                  ('missing', 'basic:List', True),
+                                  ('missing', color_port_type, True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
@@ -1965,7 +1965,7 @@ def get_input_ports(plot_type):
                                   ('fillareaindices', 'basic:List', True),
                                   ('fillareastyle', 'basic:String', True),
                                   ('legend', 'basic:String', True),
-                                  ('missing', 'basic:List', True),
+                                  ('missing', color_port_type, True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
@@ -1998,12 +1998,12 @@ def get_input_ports(plot_type):
                                   ('legend', 'basic:String', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
-                                  ('missing', 'basic:List', True),
+                                  ('missing', color_port_type, True),
                                   ('mesh', 'basic:String', True),
                                   ('wrap', 'basic:List', True)
                                   ])
     elif plot_type == "Scatter":
-        return expand_port_specs([('markercolor', 'basic:Integer', True),
+        return expand_port_specs([('markercolor', color_port_type, True),
                                   ('marker', 'basic:String', True),
                                   ('markersize', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
@@ -2014,36 +2014,36 @@ def get_input_ports(plot_type):
                                   ('alignment', 'basic:String', True),
                                   ('type', 'basic:String', True),
                                   ('reference', 'basic:Float', True),
-                                  ('linecolor', 'basic:Integer', True),
+                                  ('linecolor', color_port_type, True),
                                   ('line', 'basic:String', True),
                                   ('linewidth', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
     elif plot_type == "XvsY":
-        return expand_port_specs([('linecolor', 'basic:Integer', True),
+        return expand_port_specs([('linecolor', color_port_type, True),
                                   ('line', 'basic:String', True),
                                   ('linewidth', 'basic:Integer', True),
-                                  ('markercolor', 'basic:Integer', True),
+                                  ('markercolor', color_port_type, True),
                                   ('marker', 'basic:String', True),
                                   ('markersize', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
     elif plot_type == "Xyvsy":
-        return expand_port_specs([('linecolor', 'basic:Integer', True),
+        return expand_port_specs([('linecolor', color_port_type, True),
                                   ('line', 'basic:String', True),
                                   ('linewidth', 'basic:Integer', True),
-                                  ('markercolor', 'basic:Integer', True),
+                                  ('markercolor', color_port_type, True),
                                   ('marker', 'basic:String', True),
                                   ('markersize', 'basic:Integer', True),
                                   ('yaxisconvert', 'basic:String', True),
                                   ])
     elif plot_type == "Yxvsx":
-        return expand_port_specs([('linecolor', 'basic:Integer', True),
+        return expand_port_specs([('linecolor', color_port_type, True),
                                   ('line', 'basic:String', True),
                                   ('linewidth', 'basic:Integer', True),
-                                  ('markercolor', 'basic:Integer', True),
+                                  ('markercolor', color_port_type, True),
                                   ('marker', 'basic:String', True),
                                   ('markersize', 'basic:Integer', True),
                                   ('xaxisconvert', 'basic:String', True),

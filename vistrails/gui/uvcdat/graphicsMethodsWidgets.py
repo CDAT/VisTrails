@@ -297,30 +297,44 @@ class VCSGMs():
         except ValueError:
             self.aspectAuto.setCheckState(Qt.Checked)
             return 'autot'
-        
+
+
 class VCSGMs1D:
 
     def saveChanges(self,click):
         self.applyChanges()
+
     def setupLines(self, target):
         self.lineType = target.addLabeledComboBox('Type: ',
                                                   ["solid", "dash", "dot", "dash-dot", "long-dash"])
-        self.lineColor = target.addLabeledSpinBox('Color: ',0,255)
+        self.lineColorCache = (0, 0, 0)
+        self.lineColor = target.addLabeledColorPicker('Color: ', self.setLineColor)
         self.lineWidth = target.addLabeledSpinBox('Width: ',0,300)
         self.lineType.setToolTip("Set the line types. The line values can either be\n('solid', 'dash', 'dot', 'dash-dot', 'long-dash')\nor (0, 1, 2, 3, 4) or None")
-        self.lineColor.setToolTip("Set the line colors. The line color attribute\n values must be integers ranging from 0 to 255.\n(e.g., 16, 32, 48, 64) ")
+        #self.lineColor.setToolTip("Set the line colors. The line color attribute\n values must be integers ranging from 0 to 255.\n(e.g., 16, 32, 48, 64) ")
         self.lineWidth.setToolTip("Set the line width. The line width is an integer\nor float value in the range (1 to 300)")
         self.initLineValues()
-        
+
     def setupMarkers(self, target):
         self.markerType = target.addLabeledComboBox('Type:',
                                                      ['dot', 'plus', 'star', 'circle', 'cross', 'diamond','triangle_up', 'triangle_down', 'triangle_left','triangle_right', 'square', 'diamond_fill','triangle_up_fill', 'triangle_down_fill','triangle_left_fill', 'triangle_right_fill','square_fill'])
-        self.markerColor = target.addLabeledSpinBox('Color:',0,255)
+        self.markerColorCache = (0,0,0)
+        self.markerColor = target.addLabeledColorPicker('Color: ', self.setMarkerColor)
         self.markerSize = target.addLabeledSpinBox('Sizes:',0,300)
         self.markerType.setToolTip("Set the marker types. The marker values can either\nbe (None, 'dot', 'plus', 'star', 'circle', 'cross', 'diamond',\n'triangle_up', 'triangle_down', 'triangle_left',\n'triangle_right', 'square', 'diamond_fill',\n'triangle_up_fill', 'triangle_down_fill',\n'triangle_left_fill', 'triangle_right_fill',\n'square_fill') or (0, 1, 2, 3, 4, 5, 6, 7, 8, 9,\n10, 11, 12, 13, 14, 15, 16, 17) or None. ")
-        self.markerColor.setToolTip("Set the marker colors. The marker color attribute\nvalues must be integers ranging from 0 to 255.")
+        #self.markerColor.setToolTip("Set the marker colors. The marker color attribute\nvalues must be integers ranging from 0 to 255.")
         self.markerSize.setToolTip("Set the marker sizes. The marker size attribute\nvalues must be integers or floats ranging  from\n1 to 300. " )
         self.initMarkerValues()
+
+    def setLineColor(self, rgb):
+        r, g, b = rgb
+        self.lineColorCache = (r / 2.55, g / 2.55, b / 2.55)
+        self.lineColor(rgb)
+
+    def setMarkerColor(self, rgb):
+        r, g, b = rgb
+        self.markerColorCache = (r / 2.55, g / 2.55, b / 2.55)
+        self.markerColor(rgb)
 
     def initLineValues(self,gm=None):
         if gm is None:
@@ -332,14 +346,32 @@ class VCSGMs1D:
                     self.lineType.setCurrentIndex(i)
                     break
             if gm.linecolor is None:
-                self.lineColor.setValue(241)
+                self.lineColor((0,0,0))
             else:
-                self.lineColor.setValue(gm.linecolor)
+                if isinstance(gm.linecolor, (list, tuple)):
+                    if len(gm.linecolor) == 4:
+                        r, g, b, a = gm.linecolor
+                    else:
+                        r, g, b = gm.linecolor
+                elif isinstance(gm.linecolor, (int)):
+                    if gm.colormap is None:
+                        cmap = "default"
+                    else:
+                        cmap = gm.colormap
+                    r, g, b, a = vcs.getcolormap(cmap).getcolorcell(gm.linecolor)
+                elif isinstance(gm.linecolor, (str, unicode)):
+                    r, g, b = vcs.colors.str2rgb(gm.linecolor)
+                    rgb = []
+                    for c in (r, g, b):
+                        rgb.append(c / 2.55)
+                    r, g, b = rgb
+                self.lineColor((r * 2.55, g * 2.55, b * 2.55))
+                self.lineColorCache = (r, g, b)
             if gm.linewidth is None:
                 self.lineWidth.setValue(1)
             else:
                 self.lineWidth.setValue(gm.linewidth)
-        
+
     def initMarkerValues(self, gm=None):
         if gm is None:
             gm = self.gm
@@ -350,9 +382,27 @@ class VCSGMs1D:
                     self.markerType.setCurrentIndex(i)
                     break
             if gm.markercolor is None:
-                self.markerColor.setValue(241)
+                self.markerColor((0, 0, 0))
             else:
-                self.markerColor.setValue(gm.markercolor)
+                if isinstance(gm.markercolor, (list, tuple)):
+                    if len(gm.markercolor) == 4:
+                        r, g, b, a = gm.markercolor
+                    else:
+                        r, g, b = gm.markercolor
+                elif isinstance(gm.markercolor, (int)):
+                    if gm.colormap is None:
+                        cmap = "default"
+                    else:
+                        cmap = gm.colormap
+                    r, g, b, a = vcs.getcolormap(cmap).getcolorcell(gm.markercolor)
+                elif isinstance(gm.markercolor, (str, unicode)):
+                    r, g, b = vcs.colors.str2rgb(gm.markercolor)
+                    rgb = []
+                    for c in (r, g, b):
+                        rgb.append(c / 2.55)
+                    r, g, b = rgb
+                self.markerColorCache = (r, g, b)
+                self.markerColor((r * 2.55, g * 2.55, b * 2.55))
             if gm.markersize is None:
                 self.markerSize.setValue(1)
             else:
@@ -364,15 +414,15 @@ class VCSGMs1D:
         if gm:
             gm.marker=str(self.markerType.currentText())
             gm.markersize=int(self.markerSize.text())
-            gm.markercolor=int(self.markerColor.text())
-        
+            gm.markercolor = self.markerColorCache
+
     def applyLineChanges(self, gm=None):
         if gm is None:
             gm = self.gm
         if gm:
             gm.line=str(self.lineType.currentText())
             gm.linewidth=int(self.lineWidth.text())
-            gm.linecolor=int(self.lineColor.text())
+            gm.linecolor = self.lineColorCache
 
 class VCSGMRanges:
     def rangeSettings(self,target):

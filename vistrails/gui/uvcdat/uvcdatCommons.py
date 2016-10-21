@@ -220,11 +220,19 @@ class QFramedWidget(QtGui.QGroupBox):
         self.setLayout(self.vbox)
         self.indent = 10
         self.setFlat(flat)
+        self.colorDialog = QtGui.QColorDialog()
+        self.colorDialog.colorSelected.connect(self.colorSelected)
+        self.colorCallback = None
         if titleText is not None:
             ## title = QtGui.QLabel(titleText)
             self.setFont(QtGui.QFont("Arial", 12, QtGui.QFont.Bold))
             self.setTitle(titleText)
         self.newRow()
+
+    def colorSelected(self, color):
+        rgb = color.red(), color.green(), color.blue()
+        if self.colorCallback is not None:
+            self.colorCallback(rgb)
 
     def setSpacing(self, spacing):
         self.vbox.setSpacing(spacing)
@@ -252,12 +260,12 @@ class QFramedWidget(QtGui.QGroupBox):
         # Init combo box & set text to white on blue
         comboBox = QtGui.QComboBox()
         comboPalette = comboBox.view().palette()
-        comboPalette.setColor(QtGui.QPalette.HighlightedText, QtCore.Qt.white)        
+        comboPalette.setColor(QtGui.QPalette.HighlightedText, QtCore.Qt.white)
         comboPalette.setColor(QtGui.QPalette.Highlight, QtCore.Qt.blue)
         comboBox.view().setPalette(comboPalette)
         for string in comboStringList:
-            comboBox.addItem(string)        
-            
+            comboBox.addItem(string)
+
         comboBox.label = self.addLabel(text)
         self.addWidget(comboBox)
         return comboBox
@@ -278,8 +286,34 @@ class QFramedWidget(QtGui.QGroupBox):
         spinbox.label = tmp
         self.addWidget(tmp)
         self.addWidget(spinbox)
-        
         return spinbox
+
+    def addLabeledColorPicker(self, text, callback, indent=True, newRow=True):
+        if newRow == True:
+            self.newRow()
+        if indent == True:
+            self.hbox.addSpacing(indentSpacing)
+
+        t = QtGui.QLabel(text)
+        button = QtGui.QPushButton()
+        self.addWidget(t)
+        self.addWidget(button)
+        color = (0,0,0)
+
+        def setBGColor(rgb):
+            global color
+            color = rgb
+            button.setStyleSheet("background-color: rgb(%d, %d, %d);" % rgb)
+            self.colorDialog.setCurrentColor(QtGui.QColor(*rgb))
+
+        def openCD():
+            self.colorDialog.setCurrentColor(QtGui.QColor(*color))
+            self.colorCallback = callback
+            self.colorDialog.open()
+
+        button.clicked.connect(openCD)
+
+        return setBGColor
 
     def addLabeledDoubleSpinBox(self, text, minValue=None, maxValue=None,
                                 step=None, indent=True, newRow=True):
