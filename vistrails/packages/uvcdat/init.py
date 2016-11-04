@@ -42,7 +42,10 @@ class Variable(Module):
                  load=False):
         Module.__init__(self)
         self.filename = filename
-        self.url = url
+        if url is not None and url.startswith("file://") and url.endswith(self.filename):
+            self.url = None
+        else:
+            self.url = url
         self.source = source
         self.name = name
         self.load = load
